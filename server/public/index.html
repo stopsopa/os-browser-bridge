@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Listener Example (Direct WebSocket)</title>
+</head>
+<body>
+    <h1>Listening for Custom Events (Direct WebSocket)</h1>
+    <p>Messages from server will appear below:</p>
+
+    <div id="messages"></div>
+
+    <script>
+        const messagesDiv = document.getElementById('messages');
+        const ws = new WebSocket('ws://localhost:8080');
+
+        ws.onopen = () => {
+            console.log('Connected to WebSocket server directly from page');
+            const p = document.createElement('p');
+            p.textContent = 'WebSocket connected.';
+            messagesDiv.appendChild(p);
+        };
+
+        ws.onmessage = (event) => {
+            try {
+                const eventData = JSON.parse(event.data);
+                console.log('Received message directly:', eventData);
+                const p = document.createElement('p');
+                p.textContent = `Event received at ${new Date().toLocaleTimeString()}: ${eventData.message} (Timestamp: ${eventData.timestamp})`;
+                messagesDiv.appendChild(p);
+            } catch (e) {
+                console.error('Error parsing message from server:', e);
+            }
+        };
+
+        ws.onclose = () => {
+            console.log('Disconnected from WebSocket server');
+            const p = document.createElement('p');
+            p.textContent = 'WebSocket disconnected.';
+            messagesDiv.appendChild(p);
+        };
+
+        ws.onerror = (err) => {
+            console.error('WebSocket error:', err);
+            const p = document.createElement('p');
+            p.textContent = `WebSocket error: ${err.message || 'Unknown error'}`;
+            messagesDiv.appendChild(p);
+        };
+
+        console.log('Attempting to connect to WebSocket...');
+    </script>
+</body>
+</html>

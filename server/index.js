@@ -1,13 +1,15 @@
 
 const WebSocket = require('ws');
+const express = require('express');
 const http = require('http');
+const path = require('path');
 
-const server = http.createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('WebSocket server is running');
-});
-
+const app = express();
+const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
+
+// Serve static files from the 'public' directory
+app.use(express.static(path.join(__dirname, 'public')));
 
 wss.on('connection', ws => {
     console.log('Client connected');
@@ -31,5 +33,5 @@ wss.on('connection', ws => {
 });
 
 server.listen(8080, () => {
-    console.log('Server listening on port http://localhost:8080');
+    console.log('Server listening on http://localhost:8080');
 });

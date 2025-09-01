@@ -6,6 +6,7 @@ Project Plan: Node.js Server to Browser Tab Event Emission
     *   Initialize a new Node.js project.
     *   Create an HTTP server using `http` module or a framework like Express.
     *   Implement a WebSocket server (e.g., using `ws` or `socket.io`) to allow persistent connections with the browser extension.
+    *   Serve static files from a `public` directory using Express (or similar).
 2.  **Event Emission Logic:**
     *   The server will emit arbitrary events at regular intervals (e.g., every few seconds) or upon a specific trigger.
     *   These events will be sent over the WebSocket connection to any connected browser extensions.
