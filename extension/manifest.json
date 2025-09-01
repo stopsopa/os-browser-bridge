@@ -1,0 +1,23 @@
+{
+    "manifest_version": 3,
+    "name": "OS Browser Bridge",
+    "version": "1.0",
+    "description": "Bridges events from a Node.js server to browser tabs.",
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": ["<all_urls>"],
+            "js": ["content.js"]
+        }
+    ],
+    "permissions": [
+        "activeTab",
+        "scripting"
+    ],
+    "host_permissions": [
+        "http://localhost:8080/*",
+        "ws://localhost:8080/*"
+    ]
+}

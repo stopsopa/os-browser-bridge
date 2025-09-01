@@ -1,0 +1,42 @@
+Project Plan: Node.js Server to Browser Tab Event Emission
+
+**Phase 1: Node.js Server (in `server/` directory)**
+
+1.  **Set up basic Node.js server:**
+    *   Initialize a new Node.js project.
+    *   Create an HTTP server using `http` module or a framework like Express.
+    *   Implement a WebSocket server (e.g., using `ws` or `socket.io`) to allow persistent connections with the browser extension.
+2.  **Event Emission Logic:**
+    *   The server will emit arbitrary events at regular intervals (e.g., every few seconds) or upon a specific trigger.
+    *   These events will be sent over the WebSocket connection to any connected browser extensions.
+
+**Phase 2: Browser Extension (in `extension/` directory)**
+
+1.  **Extension Manifest (`manifest.json`):**
+    *   Define the extension's permissions (e.g., `activeTab`, `scripting`, `websockets` if needed, `host_permissions` for communicating with your server).
+    *   Declare a background script.
+2.  **Background Script (`background.js`):**
+    *   Establish a WebSocket connection to the Node.js server.
+    *   Listen for events from the Node.js server.
+    *   When an event is received from the server, broadcast it to all active browser tabs using `chrome.tabs.sendMessage` (or `browser.tabs.sendMessage` for WebExtensions).
+3.  **Content Script (`content.js`):**
+    *   Inject this script into all active tabs (or specific URLs, depending on manifest settings).
+    *   Listen for messages from the background script.
+    *   When a message is received, dispatch a custom DOM event (e.g., `CustomEvent`) on the `window` or `document` object. This will be the `myevent` you mentioned.
+
+**Phase 3: Browser Tab Event Consumption (Example HTML/JavaScript)**
+
+1.  **Example HTML File (`index.html`):**
+    *   A simple HTML file that includes an inline JavaScript block or links to a separate JavaScript file.
+2.  **Event Listener:**
+    *   In the JavaScript, add an event listener to `window` or `document` for your custom event (`myevent`).
+    *   `window.addEventListener('myevent', (event) => { console.log('Event received:', event.detail); });`
+    *   Using `window` is generally preferred for global events, but `document` also works. `CustomEvent` allows you to pass data in `event.detail`.
+
+**Phase 4: Setup and Testing**
+
+1.  **Install Dependencies:** `npm install` for the server, and any necessary tools for the extension (though often extensions are vanilla JS).
+2.  **Run Server:** Start the Node.js server.
+3.  **Load Extension:** Load the `extension/` directory as an unpacked extension in your browser (e.g., Chrome's `chrome://extensions` page).
+4.  **Open HTML:** Open your `index.html` file in a browser tab.
+5.  **Verify:** Check the browser's console for the emitted events.

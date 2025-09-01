@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Listener Example</title>
+</head>
+<body>
+    <h1>Listening for Custom Events</h1>
+    <p>Check the console for "myevent" messages from the server.</p>
+
+    <script>
+        window.addEventListener('myevent', (event) => {
+            console.log('Received myevent:', event.detail);
+            const p = document.createElement('p');
+            p.textContent = `Event received at ${new Date().toLocaleTimeString()}: ${event.detail.message} (Timestamp: ${event.detail.timestamp})`;
+            document.body.appendChild(p);
+        });
+
+        console.log('Listening for myevent...');
+    </script>
+</body>
+</html>
