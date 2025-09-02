@@ -2,7 +2,7 @@ const WS_SERVER_URL = "ws://localhost:8080";
 let ws = null;
 let reconnectTimer = null; // stores the id returned by setTimeout
 let reconnectAttempts = 0;
-const MAX_RECONNECT_DELAY = 30000; // Maximum delay of 30 seconds
+const MAX_RECONNECT_DELAY = 5000; // Maximum delay of 30 seconds
 
 let debug = false;
 function err() {
