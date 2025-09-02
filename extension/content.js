@@ -1,14 +1,39 @@
 // Prevent duplicate injection side-effects when the script is reinjected
+function err() {
+  console.error("content.js", ...arguments);
+}
+
+function log() {
+  console.log("content.js", ...arguments);
+}
+
 if (!window.__osBrowserBridgeContentScriptInjected) {
   window.__osBrowserBridgeContentScriptInjected = true;
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "os_browser_bridge_event") {
       try {
-        const eventData = JSON.parse(message.payload);
-        const customEvent = new CustomEvent("os_browser_bridge_event", { detail: eventData });
-        window.dispatchEvent(customEvent);
-        console.log("Dispatched os_browser_bridge_event:", eventData);
+        let dataFromJson = null;
+
+        try {
+          dataFromJson = JSON.parse(message.jsonString);
+        } catch (e) {
+          error("Error parsing JSON string:", e);
+        }
+
+        const { event, payload, delay } = dataFromJson || {};
+
+        if (typeof event !== "string" || !event.trim()) {
+          return;
+        }
+
+        if (delay) {
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent(event, { detail: payload }));
+          }, delay);
+        } else {
+          window.dispatchEvent(new CustomEvent(event, { detail: payload }));
+        }
       } catch (e) {
         console.error("Error parsing message payload:", e);
       }

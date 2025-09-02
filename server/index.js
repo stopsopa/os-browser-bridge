@@ -45,6 +45,20 @@ app.use(
   })
 );
 
+function sendEvent(ws, event, payload, delay = 0) {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(
+      JSON.stringify({
+        event,      
+        delay,  
+        payload,
+      })
+    );
+    return true;
+  }
+  return false;
+}
+
 socket &&
   wss.on("connection", (ws) => {
     // Try to get a more "official" connection identifier
@@ -60,17 +74,10 @@ socket &&
 
     console.log(`Client connected with ID: ${connectionId}`);
 
-    let eventCount = 0;
-    // Send a message every 3 seconds to the connected client
+    let eventCount = 1;
     const interval = setInterval(() => {
-      if (ws.readyState === WebSocket.OPEN) {
+      if (sendEvent(ws, "myevent", { message: `Hello from server! Connection ID: ${connectionId}`, eventCount })) {
         eventCount += 1;
-        console.log("send event " + eventCount);
-        const eventData = {
-          type: "myevent",
-          message: `Hello from server! Connection ID: ${connectionId}`,
-        };
-        ws.send(JSON.stringify(eventData));
       }
     }, 3000);
 
