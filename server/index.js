@@ -1,3 +1,9 @@
+/**
+ * Two modes available:
+ * SOCKET=true node --watch --env-file=.env server/index.js
+ * node --watch --env-file=.env server/index.js
+ */
+
 import { WebSocketServer } from "ws";
 import express from "express";
 import http from "http";
@@ -6,11 +12,9 @@ import { fileURLToPath } from "url";
 import serveIndex from "serve-index";
 import { WebSocketConnectionRegistry, sendEvent } from "./WebSocketConnectionRegistry.js";
 
-// Get __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Environment variables - required
 if (!process.env.PORT) {
   throw new Error("PORT environment variable is required. Please set PORT in your .env file or environment.");
 }
@@ -71,12 +75,11 @@ if (socket) {
     });
   });
 
-  // Single interval to send events to all connected clients
   let serverEventCount = 1;
-  const interval = setInterval(() => {
-    connectionRegistry.sendEvent("myevent", { 
-      message: `Hello from server! Event #${serverEventCount}`, 
-      totalConnections: connectionRegistry.size()
+  setInterval(() => {
+    connectionRegistry.sendEvent("myevent", {
+      message: `Hello from server! Event #${serverEventCount}`,
+      totalConnections: connectionRegistry.size(),
     });
     serverEventCount += 1;
   }, 3000);
