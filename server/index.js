@@ -45,36 +45,40 @@ app.use(
   })
 );
 
-socket && wss.on("connection", (ws) => {
-  // Try to get a more "official" connection identifier
-  let connectionId;
+socket &&
+  wss.on("connection", (ws) => {
+    // Try to get a more "official" connection identifier
+    let connectionId;
 
-  // Check if we can access the underlying socket properties
-  if (ws._socket && ws._socket.remoteAddress && ws._socket.remotePort) {
-    connectionId = `${ws._socket.remoteAddress}:${ws._socket.remotePort}`;
-  } else {
-    // Fallback to generated ID if socket properties aren't available
-    connectionId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-  }
-
-  console.log(`Client connected with ID: ${connectionId}`);
-
-  // Send a message every 3 seconds to the connected client
-  const interval = setInterval(() => {
-    if (ws.readyState === WebSocket.OPEN) {
-      const eventData = {
-        type: "myevent",
-        message: `Hello from server! Connection ID: ${connectionId}`,
-      };
-      ws.send(JSON.stringify(eventData));
+    // Check if we can access the underlying socket properties
+    if (ws._socket && ws._socket.remoteAddress && ws._socket.remotePort) {
+      connectionId = `${ws._socket.remoteAddress}:${ws._socket.remotePort}`;
+    } else {
+      // Fallback to generated ID if socket properties aren't available
+      connectionId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     }
-  }, 3000);
 
-  ws.on("close", () => {
-    console.log(`Client disconnected: ${connectionId}`);
-    clearInterval(interval);
+    console.log(`Client connected with ID: ${connectionId}`);
+
+    let eventCount = 0;
+    // Send a message every 3 seconds to the connected client
+    const interval = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        eventCount += 1;
+        console.log("send event " + eventCount);
+        const eventData = {
+          type: "myevent",
+          message: `Hello from server! Connection ID: ${connectionId}`,
+        };
+        ws.send(JSON.stringify(eventData));
+      }
+    }, 3000);
+
+    ws.on("close", () => {
+      console.log(`Client disconnected: ${connectionId}`);
+      clearInterval(interval);
+    });
   });
-});
 
 server.listen(PORT, HOST, () => {
   console.log(`
@@ -82,6 +86,6 @@ Server listening on:
     🌎 http://${HOST}:${PORT}
 
     launched ${socket ? "with WebSocket" : "without WebSocket"}
-    
+
 `);
 });
