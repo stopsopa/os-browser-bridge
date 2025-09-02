@@ -40,11 +40,10 @@ app.use(
   })
 );
 
-
 wss.on("connection", (ws) => {
   // Try to get a more "official" connection identifier
   let connectionId;
-  
+
   // Check if we can access the underlying socket properties
   if (ws._socket && ws._socket.remoteAddress && ws._socket.remotePort) {
     connectionId = `${ws._socket.remoteAddress}:${ws._socket.remotePort}`;
@@ -52,7 +51,7 @@ wss.on("connection", (ws) => {
     // Fallback to generated ID if socket properties aren't available
     connectionId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   }
-  
+
   console.log(`Client connected with ID: ${connectionId}`);
 
   // Send a message every 3 seconds to the connected client
@@ -60,7 +59,6 @@ wss.on("connection", (ws) => {
     if (ws.readyState === WebSocket.OPEN) {
       const eventData = {
         type: "myevent",
-        timestamp: new Date().toISOString(),
         message: `Hello from server! Connection ID: ${connectionId}`,
       };
       ws.send(JSON.stringify(eventData));

@@ -74,7 +74,7 @@
             Waiting for extension connection...
         </div>
         
-        <h3>Event Log:</h3>
+        <h3>Event Log: <button id="clearLogBtn" style="float: right; padding: 5px 10px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Clear Log</button></h3>
         <div id="eventLog" class="event-log">
             <p>No events received yet. Make sure the browser extension is loaded and active.</p>
         </div>
@@ -83,6 +83,7 @@
     <script>
         const statusDiv = document.getElementById('status');
         const eventLogDiv = document.getElementById('eventLog');
+        const clearLogBtn = document.getElementById('clearLogBtn');
         let eventCount = 0;
 
         // Function to update connection status
@@ -117,11 +118,21 @@
             console.log(`Received os_browser_bridge_event #${eventCount}:`, eventData);
         }
 
+        // Function to clear the event log
+        function clearEventLog() {
+            eventLogDiv.innerHTML = '<p>No events received yet. Make sure the browser extension is loaded and active.</p>';
+            eventCount = 0;
+            console.log('Event log cleared');
+        }
+
         // Listen for the custom event that should be dispatched by the content script
         window.addEventListener('os_browser_bridge_event', (event) => {
             updateStatus(true);
             addEventToLog(event.detail);
         });
+
+        // Add event listener for clear button
+        clearLogBtn.addEventListener('click', clearEventLog);
 
         // Check if extension is available by trying to detect the event
         // This is a simple heuristic - in a real scenario you might have a more robust check
