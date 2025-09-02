@@ -1,89 +1,78 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Event Listener Example (Direct WebSocket)</title>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <h1>Event Listener Example (Direct WebSocket)</h1>
-        <h2>This page connects directly to WebSocket and listens for events</h2>
-        <button id="clear">Clear</button>
-        <pre></pre>
+      <h1>Direct WebSocket Listener from server</h1>
+      <h2>This example test direct WebSocket connection from server</h2>
+      <button id="clear">Clear</button>
+      <pre></pre>
     </div>
 
     <script>
-        const pre = document.querySelector("pre");
-        const clear = document.querySelector("#clear");
-        const ws = new WebSocket('ws://localhost:8080');
+      const pre = document.querySelector("pre");
+      const clear = document.querySelector("#clear");
+      const ws = new WebSocket("ws://localhost:8080");
 
-        ws.onopen = () => {
-            console.log('Connected to WebSocket server directly from page');
-            const timeString = new Date().toLocaleTimeString();
-            const line = `time: ${timeString}, status: WebSocket connected`;
-            pre.innerText = line + "\n" + pre.innerText;
-        };
+      ws.onopen = () => {
+        console.log("Connected to WebSocket server directly from page");
+        const timeString = new Date().toLocaleTimeString();
+        const line = `time: ${timeString}, status: WebSocket connected`;
+        pre.innerText = line + "\n" + pre.innerText;
+      };
 
-        ws.onmessage = (event) => {
-            try {
-                const eventData = JSON.parse(event.data);
-                console.log('Received message directly:', eventData);
-                
-                const timeString = new Date().toLocaleTimeString();
-                let line;
-                
-                // Handle the new event format from WebSocketConnectionRegistry
-                if (eventData.event && eventData.payload) {
-                    // This is the new format: { event, delay, payload }
-                    line = `time: ${timeString}, event: ${eventData.event}, detail: ${JSON.stringify(eventData.payload)}`;
-                    
-                    // Also dispatch a custom DOM event for compatibility
-                    const customEvent = new CustomEvent(eventData.event, {
-                        detail: eventData.payload
-                    });
-                    window.dispatchEvent(customEvent);
-                } else {
-                    // Fallback for old format or direct messages
-                    line = `time: ${timeString}, event: direct_message, detail: ${JSON.stringify(eventData)}`;
-                }
-                
-                pre.innerText = line + "\n" + pre.innerText;
-            } catch (e) {
-                console.error('Error parsing message from server:', e);
-                const timeString = new Date().toLocaleTimeString();
-                const line = `time: ${timeString}, error: ${e.message}`;
-                pre.innerText = line + "\n" + pre.innerText;
-            }
-        };
+      ws.onmessage = (event) => {
+        try {
+          const eventData = JSON.parse(event.data);
+          console.log("Received message directly:", eventData);
 
-        ws.onclose = () => {
-            console.log('Disconnected from WebSocket server');
-            const timeString = new Date().toLocaleTimeString();
-            const line = `time: ${timeString}, status: WebSocket disconnected`;
-            pre.innerText = line + "\n" + pre.innerText;
-        };
+          const timeString = new Date().toLocaleTimeString();
+          let line;
 
-        ws.onerror = (err) => {
-            console.error('WebSocket error:', err);
-            const timeString = new Date().toLocaleTimeString();
-            const line = `time: ${timeString}, error: WebSocket error - ${err.message || 'Unknown error'}`;
-            pre.innerText = line + "\n" + pre.innerText;
-        };
+          // Handle the new event format from WebSocketConnectionRegistry
+          if (eventData.event && eventData.payload) {
+            // This is the new format: { event, delay, payload }
+            line = `time: ${timeString}, event: ${eventData.event}, detail: ${JSON.stringify(eventData.payload)}`;
 
-        // Listen for the custom DOM event that gets dispatched
-        window.addEventListener('myevent', (event) => {
-            console.log('Custom DOM event received:', event.detail);
-            const timeString = new Date().toLocaleTimeString();
-            const line = `time: ${timeString}, event: custom_dom_myevent, detail: ${JSON.stringify(event.detail)}`;
-            pre.innerText = line + "\n" + pre.innerText;
-        });
+            // Note: We don't dispatch custom DOM events here anymore
+            // The Chrome extension will handle that via content script
+          } else {
+            // Fallback for old format or direct messages
+            line = `time: ${timeString}, event: direct_message, detail: ${JSON.stringify(eventData)}`;
+          }
 
-        clear.addEventListener("click", () => {
-            pre.innerText = "";
-        });
+          pre.innerText = line + "\n" + pre.innerText;
+        } catch (e) {
+          console.error("Error parsing message from server:", e);
+          const timeString = new Date().toLocaleTimeString();
+          const line = `time: ${timeString}, error: ${e.message}`;
+          pre.innerText = line + "\n" + pre.innerText;
+        }
+      };
 
-        console.log('Attempting to connect to WebSocket...');
+      ws.onclose = () => {
+        console.log("Disconnected from WebSocket server");
+        const timeString = new Date().toLocaleTimeString();
+        const line = `time: ${timeString}, status: WebSocket disconnected`;
+        pre.innerText = line + "\n" + pre.innerText;
+      };
+
+      ws.onerror = (err) => {
+        console.error("WebSocket error:", err);
+        const timeString = new Date().toLocaleTimeString();
+        const line = `time: ${timeString}, error: WebSocket error - ${err.message || "Unknown error"}`;
+        pre.innerText = line + "\n" + pre.innerText;
+      };
+
+      clear.addEventListener("click", () => {
+        pre.innerText = "";
+      });
+
+      console.log("Attempting to connect to WebSocket...");
     </script>
-</body>
+  </body>
 </html>
