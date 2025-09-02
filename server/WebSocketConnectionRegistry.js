@@ -1,10 +1,10 @@
-const WebSocket = require("ws");
+import { WebSocket } from "ws";
 
 /**
  * This is probably most important function here because it is sending event to the plugin in it's expected format
  * Rest pf surrounding code is just abstraction for the purpose of good implementation in this script
  */
-function sendEvent(ws, event, payload, delay = 0) {
+export function sendEvent(ws, event, payload, delay = 0) {
   if (ws.readyState === WebSocket.OPEN) {
     ws.send(
       JSON.stringify({
@@ -21,7 +21,7 @@ function sendEvent(ws, event, payload, delay = 0) {
 /**
  * holds the list of ws (websockets) connections
  */
-class WebSocketConnectionRegistry {
+export class WebSocketConnectionRegistry {
   constructor() {
     this.connections = new Set();
   }
@@ -56,6 +56,3 @@ class WebSocketConnectionRegistry {
     });
   }
 }
-
-module.exports = WebSocketConnectionRegistry;
-module.exports.sendEvent = sendEvent;

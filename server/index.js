@@ -1,10 +1,14 @@
-const WebSocket = require("ws");
-const express = require("express");
-const http = require("http");
-const path = require("path");
-const serveIndex = require("serve-index");
-const WebSocketConnectionRegistry = require("./WebSocketConnectionRegistry");
-const { sendEvent } = require("./WebSocketConnectionRegistry");
+import { WebSocketServer } from "ws";
+import express from "express";
+import http from "http";
+import path from "path";
+import { fileURLToPath } from "url";
+import serveIndex from "serve-index";
+import { WebSocketConnectionRegistry, sendEvent } from "./WebSocketConnectionRegistry.js";
+
+// Get __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Environment variables - required
 if (!process.env.PORT) {
@@ -43,7 +47,7 @@ app.use(
 );
 
 if (socket) {
-  let wss = new WebSocket.Server({ server });
+  let wss = new WebSocketServer({ server });
   const connectionRegistry = new WebSocketConnectionRegistry();
 
   wss.on("connection", (ws) => {
