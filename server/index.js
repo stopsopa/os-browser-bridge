@@ -62,9 +62,8 @@ if (socket) {
       connectionId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     }
 
-    console.log(`Client connected with ID: ${connectionId}`);
     connectionRegistry.add(ws);
-    console.log(`Total connections: ${connectionRegistry.size()}`);
+    console.log(`Client connected with ID: ${connectionId}, Total connections: ${connectionRegistry.size()}`);
 
     let serverEventCount = 1;
     const interval = setInterval(() => {
@@ -76,9 +75,8 @@ if (socket) {
     }, 3000);
 
     ws.on("close", () => {
-      console.log(`Client disconnected: ${connectionId}`);
       connectionRegistry.remove(ws);
-      console.log(`Total connections: ${connectionRegistry.size()}`);
+      console.log(`Client disconnected: ${connectionId}, Total connections: ${connectionRegistry.size()}`);
       clearInterval(interval);
     });
   });
