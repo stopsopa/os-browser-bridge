@@ -37,6 +37,22 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
       } catch (e) {
         console.error("Error parsing message payload:", e);
       }
+    } else if (message.type === "os_browser_bridge_connection_status") {
+      // Handle connection status events
+      try {
+        const { isConnected, details, timestamp } = message;
+        
+        // Dispatch a custom event for connection status
+        window.dispatchEvent(new CustomEvent("os_browser_bridge_connection_status", {
+          detail: {
+            isConnected,
+            details,
+            timestamp
+          }
+        }));
+      } catch (e) {
+        console.error("Error handling connection status message:", e);
+      }
     }
   });
 

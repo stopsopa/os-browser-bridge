@@ -9,12 +9,19 @@
     <div class="container">
       <h1>OS Browser Bridge Event Listener</h1>
       <h2>This regular consumer page where we will just bind to event forwarded by the plugin</h2>
+      <pre>
+        window.addEventListener("myevent", (event) => {
+            const { 
+              ...
+            } = event.detail;
+        });        
+      </pre>
       <button id="clear">Clear</button>
-      <pre></pre>
+      <pre id="logs"></pre>
     </div>
 
     <script>
-      const pre = document.querySelector("pre");
+      const pre = document.querySelector("#logs");
       const clear = document.querySelector("#clear");
 
       window.addEventListener("myevent", (event) => {

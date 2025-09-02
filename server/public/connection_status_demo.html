@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Connection Status Demo - OS Browser Bridge</title>
+  </head>
+  <body>
+    <div class="container">
+      <h1>OS Browser Bridge Connection Status</h1>
+      <h2>This page shows connection status events from the browser extension</h2>
+      <pre>
+        window.addEventListener("os_browser_bridge_connection_status", (event) => {
+            const { 
+                isConnected: boolean, 
+                details: object, 
+                timestamp: string 
+            } = event.detail;
+        });        
+      </pre>
+      <button id="clear">Clear</button>
+      <pre id="logs"></pre>
+    </div>
+
+    <script>
+      const pre = document.querySelector("#logs");
+      const clear = document.querySelector("#clear");
+
+      // Listen for connection status events
+      window.addEventListener("os_browser_bridge_connection_status", (event) => {
+        const timeString = new Date().toLocaleTimeString();
+        const line = `time: ${timeString}, event.detail: ${JSON.stringify(event.detail)}`;
+
+        pre.innerText = line + "\n" + pre.innerText;
+      });
+
+      clear.addEventListener("click", () => {
+        pre.innerText = "";
+      });
+
+      // Initialize
+      pre.innerText =
+        `time: ${new Date().toLocaleTimeString()}, message: Page loaded, waiting for connection status...\n` +
+        pre.innerText;
+    </script>
+  </body>
+</html>

@@ -74,6 +74,30 @@ async function broadcastToTabs(jsonString) {
   }
 }
 
+async function broadcastConnectionStatus(isConnected, details = {}) {
+  try {
+    const tabs = await chrome.tabs.query({});
+    for (const tab of tabs) {
+      try {
+        await chrome.tabs.sendMessage(tab.id, { 
+          type: "os_browser_bridge_connection_status", 
+          isConnected,
+          details,
+          timestamp: Date.now()
+        });
+      } catch (error) {
+        if (error.message.includes("Could not establish connection. Receiving end does not exist.")) {
+          console.warn(`Content script not active in tab ${tab.id} (${tab.url || "unknown url"}). Skipping connection status message.`);
+        } else {
+          error(`Error sending connection status to tab ${tab.id}:`, error);
+        }
+      }
+    }
+  } catch (error) {
+    error("Error querying tabs for connection status broadcast:", error);
+  }
+}
+
 function connectWebSocket() {
   // Always clean up any previous socket before starting a new one
   cleanupWebSocket();
@@ -85,11 +109,16 @@ function connectWebSocket() {
 
   try {
     log("Attempting to connect to WebSocket server...");
+    // Emit connecting status
+    broadcastConnectionStatus(false, { state: "connecting", reconnectAttempts });
+    
     ws = new WebSocket(WS_SERVER_URL);
 
     ws.addEventListener("open", () => {
       log("Connected to WebSocket server");
       reconnectAttempts = 0; // Reset reconnect attempts on successful connection
+      // Emit connected status
+      broadcastConnectionStatus(true, { state: "connected", reconnectAttempts: 0 });
     });
 
     ws.addEventListener("message", (event) => {
@@ -98,15 +127,29 @@ function connectWebSocket() {
 
     ws.addEventListener("close", (event) => {
       log("WebSocket closed. Scheduling reconnect...");
+      // Emit disconnected status
+      broadcastConnectionStatus(false, { 
+        state: "disconnected", 
+        reconnectAttempts,
+        code: event.code,
+        reason: event.reason
+      });
       scheduleReconnect();
     });
 
     ws.addEventListener("error", (error) => {
       log("WebSocket error occurred. Scheduling reconnect...");
+      // Don't emit error status here as 'close' event will also fire and emit disconnected status
       // Don't call scheduleReconnect here as 'close' event will also fire
     });
   } catch (e) {
     log("Failed to create WebSocket connection. Scheduling reconnect...");
+    // Emit connection failed status
+    broadcastConnectionStatus(false, { 
+      state: "connection_failed", 
+      reconnectAttempts,
+      error: e.message || "Failed to create WebSocket"
+    });
     scheduleReconnect();
   }
 }
