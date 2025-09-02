@@ -14,10 +14,15 @@ if (!process.env.HOST) {
 
 const PORT = process.env.PORT;
 const HOST = process.env.HOST;
+const socket = typeof process.env.SOCKET !== "undefined";
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+
+let wss = null;
+if (socket) {
+  wss = new WebSocket.Server({ server });
+}
 
 const web = path.join(__dirname, "public");
 
@@ -40,7 +45,7 @@ app.use(
   })
 );
 
-wss.on("connection", (ws) => {
+socket && wss.on("connection", (ws) => {
   // Try to get a more "official" connection identifier
   let connectionId;
 
@@ -72,5 +77,11 @@ wss.on("connection", (ws) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`\nServer listening on \n  🌎 http://${HOST}:${PORT}\n`);
+  console.log(`
+Server listening on: 
+    🌎 http://${HOST}:${PORT}
+
+    launched ${socket ? "with WebSocket" : "without WebSocket"}
+    
+`);
 });
