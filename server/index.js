@@ -3,6 +3,8 @@ const express = require("express");
 const http = require("http");
 const path = require("path");
 const serveIndex = require("serve-index");
+const WebSocketConnectionRegistry = require("./WebSocketConnectionRegistry");
+const { sendEvent } = require("./WebSocketConnectionRegistry");
 
 // Environment variables - required
 if (!process.env.PORT) {
@@ -18,11 +20,6 @@ const socket = typeof process.env.SOCKET !== "undefined";
 
 const app = express();
 const server = http.createServer(app);
-
-let wss = null;
-if (socket) {
-  wss = new WebSocket.Server({ server });
-}
 
 const web = path.join(__dirname, "public");
 
@@ -45,21 +42,10 @@ app.use(
   })
 );
 
-function sendEvent(ws, event, payload, delay = 0) {
-  if (ws.readyState === WebSocket.OPEN) {
-    ws.send(
-      JSON.stringify({
-        event,      
-        delay,  
-        payload,
-      })
-    );
-    return true;
-  }
-  return false;
-}
+if (socket) {
+  let wss = new WebSocket.Server({ server });
+  const connectionRegistry = new WebSocketConnectionRegistry();
 
-socket &&
   wss.on("connection", (ws) => {
     // Try to get a more "official" connection identifier
     let connectionId;
@@ -73,19 +59,26 @@ socket &&
     }
 
     console.log(`Client connected with ID: ${connectionId}`);
+    connectionRegistry.add(ws);
+    console.log(`Total connections: ${connectionRegistry.size()}`);
 
-    let eventCount = 1;
+    let serverEventCount = 1;
     const interval = setInterval(() => {
-      if (sendEvent(ws, "myevent", { message: `Hello from server! Connection ID: ${connectionId}`, eventCount })) {
-        eventCount += 1;
+      if (
+        sendEvent(ws, "myevent", { message: `Hello from server! Connection ID: ${connectionId}`, serverEventCount })
+      ) {
+        serverEventCount += 1;
       }
     }, 3000);
 
     ws.on("close", () => {
       console.log(`Client disconnected: ${connectionId}`);
+      connectionRegistry.remove(ws);
+      console.log(`Total connections: ${connectionRegistry.size()}`);
       clearInterval(interval);
     });
   });
+}
 
 server.listen(PORT, HOST, () => {
   console.log(`

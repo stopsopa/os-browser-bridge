@@ -45,6 +45,14 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
     try {
       await chrome.runtime.sendMessage({ type: "ping" });
     } catch (e) {
+      // Ignore the expected error that occurs when the extension background
+      // context is momentarily unavailable (e.g., right after the extension
+      // has been reloaded). Logging it would cause unnecessary noise in the
+      // console.
+      if (e?.message?.includes("Extension context invalidated")) {
+        return; // Silently ignore this transient state
+      }
+
       console.error("Error sending ping to background script, pong not received:", e);
     }
   }, 25000); // Ping every 25 seconds
