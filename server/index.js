@@ -65,21 +65,21 @@ if (socket) {
     connectionRegistry.add(ws);
     console.log(`Client connected with ID: ${connectionId}, Total connections: ${connectionRegistry.size()}`);
 
-    let serverEventCount = 1;
-    const interval = setInterval(() => {
-      if (
-        sendEvent(ws, "myevent", { message: `Hello from server! Connection ID: ${connectionId}`, serverEventCount })
-      ) {
-        serverEventCount += 1;
-      }
-    }, 3000);
-
     ws.on("close", () => {
       connectionRegistry.remove(ws);
       console.log(`Client disconnected: ${connectionId}, Total connections: ${connectionRegistry.size()}`);
-      clearInterval(interval);
     });
   });
+
+  // Single interval to send events to all connected clients
+  let serverEventCount = 1;
+  const interval = setInterval(() => {
+    connectionRegistry.sendEvent("myevent", { 
+      message: `Hello from server! Event #${serverEventCount}`, 
+      totalConnections: connectionRegistry.size()
+    });
+    serverEventCount += 1;
+  }, 3000);
 }
 
 server.listen(PORT, HOST, () => {
