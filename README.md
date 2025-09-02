@@ -1,16 +1,146 @@
+# OS Browser Bridge - Server to Browser Extension Event System
 
-# to launch server
+This project creates a bridge between a Node.js server and browser tabs through a Chrome extension, allowing server events to be received by any web page.
 
-```
-
-node server/index.js
-
-```
-
-then load html to test websockets:
+## Architecture Overview
 
 ```
-
-http://localhost:8080/
-
+Node.js Server (WebSocket) → Chrome Extension (Background Script) → Content Script → Web Page (Custom Event)
 ```
+
+1. **Server** (`server/`) - WebSocket server that emits events
+2. **Extension** (`extension/`) - Chrome extension with background and content scripts
+3. **Test Pages** (`server/public/`) - HTML pages to test the system
+
+## Quick Start
+
+### 1. Start the Server
+```bash
+cd server
+npm install
+node index.js
+```
+Server runs on `http://localhost:8080`
+
+### 2. Load the Chrome Extension
+1. Open Chrome and go to `chrome://extensions/`
+2. Enable "Developer mode" (top right toggle)
+3. Click "Load unpacked" and select the `extension/` folder
+4. The extension should appear in your extensions list
+
+### 3. Test the System
+1. Visit `http://localhost:8080/` - shows directory listing
+2. Choose a test page:
+   - `index.html` - Direct WebSocket connection test
+   - `regular_page.html` - Extension event listener test
+
+## How It Works
+
+### Server (`server/index.js`)
+- WebSocket server on port 8080
+- Emits events every 3 seconds with format:
+  ```json
+  {
+    "type": "myevent",
+    "timestamp": "2024-01-01T12:00:00.000Z",
+    "message": "Hello from server!"
+  }
+  ```
+- Serves static files from `public/` directory
+- Shows directory listing at root path (no auto-index.html)
+
+### Extension Background Script (`extension/background.js`)
+- Connects to WebSocket server (`ws://localhost:8080`)
+- Listens for server messages
+- Broadcasts messages to all browser tabs via `chrome.tabs.sendMessage()`
+- Auto-reconnects if connection drops
+
+### Extension Content Script (`extension/content.js`)
+- Injected into all web pages
+- Listens for messages from background script
+- Dispatches custom DOM events on `window` object
+- Event name: `os_browser_bridge_event`
+
+### Web Pages
+- Listen for `os_browser_bridge_event` on `window`
+- Receive event data in `event.detail`
+- Can handle server events in any web application
+
+## File Structure
+```
+├── server/
+│   ├── index.js              # WebSocket server + static file server
+│   ├── package.json          # Node.js dependencies
+│   └── public/
+│       ├── index.html        # Direct WebSocket test page
+│       └── regular_page.html # Extension event listener test page
+├── extension/
+│   ├── manifest.json         # Extension configuration
+│   ├── background.js        # Background script (WebSocket client)
+│   └── content.js           # Content script (DOM event dispatcher)
+└── README.md
+```
+
+## Testing
+
+### Test 1: Direct WebSocket Connection
+1. Open `http://localhost:8080/index.html`
+2. Should see WebSocket messages directly from server
+3. No extension required
+
+### Test 2: Extension Event Bridge
+1. Load the Chrome extension
+2. Open `http://localhost:8080/regular_page.html`
+3. Should see events coming through the extension
+4. Events appear in the page's event log
+
+## Troubleshooting
+
+### Extension Not Working
+- Check `chrome://extensions/` - extension should be enabled
+- Check browser console for errors
+- Reload extension if you make changes to extension files
+
+### No Events Received
+- Verify server is running (`node server/index.js`)
+- Check WebSocket connection in background script console
+- Ensure content script is injected (check page console)
+- Verify event listener is attached to `window`
+
+### Permission Issues
+- Extension needs `activeTab` permission
+- May need to refresh pages after loading extension
+
+## Development Notes
+
+### Adding New Event Types
+1. Modify server to emit different event types
+2. Update background script to handle new events
+3. Content script automatically forwards all messages
+4. Web pages can filter by event type in their listeners
+
+### Customizing Event Names
+- Change `os_browser_bridge_event` in content script and web pages
+- Update background script message type if needed
+
+### Adding New Test Pages
+- Add HTML files to `server/public/`
+- They'll automatically appear in directory listing
+- Include event listeners for `os_browser_bridge_event`
+
+## Dependencies
+
+### Server
+- `express` - HTTP server
+- `ws` - WebSocket server
+- `serve-index` - Directory listing
+
+### Extension
+- Vanilla JavaScript (no external dependencies)
+- Chrome Extension APIs
+
+## Security Notes
+- Extension only works on `http://localhost:8080` by default
+- WebSocket connection is unencrypted (ws://)
+- Content script injection is limited to specified URLs
+- Consider HTTPS/WSS for production use
