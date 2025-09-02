@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regular Page - OS Browser Bridge Event Listener</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .event-log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .event-entry {
+            margin: 8px 0;
+            padding: 8px;
+            background-color: white;
+            border-left: 4px solid #007bff;
+            border-radius: 2px;
+        }
+        .timestamp {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+        .event-data {
+            margin-top: 5px;
+            font-family: monospace;
+            background-color: #f1f3f4;
+            padding: 5px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>OS Browser Bridge Event Listener</h1>
+        
+        <div id="status" class="status disconnected">
+            Waiting for extension connection...
+        </div>
+        
+        <h3>Event Log:</h3>
+        <div id="eventLog" class="event-log">
+            <p>No events received yet. Make sure the browser extension is loaded and active.</p>
+        </div>
+    </div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const eventLogDiv = document.getElementById('eventLog');
+        let eventCount = 0;
+
+        // Function to update connection status
+        function updateStatus(connected) {
+            if (connected) {
+                statusDiv.textContent = '✅ Extension connected and listening for events';
+                statusDiv.className = 'status connected';
+            } else {
+                statusDiv.textContent = '❌ Extension not connected';
+                statusDiv.className = 'status disconnected';
+            }
+        }
+
+        // Function to add event to log
+        function addEventToLog(eventData) {
+            eventCount++;
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const eventEntry = document.createElement('div');
+            eventEntry.className = 'event-entry';
+            
+            eventEntry.innerHTML = `
+                <div class="timestamp">Event #${eventCount} at ${timestamp}</div>
+                <div class="event-data">${JSON.stringify(eventData, null, 2)}</div>
+            `;
+            
+            eventLogDiv.appendChild(eventEntry);
+            
+            // Scroll to bottom
+            eventLogDiv.scrollTop = eventLogDiv.scrollHeight;
+            
+            console.log(`Received os_browser_bridge_event #${eventCount}:`, eventData);
+        }
+
+        // Listen for the custom event that should be dispatched by the content script
+        window.addEventListener('os_browser_bridge_event', (event) => {
+            updateStatus(true);
+            addEventToLog(event.detail);
+        });
+
+        // Check if extension is available by trying to detect the event
+        // This is a simple heuristic - in a real scenario you might have a more robust check
+        setTimeout(() => {
+            if (eventCount === 0) {
+                updateStatus(false);
+            }
+        }, 2000);
+
+        console.log('Regular page loaded - listening for os_browser_bridge_event');
+        console.log('Make sure the browser extension is loaded and the content script is active');
+    </script>
+</body>
+</html>
