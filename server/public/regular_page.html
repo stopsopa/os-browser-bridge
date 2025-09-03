@@ -4,11 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Regular Page - OS Browser Bridge Event Listener</title>
+    <style>
+      a {
+        font-size: 1.2rem;
+      }
+      </style>
   </head>
   <body>
     <div class="container">
-      <h1>OS Browser Bridge Event Listener</h1>
-      <h2>This regular consumer page where we will just bind to event forwarded by the plugin</h2>
+      <a href="../">UP</a>
+      <h1>Testing subscribing to events forwarded from server via OS Browser Bridge</h1>
       <pre>
         window.addEventListener("myevent", (event) => {
             const { 
