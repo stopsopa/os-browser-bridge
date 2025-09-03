@@ -1,9 +1,3 @@
-const WS_SERVER_URL = "ws://localhost:8080";
-let ws = null;
-let reconnectTimer = null; // stores the id returned by setTimeout
-let reconnectAttempts = 0;
-const MAX_RECONNECT_DELAY = 5000; // Maximum delay of 30 seconds
-
 let debug = false;
 function err() {
   if (debug) {
@@ -15,6 +9,30 @@ function log() {
   if (debug) {
     console.log("background.js", ...arguments);
   }
+}
+
+const WS_SERVER_URL = "ws://localhost:8080";
+let ws = null;
+let reconnectTimer = null; // stores the id returned by setTimeout
+let reconnectAttempts = 0;
+const MAX_RECONNECT_DELAY = 5000; // Maximum delay of 5 seconds
+
+function scheduleReconnect() {
+  if (reconnectTimer != null) {
+    // a reconnection attempt is already scheduled
+    return;
+  }
+
+  // Exponential backoff with max delay
+  const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), MAX_RECONNECT_DELAY);
+  reconnectAttempts++;
+
+  log(`Scheduling reconnection attempt ${reconnectAttempts} in ${delay}ms`);
+
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    connectWebSocket();
+  }, delay);
 }
 
 function cleanupWebSocket() {
@@ -37,30 +55,12 @@ function cleanupWebSocket() {
   ws = null;
 }
 
-function scheduleReconnect() {
-  if (reconnectTimer != null) {
-    // a reconnection attempt is already scheduled
-    return;
-  }
-
-  // Exponential backoff with max delay
-  const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), MAX_RECONNECT_DELAY);
-  reconnectAttempts++;
-
-  log(`Scheduling reconnection attempt ${reconnectAttempts} in ${delay}ms`);
-
-  reconnectTimer = setTimeout(() => {
-    reconnectTimer = null;
-    connectWebSocket();
-  }, delay);
-}
-
 async function broadcastToTabs(jsonString) {
   try {
     const tabs = await chrome.tabs.query({});
     for (const tab of tabs) {
       try {
-        await chrome.tabs.sendMessage(tab.id, { type: "os_browser_bridge_event", jsonString });
+        await chrome.tabs.sendMessage(tab.id, { type: "os_browser_bridge_event", jsonString, tabId: tab.id });
       } catch (error) {
         if (error.message.includes("Could not establish connection. Receiving end does not exist.")) {
           console.warn(`Content script not active in tab ${tab.id} (${tab.url || "unknown url"}). Skipping message.`);
@@ -79,15 +79,20 @@ async function broadcastConnectionStatus(isConnected, details = {}) {
     const tabs = await chrome.tabs.query({});
     for (const tab of tabs) {
       try {
-        await chrome.tabs.sendMessage(tab.id, { 
-          type: "os_browser_bridge_connection_status", 
+        await chrome.tabs.sendMessage(tab.id, {
+          type: "os_browser_bridge_connection_status",
           isConnected,
           details,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          tabId: tab.id,
         });
       } catch (error) {
         if (error.message.includes("Could not establish connection. Receiving end does not exist.")) {
-          console.warn(`Content script not active in tab ${tab.id} (${tab.url || "unknown url"}). Skipping connection status message.`);
+          console.warn(
+            `Content script not active in tab ${tab.id} (${
+              tab.url || "unknown url"
+            }). Skipping connection status message.`
+          );
         } else {
           error(`Error sending connection status to tab ${tab.id}:`, error);
         }
@@ -111,7 +116,7 @@ function connectWebSocket() {
     log("Attempting to connect to WebSocket server...");
     // Emit connecting status
     broadcastConnectionStatus(false, { state: "connecting", reconnectAttempts });
-    
+
     ws = new WebSocket(WS_SERVER_URL);
 
     ws.addEventListener("open", () => {
@@ -128,11 +133,11 @@ function connectWebSocket() {
     ws.addEventListener("close", (event) => {
       log("WebSocket closed. Scheduling reconnect...");
       // Emit disconnected status
-      broadcastConnectionStatus(false, { 
-        state: "disconnected", 
+      broadcastConnectionStatus(false, {
+        state: "disconnected",
         reconnectAttempts,
         code: event.code,
-        reason: event.reason
+        reason: event.reason,
       });
       scheduleReconnect();
     });
@@ -145,10 +150,10 @@ function connectWebSocket() {
   } catch (e) {
     log("Failed to create WebSocket connection. Scheduling reconnect...");
     // Emit connection failed status
-    broadcastConnectionStatus(false, { 
-      state: "connection_failed", 
+    broadcastConnectionStatus(false, {
+      state: "connection_failed",
       reconnectAttempts,
-      error: e.message || "Failed to create WebSocket"
+      error: e.message || "Failed to create WebSocket",
     });
     scheduleReconnect();
   }
