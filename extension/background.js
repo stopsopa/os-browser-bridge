@@ -131,7 +131,6 @@ function connectWebSocket() {
 
       // If the server requests the list of all tab IDs, respond with them instead of / in addition to broadcasting.
       if (event === "allTabs") {
-        debugger;
         try {
           const tabs = await chrome.tabs.query({});
           const payload = tabs.map((t) => t.id);
@@ -262,4 +261,20 @@ function splitOnce(str, delimiter = "::") {
   }
 
   return { event, rawJson };
+}
+
+function decodeJson(rawJson) {
+  if (typeof rawJson !== "string") {
+    throw new TypeError("decodeJson: First argument must be a string");
+  }
+
+  if (!rawJson.trim()) {
+    throw new Error("decodeJson: String cannot be empty or only whitespace");
+  }
+
+  try {
+    return JSON.parse(rawJson);
+  } catch (e) {
+    throw new Error("decodeJson: Failed to parse JSON: " + e.message);
+  }
 }
