@@ -126,8 +126,30 @@ function connectWebSocket() {
       broadcastConnectionStatus(true, { state: "connected", reconnectAttempts: 0 });
     });
 
-    ws.addEventListener("message", (event) => {
-      broadcastToTabs(event.data);
+    ws.addEventListener("message", async (e) => {
+      const { event, rawJson } = splitOnce(e.data);
+
+      // If the server requests the list of all tab IDs, respond with them instead of / in addition to broadcasting.
+      if (event === "allTabs") {
+        debugger;
+        try {
+          const tabs = await chrome.tabs.query({});
+          const payload = tabs.map((t) => t.id);
+          ws.send(
+            JSON.stringify({
+              event: "allTabs",
+              payload,
+            })
+          );
+        } catch (e) {
+          error("Failed to gather tab ids to send back to server", e);
+        }
+        // Do **not** broadcast this special control message to content scripts.
+        return;
+      }
+
+      // Default behaviour – forward whatever came from the server to the tabs
+      broadcastToTabs(rawJson);
     });
 
     ws.addEventListener("close", (event) => {
@@ -207,3 +229,37 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ type: "pong" });
   }
 });
+
+/**
+ * Tools
+ */
+
+function splitOnce(str, delimiter = "::") {
+  if (typeof str !== "string") {
+    throw new TypeError("splitOnce: First argument must be a string");
+  }
+
+  if (!str.length) {
+    throw new Error("splitOnce: String cannot be empty");
+  }
+
+  if (typeof delimiter !== "string" || !delimiter.length) {
+    throw new TypeError("splitOnce: Delimiter must be a non-empty string");
+  }
+
+  const index = str.indexOf(delimiter);
+
+  if (index === -1) {
+    throw new Error(`splitOnce: Delimiter "${delimiter}" not found in string`);
+  }
+
+  const event = str.slice(0, index);
+
+  const rawJson = str.slice(index + delimiter.length);
+
+  if (!event.length) {
+    throw new Error("splitOnce: Event cannot be empty");
+  }
+
+  return { event, rawJson };
+}

@@ -7,11 +7,13 @@ import { WebSocket } from "ws";
 export function sendEvent(ws, event, payload, delay = 0) {
   if (ws.readyState === WebSocket.OPEN) {
     ws.send(
-      JSON.stringify({
-        event,
-        delay,
-        payload,
-      })
+      event +
+        "::" +
+        JSON.stringify({
+          event,
+          delay,
+          payload,
+        })
     );
     return true;
   }
@@ -55,4 +57,45 @@ export class WebSocketConnectionRegistry {
       sendEvent(ws, event, payload, delay);
     });
   }
+
+  #serverToBackgroundRequestFactory(eventName, timeoutMs = 1500) {
+    return async function (sendData = {}) {
+      return new Promise((resolve, reject) => {
+        const wrappers = new Map();
+        let timer = null;
+
+        const cleanup = () => {
+          clearTimeout(timer);
+          this.connections.forEach((ws) => ws.off("message", wrappers.get(ws)));
+          reject(new Error(`${eventName}() timeout`));
+        };
+
+        const onMessage = (data, isBinary) => {
+          if (isBinary) return;
+          let parsed;
+          try {
+            parsed = JSON.parse(data);
+          } catch (_) {
+            return; // ignore non-json control messages
+          }
+          if (parsed.event === eventName && Array.isArray(parsed.payload)) {
+            resolve(parsed.payload);
+            cleanup();
+          }
+        };
+
+        timer = setTimeout(cleanup, timeoutMs);
+
+        this.connections.forEach((ws) => {
+          wrappers.set(ws, onMessage);
+          ws.on("message", onMessage);
+        });
+
+        // After we have attached all listeners, broadcast the request so we don't miss quick responses
+        this.sendEvent(eventName, sendData);
+      });
+    };
+  }
+
+  allTabs = this.#serverToBackgroundRequestFactory("allTabs");
 }

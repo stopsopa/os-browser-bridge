@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <button id="allTabs">allTabs()</button>
+    <button id="clear">Clear</button>
+    <pre id="logs"></pre>
+    <script>
+      const URL = "http://localhost:8080";
+
+      const pre = document.querySelector("#logs");
+      const clear = document.querySelector("#clear");
+      const allTabs = document.querySelector("#allTabs");
+
+      clear.addEventListener("click", () => {
+        pre.innerText = "";
+      });
+
+      allTabs.addEventListener("click", () => {
+        fetch(`${URL}/allTabs`)
+          .then((response) => response.json())
+          .then((data) => {
+            pre.innerText = JSON.stringify(data);
+          });
+      });
+    </script>
+  </body>
+</html>

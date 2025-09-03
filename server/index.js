@@ -75,6 +75,11 @@ if (socket) {
     });
     serverEventCount += 1;
   }, 3000);
+
+  app.get("/allTabs", async (req, res) => {
+    const ids = await connectionRegistry.allTabs({some: "data"});
+    res.json(ids);
+  });
 }
 
 server.listen(PORT, HOST, () => {
