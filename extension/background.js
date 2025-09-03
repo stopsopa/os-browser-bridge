@@ -127,7 +127,7 @@ function connectWebSocket() {
     });
 
     ws.addEventListener("message", async (e) => {
-      const { event, rawJson } = splitOnce(e.data);
+      const { event, tab, rawJson } = splitOnce(e.data);
 
       // If the server requests the list of all tab IDs, respond with them instead of / in addition to broadcasting.
       if (event === "allTabs") {
@@ -233,34 +233,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
  * Tools
  */
 
-function splitOnce(str, delimiter = "::") {
+function splitOnce(str, delimiter = "::", special = "Event") {
   if (typeof str !== "string") {
-    throw new TypeError("splitOnce: First argument must be a string");
+    throw new TypeError("splitOnce ${special}: First argument must be a string");
   }
 
   if (!str.length) {
-    throw new Error("splitOnce: String cannot be empty");
+    throw new Error("splitOnce ${special}: String cannot be empty");
   }
 
   if (typeof delimiter !== "string" || !delimiter.length) {
-    throw new TypeError("splitOnce: Delimiter must be a non-empty string");
+    throw new TypeError("splitOnce ${special}: Delimiter must be a non-empty string");
   }
 
   const index = str.indexOf(delimiter);
 
   if (index === -1) {
-    throw new Error(`splitOnce: Delimiter "${delimiter}" not found in string`);
+    throw new Error(`splitOnce ${special}: Delimiter "${delimiter}" not found in string`);
   }
 
   const event = str.slice(0, index);
 
-  const rawJson = str.slice(index + delimiter.length);
+  let rawJson = str.slice(index + delimiter.length);
 
-  if (!event.length) {
-    throw new Error("splitOnce: Event cannot be empty");
+  let tab = null;
+
+  if (special === "Event") {
+    if (!event.length) {
+      throw new Error(`splitOnce ${special}: cannot be empty`);
+    }
+
+    ({ event: tab, rawJson } = splitOnce(rawJson, delimiter, "Tab"));
   }
-
-  return { event, rawJson };
+  
+  return { event, tab, rawJson };
 }
 
 function decodeJson(rawJson) {

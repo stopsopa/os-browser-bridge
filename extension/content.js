@@ -1,5 +1,5 @@
 // Prevent duplicate injection side-effects when the script is reinjected
-function err() {
+function error() {
   console.error("content.js", ...arguments);
 }
 
@@ -35,7 +35,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
           window.dispatchEvent(new CustomEvent(event, { detail: payload }));
         }
       } catch (e) {
-        console.error("Error parsing message payload:", e);
+        error("Error parsing message payload:", e);
       }
     } else if (message.type === "os_browser_bridge_connection_status") {
       // Handle connection status events
@@ -51,7 +51,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
           }
         }));
       } catch (e) {
-        console.error("Error handling connection status message:", e);
+        error("Error handling connection status message:", e);
       }
     }
   });
@@ -69,7 +69,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
         return; // Silently ignore this transient state
       }
 
-      console.error("Error sending ping to background script, pong not received:", e);
+      error("Error sending ping to background script, pong not received:", e);
     }
   }, 25000); // Ping every 25 seconds
 }

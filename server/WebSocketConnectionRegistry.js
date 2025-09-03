@@ -4,10 +4,15 @@ import { WebSocket } from "ws";
  * This is probably most important function here because it is sending event to the plugin in it's expected format
  * Rest of surrounding code is just abstraction for the purpose of reusable implementation
  */
-export function sendEvent(ws, event, payload, delay = 0) {
+export function sendEvent(ws, event, payload, tab = null, delay = 0) {
   if (ws.readyState === WebSocket.OPEN) {
+    if (typeof tab !== "string") {
+      tab = "";
+    }
     ws.send(
       event +
+        "::" +
+        tab +
         "::" +
         JSON.stringify({
           event,
@@ -52,9 +57,9 @@ export class WebSocketConnectionRegistry {
     this.connections.forEach(callback);
   }
 
-  sendEvent(event, payload, delay = 0) {
+  sendEvent(event, payload, tab = null, delay = 0) {
     this.connections.forEach((ws) => {
-      sendEvent(ws, event, payload, delay);
+      sendEvent(ws, event, payload, tab, delay);
     });
   }
 
@@ -66,7 +71,12 @@ export class WebSocketConnectionRegistry {
 
         const cleanup = () => {
           clearTimeout(timer);
-          this.connections.forEach((ws) => ws.off("message", wrappers.get(ws)));
+          this.connections.forEach((ws) => {
+            const fn = wrappers.get(ws);
+            if (fn) {
+              ws.off("message", fn);
+            }
+          });
           reject(new Error(`${eventName}() timeout`));
         };
 
@@ -97,5 +107,8 @@ export class WebSocketConnectionRegistry {
     };
   }
 
+  /**
+   * Fetching from server info about all opened tabs in the browser
+   */
   allTabs = this.#serverToBackgroundRequestFactory("allTabs");
 }
