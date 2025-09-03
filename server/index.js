@@ -56,15 +56,7 @@ if (socket) {
 
   wss.on("connection", (ws) => {
     // Try to get a more "official" connection identifier
-    let connectionId;
-
-    // Check if we can access the underlying socket properties
-    if (ws._socket && ws._socket.remoteAddress && ws._socket.remotePort) {
-      connectionId = `${ws._socket.remoteAddress}:${ws._socket.remotePort}`;
-    } else {
-      // Fallback to generated ID if socket properties aren't available
-      connectionId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-    }
+    let connectionId = `${ws._socket.remoteAddress}:${ws._socket.remotePort}`;
 
     connectionRegistry.add(ws);
     console.log(`Client connected with ID: ${connectionId}, Total connections: ${connectionRegistry.size()}`);
