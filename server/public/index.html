@@ -19,65 +19,80 @@
     </div>
 
     <script>
-      const pre = document.querySelector("#logs");
+      const pre   = document.querySelector("#logs");
       const clear = document.querySelector("#clear");
-      const ws = new WebSocket("ws://localhost:8080");
 
-      ws.onopen = () => {
-        console.log("Connected to WebSocket server directly from page");
+      // --- WebSocket with exponential-backoff reconnect ----------------------------------
+      let ws;
+      const WS_URL = "ws://localhost:8080";
+
+      // Exponential back-off parameters
+      const INITIAL_DELAY = 1000; // 1s
+      const MAX_DELAY     = 30000; // 30s (same max used on the server when sending events)
+      let reconnectDelay  = INITIAL_DELAY;
+
+      function logLine(text) {
         const timeString = new Date().toLocaleTimeString();
-        const line = `time: ${timeString}, status: WebSocket connected`;
-        pre.innerText = line + "\n" + pre.innerText;
-      };
+        pre.innerText = `time: ${timeString}, ${text}` + "\n" + pre.innerText;
+      }
 
-      ws.onmessage = (event) => {
-        try {
-          const eventData = JSON.parse(event.data);
-          console.log("Received message directly:", eventData);
+      function connectSocket() {
+        logLine(`status: attempting WebSocket connection (delay ${reconnectDelay}ms)`);
+        ws = new WebSocket(WS_URL);
 
-          const timeString = new Date().toLocaleTimeString();
-          let line;
+        ws.onopen = () => {
+          logLine("status: WebSocket connected");
+          reconnectDelay = INITIAL_DELAY; // reset back-off on successful connection
+        };
 
-          // Handle the new event format from WebSocketConnectionRegistry
-          if (eventData.event && eventData.payload) {
-            // This is the new format: { event, delay, payload }
-            line = `time: ${timeString}, event: ${eventData.event}, detail: ${JSON.stringify(eventData.payload)}`;
+        ws.onmessage = (event) => {
+          try {
+            const eventData = JSON.parse(event.data);
 
-            // Note: We don't dispatch custom DOM events here anymore
-            // The Chrome extension will handle that via content script
-          } else {
-            // Fallback for old format or direct messages
-            line = `time: ${timeString}, event: direct_message, detail: ${JSON.stringify(eventData)}`;
+            let line;
+
+            // Handle the new event format from WebSocketConnectionRegistry
+            if (eventData.event && eventData.payload) {
+              // This is the new format: { event, delay, payload }
+              line = `event: ${eventData.event}, detail: ${JSON.stringify(eventData.payload)}`;
+            } else {
+              // Fallback for old format or direct messages
+              line = `event: direct_message, detail: ${JSON.stringify(eventData)}`;
+            }
+
+            logLine(line);
+          } catch (e) {
+            logLine(`error: ${e.message}`);
           }
+        };
 
-          pre.innerText = line + "\n" + pre.innerText;
-        } catch (e) {
-          console.error("Error parsing message from server:", e);
-          const timeString = new Date().toLocaleTimeString();
-          const line = `time: ${timeString}, error: ${e.message}`;
-          pre.innerText = line + "\n" + pre.innerText;
-        }
-      };
+        ws.onclose = () => {
+          logLine("status: WebSocket disconnected");
+          scheduleReconnect();
+        };
 
-      ws.onclose = () => {
-        console.log("Disconnected from WebSocket server");
-        const timeString = new Date().toLocaleTimeString();
-        const line = `time: ${timeString}, status: WebSocket disconnected`;
-        pre.innerText = line + "\n" + pre.innerText;
-      };
+        ws.onerror = (err) => {
+          logLine(`error: WebSocket error - ${err.message || "Unknown error"}`);
+          // onerror does NOT necessarily close the socket, so we leave reconnect to onclose
+        };
+      }
 
-      ws.onerror = (err) => {
-        console.error("WebSocket error:", err);
-        const timeString = new Date().toLocaleTimeString();
-        const line = `time: ${timeString}, error: WebSocket error - ${err.message || "Unknown error"}`;
-        pre.innerText = line + "\n" + pre.innerText;
-      };
+      function scheduleReconnect() {
+        // Increase delay with exponential back-off but cap at MAX_DELAY
+        reconnectDelay = Math.min(reconnectDelay * 2, MAX_DELAY);
+        setTimeout(connectSocket, reconnectDelay);
+      }
+
+      // Kick off first connection attempt
+      connectSocket();
+
+      // -----------------------------------------------------------------------------
 
       clear.addEventListener("click", () => {
         pre.innerText = "";
       });
 
-      console.log("Attempting to connect to WebSocket...");
+      console.log("WebSocket client initialised");
     </script>
   </body>
 </html>
