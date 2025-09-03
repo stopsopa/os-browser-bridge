@@ -27,6 +27,8 @@ const HOST = process.env.HOST;
 const socket = typeof process.env.SOCKET !== "undefined";
 
 const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 const server = http.createServer(app);
 
 const web = path.join(__dirname, "public");
@@ -67,18 +69,47 @@ if (socket) {
     });
   });
 
-  let serverEventCount = 1;
-  setInterval(() => {
+  // let serverEventCount = 1;
+  // setInterval(() => {
+  //   connectionRegistry.sendEvent("myevent", {
+  //     message: `Hello from server! Event #${serverEventCount}`,
+  //     totalConnections: connectionRegistry.size(),
+  //   });
+  //   serverEventCount += 1;
+  // }, 3000);
+
+  /**
+   * curl http://localhost:8080/allTabs | jq
+   */
+  app.get("/allTabs", async (req, res) => {
+    const ids = await connectionRegistry.allTabs({ some: "data" });
+    res.json(ids);
+  });
+
+  /**
+   * Sends to all tabs, doesn't collect response
+   * (you can specify tab id to send to specific tab)
+   * 
+   * curl -X POST http://localhost:8080/broadcast -H "Content-Type: application/json" -d '{"event": "myevent", "payload": {"message": "Hello from server!"}, "tab": "1234567890"}'
+   * curl -X POST http://localhost:8080/broadcast -H "Content-Type: application/json" -d '{"event": "myevent", "payload": {"message": "Hello from server!"}, "tab": "1234567890", "delay": 1000}'
+   * curl -X POST http://localhost:8080/broadcast -H "Content-Type: application/json" -d '{"event": "myevent", "payload": {"message": "Hello from server!"}}'
+   */
+  app.post("/broadcast", async (req, res) => {
+    const { event, payload, tab, delay } = { ...req.query, ...req.body };
+
+    connectionRegistry.sendEvent(event, payload, tab, delay);
+
+    res.json({ message: "Event sent" });
+  });
+
+  app.get("/test", async (req, res) => {
+    let serverEventCount = 10000;
+
     connectionRegistry.sendEvent("myevent", {
       message: `Hello from server! Event #${serverEventCount}`,
       totalConnections: connectionRegistry.size(),
     });
-    serverEventCount += 1;
-  }, 3000);
-
-  app.get("/allTabs", async (req, res) => {
-    const ids = await connectionRegistry.allTabs({some: "data"});
-    res.json(ids);
+    res.json({ message: "Hello from server!" });
   });
 }
 

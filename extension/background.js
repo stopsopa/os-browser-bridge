@@ -55,10 +55,21 @@ function cleanupWebSocket() {
   ws = null;
 }
 
-async function broadcastToTabs(jsonString) {
+async function broadcastToTabs(jsonString, tab) {
+  // https://developer.chrome.com/docs/extensions/reference/api/tabs
   try {
-    const tabs = await chrome.tabs.query({});
-    for (const tab of tabs) {
+    let list = [];
+    if (tab) {
+      const _tab = await chrome.tabs.get(tab);
+
+      if (_tab) {
+        list = [_tab];
+      }
+    } else {
+      list = await chrome.tabs.query({});
+    }
+
+    for (const tab of list) {
       try {
         await chrome.tabs.sendMessage(tab.id, { type: "os_browser_bridge_event", jsonString, tabId: tab.id });
       } catch (error) {
@@ -148,7 +159,7 @@ function connectWebSocket() {
       }
 
       // Default behaviour – forward whatever came from the server to the tabs
-      broadcastToTabs(rawJson);
+      broadcastToTabs(rawJson, tab);
     });
 
     ws.addEventListener("close", (event) => {
@@ -265,7 +276,7 @@ function splitOnce(str, delimiter = "::", special = "Event") {
 
     ({ event: tab, rawJson } = splitOnce(rawJson, delimiter, "Tab"));
   }
-  
+
   return { event, tab, rawJson };
 }
 
