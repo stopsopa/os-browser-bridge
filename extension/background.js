@@ -133,7 +133,7 @@ function connectWebSocket() {
       if (event === "allTabs") {
         try {
           const tabs = await chrome.tabs.query({});
-          const payload = tabs.map((t) => t.id);
+          const payload = tabs.map(({ id, url }) => ({ id, url }));
           ws.send(
             JSON.stringify({
               event: "allTabs",

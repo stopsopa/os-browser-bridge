@@ -14,7 +14,8 @@
     ],
     "permissions": [
         "activeTab",
-        "scripting"
+        "scripting",
+        "tabs"
     ],
     "host_permissions": [
         "http://localhost:8080/*",
