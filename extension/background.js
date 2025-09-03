@@ -132,8 +132,8 @@ function connectWebSocket() {
       // If the server requests the list of all tab IDs, respond with them instead of / in addition to broadcasting.
       if (event === "allTabs") {
         try {
-          const tabs = await chrome.tabs.query({});
-          const payload = tabs.map(({ id, url }) => ({ id, url }));
+          const payload = await chrome.tabs.query({});
+
           ws.send(
             JSON.stringify({
               event: "allTabs",
