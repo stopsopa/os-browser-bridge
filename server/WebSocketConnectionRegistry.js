@@ -2,7 +2,7 @@ import { WebSocket } from "ws";
 
 /**
  * This is probably most important function here because it is sending event to the plugin in it's expected format
- * Rest pf surrounding code is just abstraction for the purpose of good implementation in this script
+ * Rest of surrounding code is just abstraction for the purpose of reusable implementation
  */
 export function sendEvent(ws, event, payload, delay = 0) {
   if (ws.readyState === WebSocket.OPEN) {
