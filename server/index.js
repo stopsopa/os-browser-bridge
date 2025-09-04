@@ -26,7 +26,6 @@ const PORT = process.env.PORT;
 const HOST = process.env.HOST;
 const socket = typeof process.env.SOCKET !== "undefined";
 
-
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -64,13 +63,16 @@ if (socket) {
   /**
    * Sends to all tabs, doesn't collect response
    * (you can specify tab id to send to specific tab)
+   *
+   * curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"test"}}' "http://localhost:8080/broadcast?event=myevent&delay=1000" | jq
    * 
-   * curl -X POST http://localhost:8080/broadcast -H "Content-Type: application/json" -d '{"event": "myevent", "payload": {"message": "Hello from server!"}, "tab": "1234567890"}'
-   * curl -X POST http://localhost:8080/broadcast -H "Content-Type: application/json" -d '{"event": "myevent", "payload": {"message": "Hello from server!"}, "tab": "1234567890", "delay": 1000}'
-   * curl -X POST http://localhost:8080/broadcast -H "Content-Type: application/json" -d '{"event": "myevent", "payload": {"message": "Hello from server!"}}'
+   * To send to particular tab:
+   * curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"test"}}' "http://localhost:8080/broadcast?event=myevent&tab=1817280703" | jq
    */
   app.post("/broadcast", async (req, res) => {
     const { event, payload, tab, delay } = { ...req.query, ...req.body };
+
+    console.log(JSON.stringify({ endpoint: "/broadcast", event, payload: typeof payload, tab, delay }, null, 2));
 
     connectionRegistry.sendEvent(event, payload, tab, delay);
 
@@ -83,12 +85,6 @@ app.use(
   express.static(web, {
     index: false, // stop automatically serve index.html if present. instead list content of directory
     maxAge: "356 days", // in milliseconds max-age=30758400
-    setHeaders: (res, path) => {
-      if (/\.bmp$/i.test(path)) {
-        // for some reason by default express.static sets here Content-Type: image/x-ms-bmp
-        res.setHeader("Content-type", "image/bmp");
-      }
-    },
   })
 );
 

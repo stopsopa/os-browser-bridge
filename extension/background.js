@@ -60,7 +60,8 @@ function cleanupWebSocket() {
 async function broadcastToTabs(jsonString, tabs) {
   // https://developer.chrome.com/docs/extensions/reference/api/tabs
   try {
-    if (typeof tabs !== "undefined") {
+    let notTabSpecific = false;
+    if (tabs && typeof tabs !== "undefined") {
       if (typeof tabs === "string") {
         tabs = tabs.split(",");
       }
@@ -70,13 +71,17 @@ async function broadcastToTabs(jsonString, tabs) {
       }
 
       tabs = tabs.filter(Boolean);
+
+      tabs = tabs.map((d) => parseInt(d, 10));
+    } else {
+      notTabSpecific = true;
     }
 
     const list = await chrome.tabs.query({});
 
     for (const tab of list) {
       try {
-        if (tabs.includes(tab.id)) {
+        if (notTabSpecific || tabs.includes(tab.id)) {
           await chrome.tabs.sendMessage(tab.id, { type: "os_browser_bridge_event", jsonString, tabId: tab.id });
         }
       } catch (error) {

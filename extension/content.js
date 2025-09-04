@@ -21,7 +21,15 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
           error("Error parsing JSON string:", e);
         }
 
-        const { event, payload, delay } = dataFromJson || {};
+        let { event, payload, delay } = dataFromJson || {};
+
+        if (typeof delay !== "undefined") {
+          delay = parseInt(delay, 10);
+
+          if (!/^\d+$/.test(delay)) {
+            return error("Delay is not a valid number:", delay);
+          }
+        }
 
         if (typeof event !== "string" || !event.trim()) {
           return;
@@ -41,15 +49,17 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
       // Handle connection status events
       try {
         const { isConnected, details, timestamp } = message;
-        
+
         // Dispatch a custom event for connection status
-        window.dispatchEvent(new CustomEvent("os_browser_bridge_connection_status", {
-          detail: {
-            isConnected,
-            details,
-            timestamp
-          }
-        }));
+        window.dispatchEvent(
+          new CustomEvent("os_browser_bridge_connection_status", {
+            detail: {
+              isConnected,
+              details,
+              timestamp,
+            },
+          })
+        );
       } catch (e) {
         error("Error handling connection status message:", e);
       }
