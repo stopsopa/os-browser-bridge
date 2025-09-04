@@ -1,5 +1,7 @@
+import { splitOnce } from "./tools.js";
+
 let debug = false;
-function err() {
+function error() {
   if (debug) {
     console.error("background.js", ...arguments);
   }
@@ -55,23 +57,28 @@ function cleanupWebSocket() {
   ws = null;
 }
 
-async function broadcastToTabs(jsonString, tab) {
+async function broadcastToTabs(jsonString, tabs) {
   // https://developer.chrome.com/docs/extensions/reference/api/tabs
   try {
-    let list = [];
-    if (tab) {
-      const _tab = await chrome.tabs.get(tab);
-
-      if (_tab) {
-        list = [_tab];
+    if (typeof tabs !== "undefined") {
+      if (typeof tabs === "string") {
+        tabs = tabs.split(",");
       }
-    } else {
-      list = await chrome.tabs.query({});
+
+      if (!Array.isArray(tabs)) {
+        tabs = [tabs];
+      }
+
+      tabs = tabs.filter(Boolean);
     }
+
+    const list = await chrome.tabs.query({});
 
     for (const tab of list) {
       try {
-        await chrome.tabs.sendMessage(tab.id, { type: "os_browser_bridge_event", jsonString, tabId: tab.id });
+        if (tabs.includes(tab.id)) {
+          await chrome.tabs.sendMessage(tab.id, { type: "os_browser_bridge_event", jsonString, tabId: tab.id });
+        }
       } catch (error) {
         if (error.message.includes("Could not establish connection. Receiving end does not exist.")) {
           console.warn(`Content script not active in tab ${tab.id} (${tab.url || "unknown url"}). Skipping message.`);
@@ -244,54 +251,38 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
  * Tools
  */
 
-function splitOnce(str, delimiter = "::", special = "Event") {
-  if (typeof str !== "string") {
-    throw new TypeError("splitOnce ${special}: First argument must be a string");
-  }
+// function splitOnce(str, delimiter = "::", special = "Event") {
+//   if (typeof str !== "string") {
+//     throw new TypeError("splitOnce ${special}: First argument must be a string");
+//   }
 
-  if (!str.length) {
-    throw new Error("splitOnce ${special}: String cannot be empty");
-  }
+//   if (!str.length) {
+//     throw new Error("splitOnce ${special}: String cannot be empty");
+//   }
 
-  if (typeof delimiter !== "string" || !delimiter.length) {
-    throw new TypeError("splitOnce ${special}: Delimiter must be a non-empty string");
-  }
+//   if (typeof delimiter !== "string" || !delimiter.length) {
+//     throw new TypeError("splitOnce ${special}: Delimiter must be a non-empty string");
+//   }
 
-  const index = str.indexOf(delimiter);
+//   const index = str.indexOf(delimiter);
 
-  if (index === -1) {
-    throw new Error(`splitOnce ${special}: Delimiter "${delimiter}" not found in string`);
-  }
+//   if (index === -1) {
+//     throw new Error(`splitOnce ${special}: Delimiter "${delimiter}" not found in string`);
+//   }
 
-  const event = str.slice(0, index);
+//   const event = str.slice(0, index);
 
-  let rawJson = str.slice(index + delimiter.length);
+//   let rawJson = str.slice(index + delimiter.length);
 
-  let tab = null;
+//   let tab = null;
 
-  if (special === "Event") {
-    if (!event.length) {
-      throw new Error(`splitOnce ${special}: cannot be empty`);
-    }
+//   if (special === "Event") {
+//     if (!event.length) {
+//       throw new Error(`splitOnce ${special}: cannot be empty`);
+//     }
 
-    ({ event: tab, rawJson } = splitOnce(rawJson, delimiter, "Tab"));
-  }
+//     ({ event: tab, rawJson } = splitOnce(rawJson, delimiter, "Tab"));
+//   }
 
-  return { event, tab, rawJson };
-}
-
-function decodeJson(rawJson) {
-  if (typeof rawJson !== "string") {
-    throw new TypeError("decodeJson: First argument must be a string");
-  }
-
-  if (!rawJson.trim()) {
-    throw new Error("decodeJson: String cannot be empty or only whitespace");
-  }
-
-  try {
-    return JSON.parse(rawJson);
-  } catch (e) {
-    throw new Error("decodeJson: Failed to parse JSON: " + e.message);
-  }
-}
+//   return { event, tab, rawJson };
+// }

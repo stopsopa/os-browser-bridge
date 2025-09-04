@@ -18,7 +18,10 @@
       <pre id="logs"></pre>
     </div>
 
-    <script>
+    <script type="module">
+      import { splitOnce, decodeJson } from "./tools.js";
+
+
       const pre   = document.querySelector("#logs");
       const clear = document.querySelector("#clear");
 
@@ -46,18 +49,31 @@
         };
 
         ws.onmessage = (event) => {
+          debugger;
           try {
-            const eventData = JSON.parse(event.data);
+
+            const data = String(event.data);
+
+            // Parse the message using splitOnce
+            const { event: eventType, tab, rawJson } = splitOnce(data);
+
+            debugger;
 
             let line;
 
-            // Handle the new event format from WebSocketConnectionRegistry
-            if (eventData.event && eventData.payload) {
-              // This is the new format: { event, delay, payload }
-              line = `event: ${eventData.event}, detail: ${JSON.stringify(eventData.payload)}`;
-            } else {
-              // Fallback for old format or direct messages
-              line = `event: direct_message, detail: ${JSON.stringify(eventData)}`;
+            // Try to parse the payload as JSON to check for new format
+            try {
+              const payload = decodeJson(rawJson);
+              if (payload && typeof payload === 'object' && payload.event && payload.payload) {
+                // This is the new format: { event, delay, payload }
+                line = `event: ${payload.event}, detail: ${JSON.stringify(payload)}`;
+              } else {
+                // Use the parsed structure from splitOnce
+                line = `event: ${eventType}, tab: ${tab}, detail: ${rawJson}`;
+              }
+            } catch (parseError) {
+              // If JSON parsing fails, use the raw data
+              line = `event: ${eventType}, tab: ${tab}, detail: ${rawJson}`;
             }
 
             logLine(line);

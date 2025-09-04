@@ -32,8 +32,9 @@ app.use(express.urlencoded({ extended: true }));
 const server = http.createServer(app);
 
 const web = path.join(__dirname, "public");
+const extensionDir = path.join(__dirname, "..", "extension");
 
-// Serve static files from the 'public' directory with index: false to prevent auto-serving index.html
+// Serve static files first from 'public' directory, then fallback to 'extension' directory
 app.use(
   express.static(web, {
     index: false, // stop automatically serve index.html if present. instead list content of directory
@@ -44,7 +45,19 @@ app.use(
         res.setHeader("Content-type", "image/bmp");
       }
     },
-  }),
+  })
+);
+
+// Fallback to extension directory if file not found in public
+app.use(
+  express.static(extensionDir, {
+    index: false,
+    maxAge: "356 days",
+  })
+);
+
+// Directory listing only for public directory
+app.use(
   serveIndex(web, {
     icons: true,
     view: "details",
