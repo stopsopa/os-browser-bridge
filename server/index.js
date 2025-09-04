@@ -56,8 +56,9 @@ if (socket) {
    * curl http://localhost:8080/allTabs | jq
    */
   app.get("/allTabs", async (req, res) => {
-    const ids = await connectionRegistry.allTabs({ some: "data" });
-    res.json(ids);
+    const data = await connectionRegistry.allTabs({ some: "data" });
+
+    res.json(data);
   });
 
   /**
@@ -65,7 +66,7 @@ if (socket) {
    * (you can specify tab id to send to specific tab)
    *
    * curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"test"}}' "http://localhost:8080/broadcast?event=myevent&delay=1000" | jq
-   * 
+   *
    * To send to particular tab:
    * curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"test"}}' "http://localhost:8080/broadcast?event=myevent&tab=1817280703" | jq
    */

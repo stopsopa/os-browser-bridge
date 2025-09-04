@@ -88,7 +88,7 @@ export class WebSocketConnectionRegistry {
           } catch (_) {
             return; // ignore non-json control messages
           }
-          if (parsed.event === eventName && Array.isArray(parsed.payload)) {
+          if (parsed.event === eventName) {
             resolve(parsed.payload);
             cleanup();
           }

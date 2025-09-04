@@ -155,12 +155,14 @@ function connectWebSocket() {
       // If the server requests the list of all tab IDs, respond with them instead of / in addition to broadcasting.
       if (event === "allTabs") {
         try {
-          const payload = await chrome.tabs.query({});
+          const tabs = await chrome.tabs.query({});
+          const browserInfo = await getBrowserInfo();
+          // const browserInfo = {browser: 'good'}
 
           ws.send(
             JSON.stringify({
               event: "allTabs",
-              payload,
+              payload: { browserInfo, tabs },
             })
           );
         } catch (e) {
@@ -251,6 +253,68 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ type: "pong" });
   }
 });
+
+/**
+ * Browser Information
+ * 
+ * for chrome: 
+ * {
+    "version": "1.0",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+    "language": "en-GB",
+    "platform": {
+      "os": "mac",
+      "arch": "arm64",
+      "nacl_arch": "arm"
+    },
+    "languages": ["en-GB", "en-US", "en", "pl"],
+    "onLine": true
+  }
+
+  for chromium:
+  {
+    "version": "1.0",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+    "language": "en-GB",
+    "platform": {
+      "os": "mac",
+      "arch": "arm64",
+      "nacl_arch": "arm"
+    },
+    "languages": ["en-GB"],
+    "onLine": true
+  }
+ */
+
+async function getBrowserInfo() {
+  try {
+    const platformInfo = await chrome.runtime.getPlatformInfo();
+
+    return {
+      version: chrome.runtime.getManifest().version,
+      userAgent: navigator.userAgent,
+      language: navigator.language,
+
+      platform: {
+        os: platformInfo.os,
+        arch: platformInfo.arch,
+        nacl_arch: platformInfo.nacl_arch,
+      },
+      languages: navigator.languages,
+      cookieEnabled: navigator.cookieEnabled,
+      onLine: navigator.onLine,
+    };
+  } catch (error) {
+    error("Error gathering browser info:", error);
+    return {
+      version: chrome.runtime.getManifest().version,
+      userAgent: navigator.userAgent,
+      language: navigator.language,
+
+      error: error.message,
+    };
+  }
+}
 
 /**
  * Tools
