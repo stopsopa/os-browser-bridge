@@ -1,5 +1,5 @@
 export function splitOnce(str, delimiter = "::", special = "Event") {
-  debugger;
+
   if (typeof str !== "string") {
     throw new TypeError("splitOnce ${special}: First argument must be a string");
   }

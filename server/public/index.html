@@ -8,7 +8,7 @@
       a {
         font-size: 1.2rem;
       }
-      </style>
+    </style>
   </head>
   <body>
     <div class="container">
@@ -21,8 +21,7 @@
     <script type="module">
       import { splitOnce, decodeJson } from "./tools.js";
 
-
-      const pre   = document.querySelector("#logs");
+      const pre = document.querySelector("#logs");
       const clear = document.querySelector("#clear");
 
       // --- WebSocket with exponential-backoff reconnect ----------------------------------
@@ -31,8 +30,8 @@
 
       // Exponential back-off parameters
       const INITIAL_DELAY = 1000; // 1s
-      const MAX_DELAY     = 30000; // 30s (same max used on the server when sending events)
-      let reconnectDelay  = INITIAL_DELAY;
+      const MAX_DELAY = 30000; // 30s (same max used on the server when sending events)
+      let reconnectDelay = INITIAL_DELAY;
 
       function logLine(text) {
         const timeString = new Date().toLocaleTimeString();
@@ -48,32 +47,28 @@
           reconnectDelay = INITIAL_DELAY; // reset back-off on successful connection
         };
 
-        ws.onmessage = (event) => {
-          debugger;
+        ws.onmessage = (e) => {
           try {
-
-            const data = String(event.data);
+            const data = String(e.data);
 
             // Parse the message using splitOnce
-            const { event: eventType, tab, rawJson } = splitOnce(data);
-
-            debugger;
+            const { event, tab, rawJson } = splitOnce(data);
 
             let line;
 
             // Try to parse the payload as JSON to check for new format
             try {
               const payload = decodeJson(rawJson);
-              if (payload && typeof payload === 'object' && payload.event && payload.payload) {
+              if (payload && typeof payload === "object" && payload.event && payload.payload) {
                 // This is the new format: { event, delay, payload }
                 line = `event: ${payload.event}, detail: ${JSON.stringify(payload)}`;
               } else {
                 // Use the parsed structure from splitOnce
-                line = `event: ${eventType}, tab: ${tab}, detail: ${rawJson}`;
+                line = `event: ${event}, tab: ${tab}, detail: ${rawJson}`;
               }
             } catch (parseError) {
               // If JSON parsing fails, use the raw data
-              line = `event: ${eventType}, tab: ${tab}, detail: ${rawJson}`;
+              line = `event: ${event}, tab: ${tab}, detail: ${rawJson}`;
             }
 
             logLine(line);
