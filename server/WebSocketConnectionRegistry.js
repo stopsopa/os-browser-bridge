@@ -107,8 +107,58 @@ export class WebSocketConnectionRegistry {
     };
   }
 
+
+  #serverToMultipleBackgroundRequestsFactory(eventName, waitToCollect = 300, timeoutMs = 1500) {
+    return async function (sendData = {}) {
+      return new Promise((resolve, reject) => {
+        const wrappers = new Map();
+        let timer = null;
+
+        const cleanup = () => {
+          clearTimeout(timer);
+          this.connections.forEach((ws) => {
+            const fn = wrappers.get(ws);
+            if (fn) {
+              ws.off("message", fn);
+            }
+          });
+          reject(new Error(`${eventName}() timeout`));
+        };
+
+        let collected = [];
+
+        const onMessage = (data, isBinary) => {
+          if (isBinary) return;
+          let parsed;
+          try {
+            parsed = JSON.parse(data);
+          } catch (_) {
+            return; // ignore non-json control messages
+          }
+          if (parsed.event === eventName) {
+            collected.push(parsed.payload);
+          }
+        };
+
+        setTimeout(() => {
+          resolve(collected);
+        }, waitToCollect);
+
+        timer = setTimeout(cleanup, timeoutMs);
+
+        this.connections.forEach((ws) => {
+          wrappers.set(ws, onMessage);
+          ws.on("message", onMessage);
+        });
+
+        // After we have attached all listeners, broadcast the request so we don't miss quick responses
+        this.sendEvent(eventName, sendData);
+      });
+    };
+  }
+
   /**
    * Fetching from server info about all opened tabs in the browser
    */
-  allTabs = this.#serverToBackgroundRequestFactory("allTabs");
+  allTabs = this.#serverToMultipleBackgroundRequestsFactory("allTabs");
 }

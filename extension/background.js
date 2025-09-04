@@ -284,13 +284,91 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     "languages": ["en-GB"],
     "onLine": true
   }
+
+  from brave:
+  {
+      "version": "1.0",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+      "language": "en-GB",
+      "platform": {
+        "os": "mac",
+        "arch": "arm64",
+        "nacl_arch": "arm"
+      },
+      "languages": [
+        "en-GB",
+        "en-US",
+        "en"
+      ],
+      "onLine": true
+    }
  */
+
+async function detectBrowserName() {
+  try {
+    // Method 1: Check for Brave-specific API
+    if (navigator.brave && typeof navigator.brave.isBrave === 'function') {
+      const isBrave = await navigator.brave.isBrave();
+      if (isBrave) {
+        return 'Brave';
+      }
+    }
+
+    // Method 2: Use User-Agent Client Hints API if available
+    if (navigator.userAgentData && navigator.userAgentData.brands) {
+      try {
+        const brands = await navigator.userAgentData.getHighEntropyValues(['brands']);
+        const brandNames = brands.brands.map(brand => brand.brand.toLowerCase());
+        
+        if (brandNames.some(name => name.includes('brave'))) {
+          return 'Brave';
+        } else if (brandNames.some(name => name.includes('google chrome'))) {
+          return 'Chrome';
+        } else if (brandNames.some(name => name.includes('chromium'))) {
+          return 'Chromium';
+        } else if (brandNames.some(name => name.includes('microsoft edge'))) {
+          return 'Edge';
+        }
+      } catch (e) {
+        // Fallback to user agent parsing if high entropy values fail
+      }
+    }
+
+    // Method 3: Parse User-Agent string as fallback
+    const userAgent = navigator.userAgent;
+    
+    if (userAgent.includes('Edg/')) {
+      return 'Edge';
+    } else if (userAgent.includes('OPR/') || userAgent.includes('Opera/')) {
+      return 'Opera';
+    } else if (userAgent.includes('Firefox/')) {
+      return 'Firefox';
+    } else if (userAgent.includes('Safari/') && !userAgent.includes('Chrome/')) {
+      return 'Safari';
+    } else if (userAgent.includes('Chrome/')) {
+      // This is our best guess for Chrome vs Chromium from user agent
+      // Most Chromium builds will still show as "Chrome" in user agent
+      // We can make an educated guess based on version patterns or other indicators
+      if (userAgent.includes('Chromium/')) {
+        return 'Chromium';
+      }
+      return 'Chrome'; // Default assumption for Chrome-based browsers
+    }
+
+    return 'Unknown';
+  } catch (error) {
+    error('Error detecting browser name:', error);
+    return 'Unknown';
+  }
+}
 
 async function getBrowserInfo() {
   try {
     const platformInfo = await chrome.runtime.getPlatformInfo();
+    const browserName = await detectBrowserName();
 
     return {
+      name: browserName,
       version: chrome.runtime.getManifest().version,
       userAgent: navigator.userAgent,
       language: navigator.language,
@@ -307,6 +385,7 @@ async function getBrowserInfo() {
   } catch (error) {
     error("Error gathering browser info:", error);
     return {
+      name: 'Unknown',
       version: chrome.runtime.getManifest().version,
       userAgent: navigator.userAgent,
       language: navigator.language,
