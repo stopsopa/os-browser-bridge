@@ -26,6 +26,7 @@ const PORT = process.env.PORT;
 const HOST = process.env.HOST;
 const socket = typeof process.env.SOCKET !== "undefined";
 
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -33,6 +34,49 @@ const server = http.createServer(app);
 
 const web = path.join(__dirname, "public");
 const extensionDir = path.join(__dirname, "..", "extension");
+
+// Register API routes BEFORE static middleware
+if (socket) {
+  let wss = new WebSocketServer({ server });
+  const connectionRegistry = new WebSocketConnectionRegistry();
+
+  wss.on("connection", (ws) => {
+    // Try to get a more "official" connection identifier
+    let connectionId = `${ws._socket.remoteAddress}:${ws._socket.remotePort}`;
+
+    connectionRegistry.add(ws);
+    console.log(`Client connected with ID: ${connectionId}, Total connections: ${connectionRegistry.size()}`);
+
+    ws.on("close", () => {
+      connectionRegistry.remove(ws);
+      console.log(`Client disconnected: ${connectionId}, Total connections: ${connectionRegistry.size()}`);
+    });
+  });
+
+  /**
+   * curl http://localhost:8080/allTabs | jq
+   */
+  app.get("/allTabs", async (req, res) => {
+    const ids = await connectionRegistry.allTabs({ some: "data" });
+    res.json(ids);
+  });
+
+  /**
+   * Sends to all tabs, doesn't collect response
+   * (you can specify tab id to send to specific tab)
+   * 
+   * curl -X POST http://localhost:8080/broadcast -H "Content-Type: application/json" -d '{"event": "myevent", "payload": {"message": "Hello from server!"}, "tab": "1234567890"}'
+   * curl -X POST http://localhost:8080/broadcast -H "Content-Type: application/json" -d '{"event": "myevent", "payload": {"message": "Hello from server!"}, "tab": "1234567890", "delay": 1000}'
+   * curl -X POST http://localhost:8080/broadcast -H "Content-Type: application/json" -d '{"event": "myevent", "payload": {"message": "Hello from server!"}}'
+   */
+  app.post("/broadcast", async (req, res) => {
+    const { event, payload, tab, delay } = { ...req.query, ...req.body };
+
+    connectionRegistry.sendEvent(event, payload, tab, delay);
+
+    res.json({ message: "Event sent" });
+  });
+}
 
 // Serve static files first from 'public' directory, then fallback to 'extension' directory
 app.use(
@@ -65,66 +109,7 @@ app.use(
   })
 );
 
-if (socket) {
-  let wss = new WebSocketServer({ server });
-  const connectionRegistry = new WebSocketConnectionRegistry();
-
-  wss.on("connection", (ws) => {
-    // Try to get a more "official" connection identifier
-    let connectionId = `${ws._socket.remoteAddress}:${ws._socket.remotePort}`;
-
-    connectionRegistry.add(ws);
-    console.log(`Client connected with ID: ${connectionId}, Total connections: ${connectionRegistry.size()}`);
-
-    ws.on("close", () => {
-      connectionRegistry.remove(ws);
-      console.log(`Client disconnected: ${connectionId}, Total connections: ${connectionRegistry.size()}`);
-    });
-  });
-
-  // let serverEventCount = 1;
-  // setInterval(() => {
-  //   connectionRegistry.sendEvent("myevent", {
-  //     message: `Hello from server! Event #${serverEventCount}`,
-  //     totalConnections: connectionRegistry.size(),
-  //   });
-  //   serverEventCount += 1;
-  // }, 3000);
-
-  /**
-   * curl http://localhost:8080/allTabs | jq
-   */
-  app.get("/allTabs", async (req, res) => {
-    const ids = await connectionRegistry.allTabs({ some: "data" });
-    res.json(ids);
-  });
-
-  /**
-   * Sends to all tabs, doesn't collect response
-   * (you can specify tab id to send to specific tab)
-   * 
-   * curl -X POST http://localhost:8080/broadcast -H "Content-Type: application/json" -d '{"event": "myevent", "payload": {"message": "Hello from server!"}, "tab": "1234567890"}'
-   * curl -X POST http://localhost:8080/broadcast -H "Content-Type: application/json" -d '{"event": "myevent", "payload": {"message": "Hello from server!"}, "tab": "1234567890", "delay": 1000}'
-   * curl -X POST http://localhost:8080/broadcast -H "Content-Type: application/json" -d '{"event": "myevent", "payload": {"message": "Hello from server!"}}'
-   */
-  app.post("/broadcast", async (req, res) => {
-    const { event, payload, tab, delay } = { ...req.query, ...req.body };
-
-    connectionRegistry.sendEvent(event, payload, tab, delay);
-
-    res.json({ message: "Event sent" });
-  });
-
-  app.get("/test", async (req, res) => {
-    let serverEventCount = 10000;
-
-    connectionRegistry.sendEvent("myevent", {
-      message: `Hello from server! Event #${serverEventCount}`,
-      totalConnections: connectionRegistry.size(),
-    });
-    res.json({ message: "Hello from server!" });
-  });
-}
+// WebSocket setup and routes are now registered earlier, before static middleware
 
 server.listen(PORT, HOST, () => {
   console.log(`
