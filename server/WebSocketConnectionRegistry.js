@@ -127,7 +127,7 @@ export class WebSocketConnectionRegistry {
 
         let collected = [];
 
-        const onMessage = (data, isBinary) => {
+        const onMessage = (data, isBinary) => { 
           if (isBinary) return;
           let parsed;
           try {
@@ -135,6 +135,7 @@ export class WebSocketConnectionRegistry {
           } catch (_) {
             return; // ignore non-json control messages
           }
+          
           if (parsed.event === eventName) {
             collected.push(parsed.payload);
           }
