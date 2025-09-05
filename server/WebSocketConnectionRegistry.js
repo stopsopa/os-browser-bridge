@@ -65,6 +65,63 @@ export class WebSocketConnectionRegistry {
     });
   }
 
+  /**
+   * This one transforms list to form:
+   * {
+      "Brave_1628888929": {
+        "active": true,
+        "audible": false,
+        "autoDiscardable": true,
+        "discarded": false,
+        "favIconUrl": "",
+        "frozen": false,
+        "groupId": -1,
+        "height": 999,
+        "highlighted": true,
+        "id": 1628888929,
+        "incognito": false,
+        "index": 0,
+        "lastAccessed": 1757030914200.847,
+        "mutedInfo": {
+          "muted": false
+        },
+        "pinned": false,
+        "selected": true,
+        "status": "complete",
+        "title": "Extensions",
+        "url": "chrome://extensions/?errors=gpgnclhecipnnfikdcomhedaokikifoo",
+        "width": 1984,
+        "windowId": 1628888872,
+        "browser": "Brave",
+        "tab": "Brave_1628888929"
+      },
+      "Brave_1628888873": {
+        "active": false,
+        "audible": false,
+        "autoDiscardable": true,
+        "discarded": false,
+        "frozen": false,
+        "groupId": -1,
+        "height": 999,
+        "highlighted": false,
+        "id": 1628888873,
+        "incognito": false,
+        "index": 1,
+        "lastAccessed": 1757030912969.269,
+        "mutedInfo": {
+          "muted": false
+        },
+        "pinned": false,
+        "selected": false,
+        "status": "complete",
+        "title": "listing directory /",
+        "url": "http://localhost:8080/",
+        "width": 1984,
+        "windowId": 1628888872,
+        "browser": "Brave",
+        "tab": "Brave_1628888873"
+      },
+   */
   #processTabs(raw) {
     const tabs = {};
 

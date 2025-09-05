@@ -65,6 +65,7 @@ if (socket) {
    * Sends to all tabs, doesn't collect response
    * (you can specify tab id to send to specific tab)
    *
+   * curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"test"}}' "http://localhost:8080/broadcast?event=myevent" | jq
    * curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"test"}}' "http://localhost:8080/broadcast?event=myevent&delay=1000" | jq
    *
    * To send to particular tab:
