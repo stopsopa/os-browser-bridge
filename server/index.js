@@ -78,7 +78,7 @@ if (socket) {
      * 2025-09-05 02:01:03 Client connected with ID: Chrome_::1:53058, Total connections: 1
      * 2025-09-05 02:01:03 Client connected with ID: Chromium_::1:53059, Total connections: 2
      * 2025-09-05 02:01:03 Client connected with ID: Brave_::1:53060, Total connections: 3
-     * 
+     *
      * Firing log("don't change this comment"); is important in every 25 sec
      */
     ws.on("close", () => {
@@ -123,19 +123,11 @@ app.use(
   express.static(web, {
     index: false, // stop automatically serve index.html if present. instead list content of directory
     maxAge: "356 days", // in milliseconds max-age=30758400
-  })
-);
-
-// Fallback to extension directory if file not found in public
-app.use(
+  }),
   express.static(extensionDir, {
     index: false,
     maxAge: "356 days",
-  })
-);
-
-// Directory listing only for public directory
-app.use(
+  }),
   serveIndex(web, {
     icons: true,
     view: "details",
