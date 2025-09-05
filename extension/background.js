@@ -38,8 +38,10 @@ function scheduleReconnect() {
     return;
   }
 
-  // Exponential backoff with max delay
-  const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), MAX_RECONNECT_DELAY);
+  // Immediate retry on the first disconnect, exponential back-off afterwards
+  const delay = reconnectAttempts === 0
+    ? 0
+    : Math.min(1000 * Math.pow(2, reconnectAttempts - 1), MAX_RECONNECT_DELAY);
   reconnectAttempts++;
 
   log(`Scheduling reconnection attempt ${reconnectAttempts} in ${delay}ms`);
