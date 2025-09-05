@@ -20,10 +20,17 @@ let reconnectAttempts = 0;
 const MAX_RECONNECT_DELAY = 5000; // Maximum delay of 5 seconds
 
 // Store detected browser name globally so it can be reused on reconnects
-let browserName = "Unknown";
+let browserName = "Unknown",
+  uniqueId = "Unknown";
 
 // Detect browser name once, then initiate the first connection
 (async () => {
+  try {
+    uniqueId = await generateUniqueId();
+  } catch (_) {
+    // keep default "Unknown" on failure
+  }
+
   try {
     browserName = await detectBrowserName();
   } catch (_) {
@@ -39,9 +46,7 @@ function scheduleReconnect() {
   }
 
   // Immediate retry on the first disconnect, exponential back-off afterwards
-  const delay = reconnectAttempts === 0
-    ? 0
-    : Math.min(1000 * Math.pow(2, reconnectAttempts - 1), MAX_RECONNECT_DELAY);
+  const delay = reconnectAttempts === 0 ? 0 : Math.min(1000 * Math.pow(2, reconnectAttempts - 1), MAX_RECONNECT_DELAY);
   reconnectAttempts++;
 
   log(`Scheduling reconnection attempt ${reconnectAttempts} in ${delay}ms`);
@@ -141,7 +146,7 @@ async function broadcastConnectionStatus(isConnected, details = {}) {
   }
 }
 
-function connectWebSocket() {
+async function connectWebSocket() {
   // Always clean up any previous socket before starting a new one
   cleanupWebSocket();
 
@@ -152,11 +157,14 @@ function connectWebSocket() {
 
   try {
     log("Attempting to connect to WebSocket server...");
+
+    const browserInfo = await getBrowserInfo();
+
     // Emit connecting status
     broadcastConnectionStatus(false, { state: "connecting", reconnectAttempts });
 
-    console.log("Connecting to WebSocket server with browser name:", browserName);
-    ws = new WebSocket(`${WS_SERVER_URL}?browser=${encodeURIComponent(browserName)}`);
+    console.log("Connecting to WebSocket server with browser name:", browserInfo?.name);
+    ws = new WebSocket(`${WS_SERVER_URL}?browser=${encodeURIComponent(JSON.stringify(browserInfo))}`);
 
     ws.addEventListener("open", () => {
       log("Connected to WebSocket server");
@@ -393,12 +401,55 @@ async function detectBrowserName() {
   }
 }
 
+/**
+ * Generate deterministic unique identifier for the current browser installation.
+ * The identifier is derived from a combination of:
+ *   • detected browser name (Chrome / Brave / Edge …)
+ *   • full user-agent string (contains build channel / version)
+ *   • platform information returned by chrome.runtime.getPlatformInfo()
+ *
+ * The concatenated string is hashed with SHA-256 so no potentially sensitive
+ * information is exposed. As long as the above inputs stay the same the hash
+ * – and therefore the id – is stable between extension restarts. Using the
+ * user-agent means that two different browsers on the same computer (e.g.
+ * Chrome Stable vs. Chrome Canary, or Chrome vs. Brave) will yield different
+ * ids. If the browser is updated and the user-agent changes, the id will also
+ * change, which is usually desirable because the underlying binary _did_
+ * change.
+ *
+ * Returned value: 64-character hex encoded SHA-256 hash.
+ */
+async function generateUniqueId() {
+  try {
+    const platformInfo = await chrome.runtime.getPlatformInfo();
+
+    const raw = [
+      await detectBrowserName(),
+      navigator.userAgent,
+      platformInfo.os,
+      platformInfo.arch,
+      platformInfo.nacl_arch,
+    ].join("||");
+
+    const encoder = new TextEncoder();
+    const data = encoder.encode(raw);
+    const digest = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = Array.from(new Uint8Array(digest));
+    const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+    return hashHex.substring(0, 8);
+  } catch (e) {
+    error("Error generating unique browser id:", e);
+    return "unknown";
+  }
+}
+
 async function getBrowserInfo() {
   try {
     const platformInfo = await chrome.runtime.getPlatformInfo();
 
     return {
       name: browserName,
+      uniqueId,
       version: chrome.runtime.getManifest().version,
       userAgent: navigator.userAgent,
       language: navigator.language,

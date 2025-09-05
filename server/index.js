@@ -47,16 +47,27 @@ if (socket) {
     // Extract browser info sent via query parameter
     try {
       const searchParams = new URLSearchParams(req.url.split("?")[1]);
-      const browserName = searchParams.get("browser") || "Unknown";
+
+      const browserInfoRawEncoded = searchParams.get("browser") || "{}";
+
+      const browserInfoRaw = decodeURIComponent(browserInfoRawEncoded);
+
+      const browserInfo = JSON.parse(browserInfoRaw);
+
+      const browserName = browserInfo.name;
+
       // attach to ws instance so other parts of the code can access it
-      ws.browserName = browserName;
-      connectionId = `${browserName}_${connectionId}`;
+      ws.browserInfo = browserInfo;
+
+      connectionId = `${browserName}_${browserInfo.uniqueId}${connectionId}`;
     } catch (_) {
       // ignore parsing errors – keep default connectionId
     }
 
     connectionRegistry.add(ws);
+
     const timestamp = new Date().toISOString().slice(0, 19).replace("T", " ");
+
     console.log(
       `${timestamp} Client connected with ID: ${connectionId}, Total connections: ${connectionRegistry.size()}`
     );
