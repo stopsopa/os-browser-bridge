@@ -351,6 +351,8 @@ async function detectBrowserName() {
 
         if (brandNames.some((name) => name.includes("brave"))) {
           return "Brave";
+        } else if (brandNames.some((name) => name.includes("opera"))) {
+          return "Opera";
         } else if (brandNames.some((name) => name.includes("google chrome"))) {
           return "Chrome";
         } else if (brandNames.some((name) => name.includes("chromium"))) {
