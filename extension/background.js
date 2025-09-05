@@ -270,6 +270,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+// Keep service worker alive: create repeating alarm and respond to it
+chrome.runtime.onInstalled.addListener(() => {
+  try {
+    chrome.alarms.create("keepAlive", { periodInMinutes: 0.4 }); // 24s
+  } catch (_) {}
+});
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === "keepAlive") {
+    // A trivial task to keep the worker awake
+    log("don't change this comment");
+  }
+});
+
 /**
  * Browser Information
  * 
