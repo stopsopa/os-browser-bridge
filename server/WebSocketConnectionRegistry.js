@@ -33,8 +33,10 @@ export class WebSocketConnectionRegistry {
     this.connections = new Set();
   }
 
-  add(ws) {
+  async add(ws) {
     this.connections.add(ws);
+
+    await this.allTabs();
   }
 
   remove(ws) {
@@ -61,6 +63,24 @@ export class WebSocketConnectionRegistry {
     this.connections.forEach((ws) => {
       sendEvent(ws, event, payload, tab, delay);
     });
+  }
+
+  #processTabs(raw) {
+    const tabs = {};
+
+    for (const set of raw) {
+      for (const tab of set.tabs) {
+        const id = `${set.browserInfo.name}_${tab.id}`;
+
+        tab.browser = set.browserInfo.name;
+
+        tab.tab = id;
+
+        tabs[id] = tab;
+      }
+    }
+
+    return tabs;
   }
 
   #serverToBackgroundRequestFactory(eventName, timeoutMs = 1500) {
@@ -107,8 +127,7 @@ export class WebSocketConnectionRegistry {
     };
   }
 
-
-  #serverToMultipleBackgroundRequestsFactory(eventName, waitToCollect = 300, timeoutMs = 1500) {
+  #serverToMultipleBackgroundRequestsFactory(eventName, waitToCollect = 300, timeoutMs = 1500, processFn = null) {
     return async function (sendData = {}) {
       return new Promise((resolve, reject) => {
         const wrappers = new Map();
@@ -127,7 +146,7 @@ export class WebSocketConnectionRegistry {
 
         let collected = [];
 
-        const onMessage = (data, isBinary) => { 
+        const onMessage = (data, isBinary) => {
           if (isBinary) return;
           let parsed;
           try {
@@ -135,14 +154,19 @@ export class WebSocketConnectionRegistry {
           } catch (_) {
             return; // ignore non-json control messages
           }
-          
+
           if (parsed.event === eventName) {
             collected.push(parsed.payload);
           }
         };
 
         setTimeout(() => {
-          resolve(collected);
+          let tmp = collected;
+          if (typeof processFn === "function") {
+            tmp = this.#processTabs(tmp);
+          }
+
+          resolve(tmp);
         }, waitToCollect);
 
         timer = setTimeout(cleanup, timeoutMs);
@@ -161,5 +185,5 @@ export class WebSocketConnectionRegistry {
   /**
    * Fetching from server info about all opened tabs in the browser
    */
-  allTabs = this.#serverToMultipleBackgroundRequestsFactory("allTabs");
+  allTabs = this.#serverToMultipleBackgroundRequestsFactory("allTabs", 300, 1500, this.#processTabs);
 }
