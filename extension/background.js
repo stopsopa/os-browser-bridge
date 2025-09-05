@@ -49,8 +49,6 @@ function scheduleReconnect() {
   const delay = reconnectAttempts === 0 ? 0 : Math.min(1000 * Math.pow(2, reconnectAttempts - 1), MAX_RECONNECT_DELAY);
   reconnectAttempts++;
 
-  log(`Scheduling reconnection attempt ${reconnectAttempts} in ${delay}ms`);
-
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
     connectWebSocket();
@@ -156,40 +154,42 @@ async function connectWebSocket() {
   }
 
   try {
-    log("Attempting to connect to WebSocket server...");
 
     const browserInfo = await getBrowserInfo();
 
     // Emit connecting status
     broadcastConnectionStatus(false, { state: "connecting", reconnectAttempts });
 
-    console.log("Connecting to WebSocket server with browser name:", browserInfo?.name);
     const encodedBrowserInfo = base64EncodeUtf8(JSON.stringify(browserInfo));
     ws = new WebSocket(`${WS_SERVER_URL}?browser=${encodedBrowserInfo}`);
 
     ws.addEventListener("open", () => {
-      log("Connected to WebSocket server");
       reconnectAttempts = 0; // Reset reconnect attempts on successful connection
       // Emit connected status
       broadcastConnectionStatus(true, { state: "connected", reconnectAttempts: 0 });
     });
 
+    const events = {
+      allTabs: async () => {
+        const tabs = await chrome.tabs.query({});
+        const browserInfo = await getBrowserInfo();
+
+        return {
+          event: "allTabs",
+          payload: { browserInfo, tabs },
+        };
+      },
+    };
+
     ws.addEventListener("message", async (e) => {
       const { event, tab, rawJson } = splitOnce(e.data);
 
       // If the server requests the list of all tab IDs, respond with them instead of / in addition to broadcasting.
-      if (event === "allTabs") {
+      if (events[event]) {
         try {
-          const tabs = await chrome.tabs.query({});
-          const browserInfo = await getBrowserInfo();
-          // const browserInfo = {browser: 'good'}
+          const data = await events[event]();
 
-          ws.send(
-            JSON.stringify({
-              event: "allTabs",
-              payload: { browserInfo, tabs },
-            })
-          );
+          ws.send(JSON.stringify(data));
         } catch (e) {
           error("Failed to gather tab ids to send back to server", e);
         }
@@ -202,7 +202,6 @@ async function connectWebSocket() {
     });
 
     ws.addEventListener("close", (event) => {
-      log("WebSocket closed. Scheduling reconnect...");
       // Emit disconnected status
       broadcastConnectionStatus(false, {
         state: "disconnected",
@@ -213,13 +212,12 @@ async function connectWebSocket() {
       scheduleReconnect();
     });
 
-    ws.addEventListener("error", (error) => {
-      log("WebSocket error occurred. Scheduling reconnect...");
-      // Don't emit error status here as 'close' event will also fire and emit disconnected status
-      // Don't call scheduleReconnect here as 'close' event will also fire
-    });
+    // ws.addEventListener("error", (error) => {
+    //   log("WebSocket error occurred. Scheduling reconnect...");
+    //   // Don't emit error status here as 'close' event will also fire and emit disconnected status
+    //   // Don't call scheduleReconnect here as 'close' event will also fire
+    // });
   } catch (e) {
-    log("Failed to create WebSocket connection. Scheduling reconnect...");
     // Emit connection failed status
     broadcastConnectionStatus(false, {
       state: "connection_failed",
@@ -288,7 +286,7 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "keepAlive") {
     // A trivial task to keep the worker awake
-    log("don't change this comment");
+    console.log(".");
   }
 });
 

@@ -33,10 +33,45 @@ export class WebSocketConnectionRegistry {
     this.connections = new Set();
   }
 
-  async add(ws) {
+  async add(ws, req) {
+    // Try to get a more "official" connection identifier
+    // console.log(ws);
+    let connectionId = `${ws._socket.remoteAddress}:${ws._socket.remotePort}`;
+
+    let browserInfo = {};
+
+    // Extract browser info sent via query parameter
+    try {
+      const searchParams = new URLSearchParams(req.url.split("?")[1]);
+
+      const browserInfoRawEncoded = searchParams.get("browser") || "";
+
+      if (browserInfoRawEncoded) {
+        try {
+          const browserInfoRaw = Buffer.from(browserInfoRawEncoded, "base64").toString("utf-8");
+          browserInfo = JSON.parse(browserInfoRaw);
+        } catch (e) {
+          console.warn("Failed to decode browser info from client:", e);
+        }
+      }
+
+      ws.browserInfo = browserInfo;
+
+      connectionId = `${browserInfo?.name}_${browserInfo.uniqueId}${connectionId}`;
+
+      ws.connectionId = connectionId;
+    } catch (e) {
+      e.message = `WebSocketConnectionRegistry.add() failed to parse browser info from client: ${e.message}`;
+
+      throw e;
+    }
+
     this.connections.add(ws);
 
-    await this.allTabs();
+    return {
+      connectionId,
+      browserInfo,
+    };
   }
 
   remove(ws) {

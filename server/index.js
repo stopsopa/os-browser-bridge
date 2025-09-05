@@ -39,38 +39,8 @@ if (socket) {
   let wss = new WebSocketServer({ server });
   const connectionRegistry = new WebSocketConnectionRegistry();
 
-  wss.on("connection", (ws, req) => {
-    // Try to get a more "official" connection identifier
-    // console.log(ws);
-    let connectionId = `${ws._socket.remoteAddress}:${ws._socket.remotePort}`;
-
-    // Extract browser info sent via query parameter
-    try {
-      const searchParams = new URLSearchParams(req.url.split("?")[1]);
-
-      const browserInfoRawEncoded = searchParams.get("browser") || "";
-
-      let browserInfo = {};
-      if (browserInfoRawEncoded) {
-        try {
-          const browserInfoRaw = Buffer.from(browserInfoRawEncoded, "base64").toString("utf-8");
-          browserInfo = JSON.parse(browserInfoRaw);
-        } catch (e) {
-          console.warn("Failed to decode browser info from client:", e);
-        }
-      }
-
-      const browserName = browserInfo.name;
-
-      // attach to ws instance so other parts of the code can access it
-      ws.browserInfo = browserInfo;
-
-      connectionId = `${browserName}_${browserInfo.uniqueId}${connectionId}`;
-    } catch (_) {
-      // ignore parsing errors – keep default connectionId
-    }
-
-    connectionRegistry.add(ws);
+  wss.on("connection", async (ws, req) => {
+    const { connectionId, browserInfo } = await connectionRegistry.add(ws, req);
 
     const timestamp = new Date().toISOString().slice(0, 19).replace("T", " ");
 
@@ -96,7 +66,7 @@ if (socket) {
      * 2025-09-05 02:01:03 Client connected with ID: Chromium_::1:53059, Total connections: 2
      * 2025-09-05 02:01:03 Client connected with ID: Brave_::1:53060, Total connections: 3
      *
-     * Firing log("don't change this comment"); is important in every 25 sec
+     * Firing log("."); is important in every 25 sec
      */
     ws.on("close", () => {
       connectionRegistry.remove(ws);
