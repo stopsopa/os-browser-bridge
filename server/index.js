@@ -39,16 +39,32 @@ if (socket) {
   let wss = new WebSocketServer({ server });
   const connectionRegistry = new WebSocketConnectionRegistry();
 
-  wss.on("connection", (ws) => {
+  wss.on("connection", (ws, req) => {
     // Try to get a more "official" connection identifier
+    // console.log(ws);
     let connectionId = `${ws._socket.remoteAddress}:${ws._socket.remotePort}`;
 
+    // Extract browser info sent via query parameter
+    try {
+      const searchParams = new URLSearchParams(req.url.split("?")[1]);
+      const browserName = searchParams.get("browser") || "Unknown";
+      // attach to ws instance so other parts of the code can access it
+      ws.browserName = browserName;
+      connectionId = `${browserName}_${connectionId}`;
+    } catch (_) {
+      // ignore parsing errors – keep default connectionId
+    }
+
     connectionRegistry.add(ws);
-    console.log(`Client connected with ID: ${connectionId}, Total connections: ${connectionRegistry.size()}`);
+    const timestamp = new Date().toISOString().slice(0, 19).replace("T", " ");
+    console.log(
+      `${timestamp} Client connected with ID: ${connectionId}, Total connections: ${connectionRegistry.size()}`
+    );
 
     ws.on("close", () => {
       connectionRegistry.remove(ws);
-      console.log(`Client disconnected: ${connectionId}, Total connections: ${connectionRegistry.size()}`);
+      const timestamp = new Date().toISOString().slice(0, 19).replace("T", " ");
+      console.log(`${timestamp} Client disconnected: ${connectionId}, Total connections: ${connectionRegistry.size()}`);
     });
   });
 

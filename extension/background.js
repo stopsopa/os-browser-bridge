@@ -19,6 +19,19 @@ let reconnectTimer = null; // stores the id returned by setTimeout
 let reconnectAttempts = 0;
 const MAX_RECONNECT_DELAY = 5000; // Maximum delay of 5 seconds
 
+// Store detected browser name globally so it can be reused on reconnects
+let browserName = "Unknown";
+
+// Detect browser name once, then initiate the first connection
+(async () => {
+  try {
+    browserName = await detectBrowserName();
+  } catch (_) {
+    // keep default "Unknown" on failure
+  }
+  connectWebSocket();
+})();
+
 function scheduleReconnect() {
   if (reconnectTimer != null) {
     // a reconnection attempt is already scheduled
@@ -140,7 +153,8 @@ function connectWebSocket() {
     // Emit connecting status
     broadcastConnectionStatus(false, { state: "connecting", reconnectAttempts });
 
-    ws = new WebSocket(WS_SERVER_URL);
+    console.log("Connecting to WebSocket server with browser name:", browserName);
+    ws = new WebSocket(`${WS_SERVER_URL}?browser=${encodeURIComponent(browserName)}`);
 
     ws.addEventListener("open", () => {
       log("Connected to WebSocket server");
@@ -206,7 +220,7 @@ function connectWebSocket() {
 }
 
 // Initial connection
-connectWebSocket();
+// connectWebSocket(); // This line is now handled by the async IIFE above
 
 // Utility to (re)inject the content script into all existing tabs. This is
 // necessary because when the extension gets reloaded the static
@@ -307,27 +321,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function detectBrowserName() {
   try {
     // Method 1: Check for Brave-specific API
-    if (navigator.brave && typeof navigator.brave.isBrave === 'function') {
+    if (navigator.brave && typeof navigator.brave.isBrave === "function") {
       const isBrave = await navigator.brave.isBrave();
       if (isBrave) {
-        return 'Brave';
+        return "Brave";
       }
     }
 
     // Method 2: Use User-Agent Client Hints API if available
     if (navigator.userAgentData && navigator.userAgentData.brands) {
       try {
-        const brands = await navigator.userAgentData.getHighEntropyValues(['brands']);
-        const brandNames = brands.brands.map(brand => brand.brand.toLowerCase());
-        
-        if (brandNames.some(name => name.includes('brave'))) {
-          return 'Brave';
-        } else if (brandNames.some(name => name.includes('google chrome'))) {
-          return 'Chrome';
-        } else if (brandNames.some(name => name.includes('chromium'))) {
-          return 'Chromium';
-        } else if (brandNames.some(name => name.includes('microsoft edge'))) {
-          return 'Edge';
+        const brands = await navigator.userAgentData.getHighEntropyValues(["brands"]);
+        const brandNames = brands.brands.map((brand) => brand.brand.toLowerCase());
+
+        if (brandNames.some((name) => name.includes("brave"))) {
+          return "Brave";
+        } else if (brandNames.some((name) => name.includes("google chrome"))) {
+          return "Chrome";
+        } else if (brandNames.some((name) => name.includes("chromium"))) {
+          return "Chromium";
+        } else if (brandNames.some((name) => name.includes("microsoft edge"))) {
+          return "Edge";
         }
       } catch (e) {
         // Fallback to user agent parsing if high entropy values fail
@@ -336,36 +350,35 @@ async function detectBrowserName() {
 
     // Method 3: Parse User-Agent string as fallback
     const userAgent = navigator.userAgent;
-    
-    if (userAgent.includes('Edg/')) {
-      return 'Edge';
-    } else if (userAgent.includes('OPR/') || userAgent.includes('Opera/')) {
-      return 'Opera';
-    } else if (userAgent.includes('Firefox/')) {
-      return 'Firefox';
-    } else if (userAgent.includes('Safari/') && !userAgent.includes('Chrome/')) {
-      return 'Safari';
-    } else if (userAgent.includes('Chrome/')) {
+
+    if (userAgent.includes("Edg/")) {
+      return "Edge";
+    } else if (userAgent.includes("OPR/") || userAgent.includes("Opera/")) {
+      return "Opera";
+    } else if (userAgent.includes("Firefox/")) {
+      return "Firefox";
+    } else if (userAgent.includes("Safari/") && !userAgent.includes("Chrome/")) {
+      return "Safari";
+    } else if (userAgent.includes("Chrome/")) {
       // This is our best guess for Chrome vs Chromium from user agent
       // Most Chromium builds will still show as "Chrome" in user agent
       // We can make an educated guess based on version patterns or other indicators
-      if (userAgent.includes('Chromium/')) {
-        return 'Chromium';
+      if (userAgent.includes("Chromium/")) {
+        return "Chromium";
       }
-      return 'Chrome'; // Default assumption for Chrome-based browsers
+      return "Chrome"; // Default assumption for Chrome-based browsers
     }
 
-    return 'Unknown';
+    return "Unknown";
   } catch (error) {
-    error('Error detecting browser name:', error);
-    return 'Unknown';
+    error("Error detecting browser name:", error);
+    return "Unknown";
   }
 }
 
 async function getBrowserInfo() {
   try {
     const platformInfo = await chrome.runtime.getPlatformInfo();
-    const browserName = await detectBrowserName();
 
     return {
       name: browserName,
@@ -385,7 +398,7 @@ async function getBrowserInfo() {
   } catch (error) {
     error("Error gathering browser info:", error);
     return {
-      name: 'Unknown',
+      name: "Unknown",
       version: chrome.runtime.getManifest().version,
       userAgent: navigator.userAgent,
       language: navigator.language,
