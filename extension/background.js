@@ -164,7 +164,8 @@ async function connectWebSocket() {
     broadcastConnectionStatus(false, { state: "connecting", reconnectAttempts });
 
     console.log("Connecting to WebSocket server with browser name:", browserInfo?.name);
-    ws = new WebSocket(`${WS_SERVER_URL}?browser=${encodeURIComponent(JSON.stringify(browserInfo))}`);
+    const encodedBrowserInfo = base64EncodeUtf8(JSON.stringify(browserInfo));
+    ws = new WebSocket(`${WS_SERVER_URL}?browser=${encodedBrowserInfo}`);
 
     ws.addEventListener("open", () => {
       log("Connected to WebSocket server");
@@ -515,3 +516,19 @@ async function getBrowserInfo() {
 
 //   return { event, tab, rawJson };
 // }
+
+/**
+ * Base64-encode a UTF-8 string using the browser-native `btoa`.
+ * We first convert the string to UTF-8 via `encodeURIComponent` + `unescape`
+ * so non-ASCII characters are handled correctly.
+ */
+function base64EncodeUtf8(str) {
+  // Encode to UTF-8 bytes and convert to binary string for btoa
+  const utf8Bytes = new TextEncoder().encode(str);
+  let binary = "";
+  for (const byte of utf8Bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  // @ts-ignore – btoa is available in browser context
+  return btoa(binary);
+}

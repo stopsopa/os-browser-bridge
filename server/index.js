@@ -48,11 +48,17 @@ if (socket) {
     try {
       const searchParams = new URLSearchParams(req.url.split("?")[1]);
 
-      const browserInfoRawEncoded = searchParams.get("browser") || "{}";
+      const browserInfoRawEncoded = searchParams.get("browser") || "";
 
-      const browserInfoRaw = decodeURIComponent(browserInfoRawEncoded);
-
-      const browserInfo = JSON.parse(browserInfoRaw);
+      let browserInfo = {};
+      if (browserInfoRawEncoded) {
+        try {
+          const browserInfoRaw = Buffer.from(browserInfoRawEncoded, "base64").toString("utf-8");
+          browserInfo = JSON.parse(browserInfoRaw);
+        } catch (e) {
+          console.warn("Failed to decode browser info from client:", e);
+        }
+      }
 
       const browserName = browserInfo.name;
 
