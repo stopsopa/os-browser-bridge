@@ -57,7 +57,7 @@ export class WebSocketConnectionRegistry {
 
       ws.browserInfo = browserInfo;
 
-      connectionId = `${browserInfo?.name}_${browserInfo.uniqueId}${connectionId}`;
+      connectionId = `${browserInfo?.name}_${browserInfo.browserId}${connectionId}`;
 
       ws.connectionId = connectionId;
     } catch (e) {
@@ -162,9 +162,11 @@ export class WebSocketConnectionRegistry {
 
     for (const set of raw) {
       for (const tab of set.tabs) {
-        const id = `${set.browserInfo.name}_${tab.id}`;
+        tab.name = set?.browserInfo?.name;
 
-        tab.browser = set.browserInfo.name;
+        tab.browserId = set?.browserInfo?.browserId;
+
+        const id = `${set?.browserInfo?.name}_tab:${tab.id}`;
 
         tab.tab = id;
 

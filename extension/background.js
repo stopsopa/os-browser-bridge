@@ -21,12 +21,12 @@ const MAX_RECONNECT_DELAY = 5000; // Maximum delay of 5 seconds
 
 // Store detected browser name globally so it can be reused on reconnects
 let browserName = "Unknown",
-  uniqueId = "Unknown";
+  browserId = "Unknown";
 
 // Detect browser name once, then initiate the first connection
 (async () => {
   try {
-    uniqueId = await generateUniqueId();
+    browserId = await generateUniqueId();
   } catch (_) {
     // keep default "Unknown" on failure
   }
@@ -448,7 +448,7 @@ async function getBrowserInfo() {
 
     return {
       name: browserName,
-      uniqueId,
+      browserId,
       version: chrome.runtime.getManifest().version,
       userAgent: navigator.userAgent,
       language: navigator.language,
