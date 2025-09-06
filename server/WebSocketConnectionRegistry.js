@@ -218,51 +218,12 @@ export class WebSocketConnectionRegistry {
     return tabs;
   }
 
-  #serverToBackgroundRequestFactory(eventName, timeoutMs = 1500) {
-    return async function (sendData = {}) {
-      return new Promise((resolve, reject) => {
-        const wrappers = new Map();
-        let timer = null;
-
-        const cleanup = () => {
-          clearTimeout(timer);
-          this.connections.forEach((ws) => {
-            const fn = wrappers.get(ws);
-            if (fn) {
-              ws.off("message", fn);
-            }
-          });
-          reject(new Error(`${eventName}() timeout`));
-        };
-
-        const onMessage = (data, isBinary) => {
-          if (isBinary) return;
-          let parsed;
-          try {
-            parsed = JSON.parse(data);
-          } catch (_) {
-            return; // ignore non-json control messages
-          }
-          if (parsed.event === eventName) {
-            resolve(parsed.payload);
-            cleanup();
-          }
-        };
-
-        timer = setTimeout(cleanup, timeoutMs);
-
-        this.connections.forEach((ws) => {
-          wrappers.set(ws, onMessage);
-          ws.on("message", onMessage);
-        });
-
-        // After we have attached all listeners, broadcast the request so we don't miss quick responses
-        this.sendEvent(eventName, sendData);
-      });
-    };
-  }
-
-  #serverToMultipleBackgroundRequestsFactory(eventName, waitToCollect = 300, timeoutMs = 1500, processFn = null) {
+  #broadcastFromServerAndGatherResponsesFromExtensionsInOneFactory(
+    eventName,
+    waitToCollect = 300,
+    timeoutMs = 1500,
+    processFn = null
+  ) {
     return async function (sendData = {}) {
       return new Promise((resolve, reject) => {
         const wrappers = new Map();
@@ -322,5 +283,10 @@ export class WebSocketConnectionRegistry {
   /**
    * Fetching from server info about all opened tabs in the browser
    */
-  allTabs = this.#serverToMultipleBackgroundRequestsFactory("allTabs", 300, 1500, this.#processTabs);
+  allTabs = this.#broadcastFromServerAndGatherResponsesFromExtensionsInOneFactory(
+    "allTabs",
+    300,
+    1500,
+    this.#processTabs
+  );
 }
