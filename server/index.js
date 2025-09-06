@@ -10,7 +10,7 @@ import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
 import serveIndex from "serve-index";
-import { WebSocketConnectionRegistry, sendEvent } from "./WebSocketConnectionRegistry.js";
+import { WebSocketConnectionRegistry, broadcast } from "./WebSocketConnectionRegistry.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -117,7 +117,7 @@ if (socket) {
 
     console.log(JSON.stringify({ endpoint: "/broadcast", event, payload: typeof payload, tab, delay }, null, 2));
 
-    connectionRegistry.sendEvent(event, payload, tab, delay);
+    connectionRegistry.broadcast(event, payload, tab, delay);
 
     res.json({ message: "Event sent" });
   });

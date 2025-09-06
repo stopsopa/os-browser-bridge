@@ -4,7 +4,7 @@ import { WebSocket } from "ws";
  * This is probably one of the most important function here because it is sending event to the plugin in it's expected format
  * Rest of surrounding code is just abstraction for the purpose of reusable implementation
  */
-export function sendEvent(ws, event, payload, tab = null, delay = 0) {
+export function broadcast(ws, event, payload, tab = null, delay = 0) {
   if (ws.readyState === WebSocket.OPEN) {
     if (typeof tab !== "string") {
       tab = "";
@@ -124,9 +124,9 @@ export class WebSocketConnectionRegistry {
     this.connections.forEach(callback);
   }
 
-  sendEvent(event, payload, tab = null, delay = 0) {
+  broadcast(event, payload, tab = null, delay = 0) {
     this.connections.forEach((ws) => {
-      sendEvent(ws, event, payload, tab, delay);
+      broadcast(ws, event, payload, tab, delay);
     });
   }
 
@@ -270,7 +270,7 @@ export class WebSocketConnectionRegistry {
       });
 
       // After we have attached all listeners, broadcast the request so we don't miss quick responses
-      this.sendEvent(eventName, data);
+      this.broadcast(eventName, data);
     });
   }
 }
