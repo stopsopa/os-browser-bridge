@@ -45,10 +45,8 @@ if (socket) {
   wss.on("connection", async (ws, req) => {
     const browserInfo = await connectionRegistry.add(ws, req);
 
-    const timestamp = new Date().toISOString().slice(0, 19).replace("T", " ");
-
     console.log(
-      `${timestamp} Client connected with ID: ${browserInfo?.name}_${
+      `${now()} Client connected with ID: ${browserInfo?.name}_${
         browserInfo?.browserId
       }, Total connections: ${connectionRegistry.size()}`
     );
@@ -75,9 +73,9 @@ if (socket) {
      */
     ws.on("close", () => {
       connectionRegistry.remove(ws);
-      const timestamp = new Date().toISOString().slice(0, 19).replace("T", " ");
+
       console.log(
-        `${timestamp} Client disconnected: ${browserInfo?.name}_${
+        `${now()} Client disconnected: ${browserInfo?.name}_${
           browserInfo?.browserId
         }, Total connections: ${connectionRegistry.size()}`
       );
@@ -153,3 +151,7 @@ Server listening on:
 
 `);
 });
+
+function now() {
+  return new Date().toISOString().slice(0, 19).replace("T", " ");
+}
