@@ -160,7 +160,7 @@ async function connectWebSocket() {
     // Emit connecting status
     broadcastConnectionStatus(false, { state: "connecting", reconnectAttempts });
 
-    const encodedBrowserInfo = base64EncodeUtf8(JSON.stringify(browserInfo));
+    const encodedBrowserInfo = base64EncodeUtf8(JSON.stringify(browserInfo || null));
     ws = new WebSocket(`${WS_SERVER_URL}?browser=${encodedBrowserInfo}`);
 
     ws.addEventListener("open", () => {
@@ -181,6 +181,9 @@ async function connectWebSocket() {
       },
     };
 
+    /**
+     * Messages incomming from node.js server
+     */
     ws.addEventListener("message", async (e) => {
       const { event, tab, rawJson } = splitOnce(e.data);
 
@@ -189,7 +192,10 @@ async function connectWebSocket() {
         try {
           const data = await events[event]();
 
-          ws.send(JSON.stringify(data));
+          /**
+           * Sending response back to node.js server
+           */
+          ws.send(JSON.stringify(data || null));
         } catch (e) {
           error("Failed to gather tab ids to send back to server", e);
         }

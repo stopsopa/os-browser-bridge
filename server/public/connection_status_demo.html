@@ -35,7 +35,7 @@
       // Listen for connection status events
       window.addEventListener("os_browser_bridge_connection_status", (event) => {
         const timeString = new Date().toLocaleTimeString();
-        const line = `time: ${timeString}, event.detail: ${JSON.stringify(event.detail)}`;
+        const line = `time: ${timeString}, event.detail: ${JSON.stringify(event.detail || null)}`;
 
         pre.innerText = line + "\n" + pre.innerText;
       });

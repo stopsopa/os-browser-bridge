@@ -9,16 +9,13 @@ export function sendEvent(ws, event, payload, tab = null, delay = 0) {
     if (typeof tab !== "string") {
       tab = "";
     }
+
     ws.send(
-      event +
-        "::" +
-        tab +
-        "::" +
-        JSON.stringify({
-          event,
-          delay,
-          payload,
-        })
+      `${event}::${tab}::${JSON.stringify({
+        event,
+        delay,
+        payload,
+      })}`
     );
     return true;
   }
@@ -31,6 +28,17 @@ export function sendEvent(ws, event, payload, tab = null, delay = 0) {
 export class WebSocketConnectionRegistry {
   constructor() {
     this.connections = new Set();
+    this.events = new Map();
+    /**
+     * [function]: eventName
+     *
+     * key is function event
+     * value is the name of the event
+     *
+     * So in order to unregister event you have to hold the reference to the function
+     *
+     * .on() function will also return function which once triggered will unregister the event
+     */
   }
 
   async add(ws, req) {
@@ -66,6 +74,7 @@ export class WebSocketConnectionRegistry {
       throw e;
     }
 
+    this.#addBinding(ws);
     this.connections.add(ws);
 
     return {
@@ -74,7 +83,39 @@ export class WebSocketConnectionRegistry {
     };
   }
 
+  on(eventName, callback) {
+    this.events.set(callback, eventName);
+    return () => {
+      this.events.delete(callback);
+    };
+  }
+  off(callback) {
+    this.events.delete(callback);
+  }
+  #addBinding(ws) {
+    ws.on("message", (data, isBinary) => {
+      if (isBinary) return;
+
+      try {
+        const parsed = JSON.parse(data);
+
+        if (!parsed?.event) {
+          return;
+        }
+
+        this.events.forEach((eventName, callback) => {
+          if (parsed.event === eventName) {
+            callback(data, isBinary);
+          }
+        });
+      } catch (_) {
+        return; // ignore non-json control messages
+      }
+    });
+  }
+
   remove(ws) {
+    ws.removeAllListeners();
     this.connections.delete(ws);
   }
 
@@ -242,7 +283,9 @@ export class WebSocketConnectionRegistry {
 
         const onMessage = (data, isBinary) => {
           if (isBinary) return;
+
           let parsed;
+
           try {
             parsed = JSON.parse(data);
           } catch (_) {
@@ -257,7 +300,7 @@ export class WebSocketConnectionRegistry {
         setTimeout(() => {
           let tmp = collected;
           if (typeof processFn === "function") {
-            tmp = this.#processTabs(tmp);
+            tmp = processFn(tmp);
           }
 
           resolve(tmp);

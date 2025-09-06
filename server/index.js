@@ -39,6 +39,9 @@ if (socket) {
   let wss = new WebSocketServer({ server });
   const connectionRegistry = new WebSocketConnectionRegistry();
 
+  /**
+   * Block registering/unregistering ws connections vvvvvvvvvvvvvvvvv
+   */
   wss.on("connection", async (ws, req) => {
     const { connectionId, browserInfo } = await connectionRegistry.add(ws, req);
 
@@ -74,6 +77,9 @@ if (socket) {
       console.log(`${timestamp} Client disconnected: ${connectionId}, Total connections: ${connectionRegistry.size()}`);
     });
   });
+  /**
+   * Block registering/unregistering ws connections ^^^^^^^^^^^^^^^^
+   */
 
   /**
    * curl http://localhost:8080/allTabs | jq
@@ -83,6 +89,8 @@ if (socket) {
 
     res.json(data);
   });
+
+  // connectionRegistry.on('');
 
   /**
    * Sends to all tabs, doesn't collect response
