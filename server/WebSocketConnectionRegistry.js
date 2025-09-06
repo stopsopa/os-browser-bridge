@@ -234,7 +234,7 @@ export class WebSocketConnectionRegistry {
 
       let collected = [];
 
-      const onMessage = (ws, data, isBinary) => {
+      const onMessage = (ws /*** work then here */, data, isBinary) => {
         if (isBinary) return;
 
         let parsed;

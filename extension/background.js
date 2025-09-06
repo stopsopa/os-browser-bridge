@@ -23,6 +23,8 @@ const MAX_RECONNECT_DELAY = 5000; // Maximum delay of 5 seconds
 let browserName = "Unknown",
   browserId = "Unknown";
 
+const browserInfo = await getBrowserInfo();
+
 // Detect browser name once, then initiate the first connection
 (async () => {
   try {
@@ -154,9 +156,6 @@ async function connectWebSocket() {
   }
 
   try {
-
-    const browserInfo = await getBrowserInfo();
-
     // Emit connecting status
     broadcastConnectionStatus(false, { state: "connecting", reconnectAttempts });
 
@@ -172,7 +171,6 @@ async function connectWebSocket() {
     const events = {
       allTabs: async () => {
         const tabs = await chrome.tabs.query({});
-        const browserInfo = await getBrowserInfo();
 
         return {
           event: "allTabs",
@@ -206,6 +204,43 @@ async function connectWebSocket() {
       // Default behaviour – forward whatever came from the server to the tabs
       broadcastToTabs(rawJson, tab);
     });
+
+    // bind here
+    ///////////////////////////////
+    //  Bind tab change events  //
+    ///////////////////////////////
+    // Ensure listeners are registered only once across reconnects
+    if (typeof window.__osbb_tabListenersInitialized === "undefined") {
+      window.__osbb_tabListenersInitialized = true;
+
+      const sendAllTabsUpdate = (tabEvent) => {
+        return async () => {
+          try {
+            // Send only if socket is open
+            if (ws && ws.readyState === WebSocket.OPEN) {
+              const tabs = await chrome.tabs.query({});
+
+              ws.send(
+                JSON.stringify({
+                  event: tabEvent,
+                  payload: { browserInfo, tabs },
+                })
+              );
+            }
+          } catch (e) {
+            error("Failed to send tab update to server", e);
+          }
+        };
+      };
+
+      // List of tab-related Chrome events we want to monitor
+      const tabEvents = ["ononCreated", "onRemoved", "onUpdated", "onActivated", "onReplaced", "onAttached"];
+
+      tabEvents.forEach((tabEvent) => chrome.tabs[tabEvent].addListener(sendAllTabsUpdate(tabEvent)));
+    }
+    ///////////////////////////////
+    //  End tab change bindings  //
+    ///////////////////////////////
 
     ws.addEventListener("close", (event) => {
       // Emit disconnected status
