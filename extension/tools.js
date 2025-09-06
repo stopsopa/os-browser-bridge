@@ -18,21 +18,21 @@ export function splitOnce(str, delimiter = "::", special = "Event") {
     throw new Error(`splitOnce ${special}: Delimiter "${delimiter}" not found in string`);
   }
 
-  const event = str.slice(0, index);
+  const eventName = str.slice(0, index);
 
   let rawJson = str.slice(index + delimiter.length);
 
   let tab = null;
 
   if (special === "Event") {
-    if (!event.length) {
+    if (!eventName.length) {
       throw new Error(`splitOnce ${special}: cannot be empty`);
     }
 
-    ({ event: tab, rawJson } = splitOnce(rawJson, delimiter, "Tab"));
+    ({ eventName: tab, rawJson } = splitOnce(rawJson, delimiter, "Tab"));
   }
 
-  return { event, tab, rawJson };
+  return { eventName, tab, rawJson };
 }
 
 export function decodeJson(rawJson) {
