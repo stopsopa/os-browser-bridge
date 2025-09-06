@@ -43,12 +43,14 @@ if (socket) {
    * Block registering/unregistering ws connections vvvvvvvvvvvvvvvvv
    */
   wss.on("connection", async (ws, req) => {
-    const { connectionId, browserInfo } = await connectionRegistry.add(ws, req);
+    const browserInfo = await connectionRegistry.add(ws, req);
 
     const timestamp = new Date().toISOString().slice(0, 19).replace("T", " ");
 
     console.log(
-      `${timestamp} Client connected with ID: ${connectionId}, Total connections: ${connectionRegistry.size()}`
+      `${timestamp} Client connected with ID: ${browserInfo?.name}_${
+        browserInfo?.browserId
+      }, Total connections: ${connectionRegistry.size()}`
     );
 
     /**
@@ -74,7 +76,11 @@ if (socket) {
     ws.on("close", () => {
       connectionRegistry.remove(ws);
       const timestamp = new Date().toISOString().slice(0, 19).replace("T", " ");
-      console.log(`${timestamp} Client disconnected: ${connectionId}, Total connections: ${connectionRegistry.size()}`);
+      console.log(
+        `${timestamp} Client disconnected: ${browserInfo?.name}_${
+          browserInfo?.browserId
+        }, Total connections: ${connectionRegistry.size()}`
+      );
     });
   });
   /**

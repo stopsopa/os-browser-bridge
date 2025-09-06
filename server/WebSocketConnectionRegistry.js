@@ -44,10 +44,8 @@ export class WebSocketConnectionRegistry {
   async add(ws, req) {
     // Try to get a more "official" connection identifier
     // console.log(ws);
-    let connectionId = `${ws._socket.remoteAddress}:${ws._socket.remotePort}`;
 
     let browserInfo = {};
-
     // Extract browser info sent via query parameter
     try {
       const searchParams = new URLSearchParams(req.url.split("?")[1]);
@@ -57,17 +55,11 @@ export class WebSocketConnectionRegistry {
       if (browserInfoRawEncoded) {
         try {
           const browserInfoRaw = Buffer.from(browserInfoRawEncoded, "base64").toString("utf-8");
-          browserInfo = JSON.parse(browserInfoRaw);
+          ws.browserInfo = browserInfo = JSON.parse(browserInfoRaw);
         } catch (e) {
           console.warn("Failed to decode browser info from client:", e);
         }
       }
-
-      ws.browserInfo = browserInfo;
-
-      connectionId = `${browserInfo?.name}_${browserInfo.browserId}${connectionId}`;
-
-      ws.connectionId = connectionId;
     } catch (e) {
       e.message = `WebSocketConnectionRegistry.add() failed to parse browser info from client: ${e.message}`;
 
@@ -77,10 +69,7 @@ export class WebSocketConnectionRegistry {
     this.#addBinding(ws);
     this.connections.add(ws);
 
-    return {
-      connectionId,
-      browserInfo,
-    };
+    return browserInfo;
   }
 
   on(eventName, callback) {
@@ -222,7 +211,7 @@ export class WebSocketConnectionRegistry {
    * Emits event against all ws and then waits for incomming event from all of them by the same name
    * Gives waitToCollect time for responses to arrive, combines them and formulates response
    * All wrapped in promise
-   * 
+   *
    * WARNING: keep in mind that this event is designed to only reach background.js - no further
    */
   broadcastFromServerToBackgroundAndGatherResponsesFromExtensionsInOneResponse(eventName, data, options = {}) {
@@ -245,7 +234,7 @@ export class WebSocketConnectionRegistry {
 
       let collected = [];
 
-      const onMessage = (data, isBinary) => {
+      const onMessage = (ws, data, isBinary) => {
         if (isBinary) return;
 
         let parsed;
@@ -273,8 +262,11 @@ export class WebSocketConnectionRegistry {
       timer = setTimeout(cleanup, timeoutMs);
 
       this.connections.forEach((ws) => {
-        wrappers.set(ws, onMessage);
-        ws.on("message", onMessage);
+        const callback = (data, isBinary) => {
+          return onMessage(ws, data, isBinary);
+        };
+        wrappers.set(ws, callback);
+        ws.on("message", callback);
       });
 
       // After we have attached all listeners, broadcast the request so we don't miss quick responses
