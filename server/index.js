@@ -85,7 +85,13 @@ if (socket) {
    * curl http://localhost:8080/allTabs | jq
    */
   app.get("/allTabs", async (req, res) => {
-    const data = await connectionRegistry.allTabs({ some: "data" });
+    const data = await connectionRegistry.broadcastFromServerAndGatherResponsesFromExtensionsInOneFactory(
+      "allTabs",
+      { some: "data" },
+      {
+        processFn: connectionRegistry.processTabs,
+      }
+    );
 
     res.json(data);
   });

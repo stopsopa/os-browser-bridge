@@ -198,7 +198,7 @@ export class WebSocketConnectionRegistry {
         "tab": "Brave_1628888873"
       },
    */
-  #processTabs(raw) {
+  processTabs(raw) {
     const tabs = {};
 
     for (const set of raw) {
@@ -218,75 +218,65 @@ export class WebSocketConnectionRegistry {
     return tabs;
   }
 
-  #broadcastFromServerAndGatherResponsesFromExtensionsInOneFactory(
-    eventName,
-    waitToCollect = 300,
-    timeoutMs = 1500,
-    processFn = null
-  ) {
-    return async function (sendData = {}) {
-      return new Promise((resolve, reject) => {
-        const wrappers = new Map();
-        let timer = null;
-
-        const cleanup = () => {
-          clearTimeout(timer);
-          this.connections.forEach((ws) => {
-            const fn = wrappers.get(ws);
-            if (fn) {
-              ws.off("message", fn);
-            }
-          });
-          reject(new Error(`${eventName}() timeout`));
-        };
-
-        let collected = [];
-
-        const onMessage = (data, isBinary) => {
-          if (isBinary) return;
-
-          let parsed;
-
-          try {
-            parsed = JSON.parse(data);
-          } catch (_) {
-            return; // ignore non-json control messages
-          }
-
-          if (parsed.event === eventName) {
-            collected.push(parsed.payload);
-          }
-        };
-
-        setTimeout(() => {
-          let tmp = collected;
-          if (typeof processFn === "function") {
-            tmp = processFn(tmp);
-          }
-
-          resolve(tmp);
-        }, waitToCollect);
-
-        timer = setTimeout(cleanup, timeoutMs);
-
-        this.connections.forEach((ws) => {
-          wrappers.set(ws, onMessage);
-          ws.on("message", onMessage);
-        });
-
-        // After we have attached all listeners, broadcast the request so we don't miss quick responses
-        this.sendEvent(eventName, sendData);
-      });
-    };
-  }
-
   /**
-   * Fetching from server info about all opened tabs in the browser
+   * Emits event against all ws and then waits for incomming event from all of them by the same name
+   * Gives waitToCollect time for responses to arrive, combines them and formulates response
+   * All wrapped in promise
    */
-  allTabs = this.#broadcastFromServerAndGatherResponsesFromExtensionsInOneFactory(
-    "allTabs",
-    300,
-    1500,
-    this.#processTabs
-  );
+  broadcastFromServerAndGatherResponsesFromExtensionsInOneFactory(eventName, data, options = {}) {
+    const { waitToCollect = 300, timeoutMs = 1500, processFn = null } = options;
+
+    return new Promise((resolve, reject) => {
+      const wrappers = new Map();
+      let timer = null;
+
+      const cleanup = () => {
+        clearTimeout(timer);
+        this.connections.forEach((ws) => {
+          const fn = wrappers.get(ws);
+          if (fn) {
+            ws.off("message", fn);
+          }
+        });
+        reject(new Error(`${eventName}() timeout`));
+      };
+
+      let collected = [];
+
+      const onMessage = (data, isBinary) => {
+        if (isBinary) return;
+
+        let parsed;
+
+        try {
+          parsed = JSON.parse(data);
+        } catch (_) {
+          return; // ignore non-json control messages
+        }
+
+        if (parsed.event === eventName) {
+          collected.push(parsed.payload);
+        }
+      };
+
+      setTimeout(() => {
+        let tmp = collected;
+        if (typeof processFn === "function") {
+          tmp = processFn(tmp);
+        }
+
+        resolve(tmp);
+      }, waitToCollect);
+
+      timer = setTimeout(cleanup, timeoutMs);
+
+      this.connections.forEach((ws) => {
+        wrappers.set(ws, onMessage);
+        ws.on("message", onMessage);
+      });
+
+      // After we have attached all listeners, broadcast the request so we don't miss quick responses
+      this.sendEvent(eventName, data);
+    });
+  }
 }
