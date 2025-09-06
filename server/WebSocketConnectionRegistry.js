@@ -1,7 +1,7 @@
 import { WebSocket } from "ws";
 
 /**
- * This is probably most important function here because it is sending event to the plugin in it's expected format
+ * This is probably one of the most important function here because it is sending event to the plugin in it's expected format
  * Rest of surrounding code is just abstraction for the purpose of reusable implementation
  */
 export function sendEvent(ws, event, payload, tab = null, delay = 0) {
@@ -222,8 +222,10 @@ export class WebSocketConnectionRegistry {
    * Emits event against all ws and then waits for incomming event from all of them by the same name
    * Gives waitToCollect time for responses to arrive, combines them and formulates response
    * All wrapped in promise
+   * 
+   * WARNING: keep in mind that this event is designed to only reach background.js - no further
    */
-  broadcastFromServerAndGatherResponsesFromExtensionsInOneFactory(eventName, data, options = {}) {
+  broadcastFromServerToBackgroundAndGatherResponsesFromExtensionsInOneResponse(eventName, data, options = {}) {
     const { waitToCollect = 300, timeoutMs = 1500, processFn = null } = options;
 
     return new Promise((resolve, reject) => {
