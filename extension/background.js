@@ -325,6 +325,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+/**
+ * Observe how often ws connections are closing
+ * Browser seems to interrupt the background process for background.js after 3 minutes
+ * 3 minutes after reloading chrome extension
+ * after 3 minute it will stop for 30 seconds and run for 30 and over and over again
+ * 2025-09-05 01:59:33 Client disconnected: Chrome_::1:52549, Total connections: 2
+ * 2025-09-05 01:59:33 Client disconnected: Chromium_::1:52548, Total connections: 1
+ * 2025-09-05 01:59:33 Client disconnected: Brave_::1:52547, Total connections: 0
+ * 2025-09-05 02:00:03 Client connected with ID: Chrome_::1:52814, Total connections: 1
+ * 2025-09-05 02:00:03 Client connected with ID: Chromium_::1:52815, Total connections: 2
+ * 2025-09-05 02:00:03 Client connected with ID: Brave_::1:52816, Total connections: 3
+ * 2025-09-05 02:00:33 Client disconnected: Chrome_::1:52814, Total connections: 2
+ * 2025-09-05 02:00:33 Client disconnected: Chromium_::1:52815, Total connections: 1
+ * 2025-09-05 02:00:33 Client disconnected: Brave_::1:52816, Total connections: 0
+ * 2025-09-05 02:01:03 Client connected with ID: Chrome_::1:53058, Total connections: 1
+ * 2025-09-05 02:01:03 Client connected with ID: Chromium_::1:53059, Total connections: 2
+ * 2025-09-05 02:01:03 Client connected with ID: Brave_::1:53060, Total connections: 3
+ *
+ * Firing log("."); is important in every 25 sec
+ */
 // Keep service worker alive: create repeating alarm and respond to it
 chrome.runtime.onInstalled.addListener(() => {
   try {

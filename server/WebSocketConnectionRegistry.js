@@ -220,7 +220,7 @@ export class WebSocketConnectionRegistry {
   }
 
   async allTabs() {
-    return await this.broadcastFromServerToBackgroundAndGatherResponsesFromExtensionsInOneResponse(
+    return await this.#broadcastFromServerToBackgroundAndGatherResponsesFromExtensionsInOneResponse(
       "allTabs",
       {}, // { some: "data" },
       {
@@ -234,7 +234,7 @@ export class WebSocketConnectionRegistry {
    *
    * WARNING: keep in mind that this event is designed to only reach background.js - no further
    */
-  broadcastFromServerToBackgroundAndGatherResponsesFromExtensionsInOneResponse(eventName, data, options = {}) {
+  #broadcastFromServerToBackgroundAndGatherResponsesFromExtensionsInOneResponse(eventName, data, options = {}) {
     const { timeoutMs = 1500, processFn = null } = options;
 
     return new Promise((resolve, reject) => {
