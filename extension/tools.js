@@ -1,38 +1,39 @@
-export function splitOnce(str, delimiter = "::", special = "Event") {
-
-  if (typeof str !== "string") {
-    throw new TypeError("splitOnce ${special}: First argument must be a string");
+function _split(segment, delimiter, label) {
+  if (typeof segment !== "string") {
+    throw new TypeError(`splitOnce ${label}: First argument must be a string`);
   }
 
-  if (!str.length) {
-    throw new Error("splitOnce ${special}: String cannot be empty");
+  if (!segment.length) {
+    throw new Error(`splitOnce ${label}: String cannot be empty`);
   }
 
   if (typeof delimiter !== "string" || !delimiter.length) {
-    throw new TypeError("splitOnce ${special}: Delimiter must be a non-empty string");
+    throw new TypeError(`splitOnce ${label}: Delimiter must be a non-empty string`);
   }
 
-  const index = str.indexOf(delimiter);
+  const index = segment.indexOf(delimiter);
 
   if (index === -1) {
-    throw new Error(`splitOnce ${special}: Delimiter "${delimiter}" not found in string`);
+    throw new Error(`splitOnce ${label}: Delimiter "${delimiter}" not found in string`);
   }
 
-  const eventName = str.slice(0, index);
+  const firstSegment = segment.slice(0, index);
 
-  let rawJson = str.slice(index + delimiter.length);
+  const rest = segment.slice(index + delimiter.length);
 
-  let tab = null;
+  return { firstSegment, rest };
+}
 
-  if (special === "Event") {
-    if (!eventName.length) {
-      throw new Error(`splitOnce ${special}: cannot be empty`);
-    }
+export function splitOnce(str, delimiter = "::") {
+  const { firstSegment: event, rest: afterEvent } = _split(str, delimiter, "Event");
 
-    ({ eventName: tab, rawJson } = splitOnce(rawJson, delimiter, "Tab"));
+  if (!event.length) {
+    throw new Error("splitOnce Event: cannot be empty");
   }
 
-  return { eventName, tab, rawJson };
+  const { firstSegment: tab, rest } = _split(afterEvent, delimiter, "Tab");
+
+  return { event, tab, rawJson: rest };
 }
 
 export function decodeJson(rawJson) {

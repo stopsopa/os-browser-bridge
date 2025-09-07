@@ -1,6 +1,6 @@
 import { splitOnce } from "./tools.js";
 
-let debug = false;
+let debug = true;
 function error() {
   if (debug) {
     console.error("background.js", ...arguments);
@@ -182,6 +182,7 @@ async function connectWebSocket() {
       allTabs: async () => {
         const tabs = await chrome.tabs.query({});
 
+        debugger;
         return {
           event: "allTabs",
           payload: { browserInfo, tabs },
@@ -195,6 +196,7 @@ async function connectWebSocket() {
     ws.addEventListener("message", async (e) => {
       const { event, tab, rawJson } = splitOnce(e.data);
 
+      debugger;
       // If the server requests the list of all tab IDs, respond with them instead of / in addition to broadcasting.
       if (events[event]) {
         try {

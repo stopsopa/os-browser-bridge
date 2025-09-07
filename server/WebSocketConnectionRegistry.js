@@ -1,5 +1,17 @@
 import { WebSocket } from "ws";
 
+const debug = true;
+function log(...args) {
+  if (debug) {
+    console.log("WebSocketConnectionRegistry: ", ...args);
+  }
+}
+
+function error(...args) {
+  if (debug) {
+    console.error("WebSocketConnectionRegistry: ", ...args);
+  }
+}
 /**
  * This is probably one of the most important function here because it is sending event to the plugin in it's expected format
  * Rest of surrounding code is just abstraction for the purpose of reusable implementation
@@ -10,13 +22,13 @@ export function broadcast(ws, event, payload, tab = null, delay = 0) {
       tab = "";
     }
 
-    ws.send(
-      `${event}::${tab}::${JSON.stringify({
-        event,
-        delay,
-        payload,
-      })}`
-    );
+    const msg = `${event}::${tab}::${JSON.stringify({
+      event,
+      delay,
+      payload,
+    })}`;
+
+    ws.send(msg);
     return true;
   }
   return false;
@@ -209,13 +221,12 @@ export class WebSocketConnectionRegistry {
 
   /**
    * Emits event against all ws and then waits for incomming event from all of them by the same name
-   * Gives waitToCollect time for responses to arrive, combines them and formulates response
    * All wrapped in promise
    *
    * WARNING: keep in mind that this event is designed to only reach background.js - no further
    */
   broadcastFromServerToBackgroundAndGatherResponsesFromExtensionsInOneResponse(eventName, data, options = {}) {
-    const { waitToCollect = 300, timeoutMs = 1500, processFn = null } = options;
+    const { timeoutMs = 1500, processFn = null } = options;
 
     return new Promise((resolve, reject) => {
       const wrappers = new Map();
@@ -234,8 +245,15 @@ export class WebSocketConnectionRegistry {
 
       let collected = [];
 
+      // clonse set this.connections
+      const wsIncomming = new Set(this.connections);
+
       const onMessage = (ws /*** work then here */, data, isBinary) => {
         if (isBinary) return;
+
+        if (!wsIncomming.has(ws)) {
+          return;
+        }
 
         let parsed;
 
@@ -246,18 +264,26 @@ export class WebSocketConnectionRegistry {
         }
 
         if (parsed.event === eventName) {
+          wsIncomming.delete(ws);
           collected.push(parsed.payload);
+
+          if (wsIncomming.size === 0) {
+            let tmp = collected;
+
+            if (typeof processFn === "function") {
+              tmp = processFn(tmp);
+            }
+
+            resolve(tmp);
+
+            // reject() called internally but that is ok because resolve was called first just above
+            cleanup();
+          }
+        } else {
+          const otherEvent = parsed.event;
+          log("other event: ", otherEvent);
         }
       };
-
-      setTimeout(() => {
-        let tmp = collected;
-        if (typeof processFn === "function") {
-          tmp = processFn(tmp);
-        }
-
-        resolve(tmp);
-      }, waitToCollect);
 
       timer = setTimeout(cleanup, timeoutMs);
 
@@ -269,7 +295,6 @@ export class WebSocketConnectionRegistry {
         ws.on("message", callback);
       });
 
-      // After we have attached all listeners, broadcast the request so we don't miss quick responses
       this.broadcast(eventName, data);
     });
   }
