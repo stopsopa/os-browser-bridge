@@ -212,42 +212,40 @@ async function connectWebSocket() {
       broadcastToTabs(rawJson, tab);
     });
 
-    // // bind here
-    // ///////////////////////////////
-    // //  Bind tab change events  //
-    // ///////////////////////////////
-    // // Ensure listeners are registered only once across reconnects
-    // if (typeof window.__osbb_tabListenersInitialized === "undefined") {
-    //   window.__osbb_tabListenersInitialized = true;
+    // bind here
+    ///////////////////////////////
+    //  Bind tab change events  //
+    ///////////////////////////////
 
-    //   const sendAllTabsUpdate = (tabEvent) => {
-    //     return async () => {
-    //       try {
-    //         // Send only if socket is open
-    //         if (ws && ws.readyState === WebSocket.OPEN) {
-    //           const tabs = await chrome.tabs.query({});
+    const sendAllTabsUpdate = (tabEvent) => {
+      return async () => {
+        try {
+          // Send only if socket is open
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            const tabs = await chrome.tabs.query({});
 
-    //           ws.send(
-    //             JSON.stringify({
-    //               event: tabEvent,
-    //               payload: { browserInfo, tabs },
-    //             })
-    //           );
-    //         }
-    //       } catch (e) {
-    //         error("Failed to send tab update to server", e);
-    //       }
-    //     };
-    //   };
+            sendToNode(
+              JSON.stringify({
+                event: tabEvent,
+                payload: { browserInfo, tabs },
+              })
+            );
+          }
+        } catch (e) {
+          error("Failed to send tab update to server", e);
+        }
+      };
+    };
 
-    //   // List of tab-related Chrome events we want to monitor
-    //   const tabEvents = ["ononCreated", "onRemoved", "onUpdated", "onActivated", "onReplaced", "onAttached"];
+    // List of tab-related Chrome events we want to monitor
+    // const tabEvents = ["onCreated", "onRemoved", "onUpdated", "onActivated", "onReplaced", "onAttached"];
+    const tabEvents = ["onCreated", "onRemoved", "onUpdated", "onActivated", "onReplaced", "onAttached"];
 
-    //   tabEvents.forEach((tabEvent) => chrome.tabs[tabEvent].addListener(sendAllTabsUpdate(tabEvent)));
-    // }
-    // ///////////////////////////////
-    // //  End tab change bindings  //
-    // ///////////////////////////////
+    tabEvents.forEach((tabEvent) => chrome.tabs[tabEvent].addListener(sendAllTabsUpdate(tabEvent)));
+
+    ///////////////////////////////
+    //  End tab change bindings  //
+    ///////////////////////////////
 
     ws.addEventListener("close", (event) => {
       // Emit disconnected status
