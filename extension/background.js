@@ -168,6 +168,10 @@ async function connectWebSocket() {
     const encodedBrowserInfo = base64EncodeUtf8(JSON.stringify(browserInfo || null));
     ws = new WebSocket(`${WS_SERVER_URL}?browser=${encodedBrowserInfo}`);
 
+    function sendToNode(...args) {
+      ws.send(...args);
+    }
+
     ws.addEventListener("open", () => {
       reconnectAttempts = 0; // Reset reconnect attempts on successful connection
       // Emit connected status
@@ -196,10 +200,7 @@ async function connectWebSocket() {
         try {
           const data = await events[event]();
 
-          /**
-           * Sending response back to node.js server
-           */
-          ws.send(JSON.stringify(data || null));
+          sendToNode(JSON.stringify(data || null));
         } catch (e) {
           error("Failed to gather tab ids to send back to server", e);
         }
