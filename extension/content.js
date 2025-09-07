@@ -3,6 +3,10 @@ function error() {
   console.error("content.js", ...arguments);
 }
 
+/**
+ * Logs from here just observer on the page you loaded in Console, next to normal 
+ * console.log() from regular page in browser
+ */
 function log() {
   console.log("content.js", ...arguments);
 }
@@ -82,4 +86,24 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
       error("Error sending ping to background script, pong not received:", e);
     }
   }, 25000); // Ping every 25 seconds
+
+  //////////////////////////////////////////////////////////////
+  //  Listen for events fired by the page and forward to BG   //
+  //////////////////////////////////////////////////////////////
+
+  window.addEventListener("fornodejs", (evt) => {
+    log('fornodejs')
+    try {
+      const jsonString = JSON.stringify({ event: "fornodejs", payload: evt.detail || null });
+
+      debugger;
+      log('jsonString', jsonString)
+      chrome.runtime.sendMessage({
+        type: "os_browser_bridge_event_to_node",
+        jsonString,
+      });
+    } catch (e) {
+      error("Failed to forward 'fornodejs' event to background:", e);
+    }
+  });
 }

@@ -7,6 +7,11 @@ function error() {
   }
 }
 
+/**
+ * To see those : https://i.imgur.com/Klg5HfW.png
+ * also use 
+ *   debugger; in here - that will stop in the debugger you open using insturction above
+ */
 function log() {
   if (debug) {
     console.log("background.js", ...arguments);
