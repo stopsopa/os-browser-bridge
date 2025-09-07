@@ -219,6 +219,15 @@ export class WebSocketConnectionRegistry {
     return tabs;
   }
 
+  async allTabs() {
+    return await this.broadcastFromServerToBackgroundAndGatherResponsesFromExtensionsInOneResponse(
+      "allTabs",
+      {}, // { some: "data" },
+      {
+        processFn: this.processTabs,
+      }
+    );
+  }
   /**
    * Emits event against all ws and then waits for incomming event from all of them by the same name
    * All wrapped in promise
