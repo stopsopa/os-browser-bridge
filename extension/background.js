@@ -21,9 +21,8 @@ const MAX_RECONNECT_DELAY = 5000; // Maximum delay of 5 seconds
 
 // Store detected browser name globally so it can be reused on reconnects
 let browserName = "Unknown",
-  browserId = "Unknown";
-
-const browserInfo = await getBrowserInfo();
+  browserId = "Unknown",
+  browserInfo = {};
 
 // Detect browser name once, then initiate the first connection
 (async () => {
@@ -38,6 +37,13 @@ const browserInfo = await getBrowserInfo();
   } catch (_) {
     // keep default "Unknown" on failure
   }
+
+  try {
+    browserInfo = await getBrowserInfo();
+  } catch (_) {
+    // keep default "Unknown" on failure
+  }
+
   connectWebSocket();
 })();
 
