@@ -4,17 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Connection Status Demo - OS Browser Bridge</title>
-    <style>
-      * {
-        font-family: monaco, Consolas, Lucida Console, monospace;
-        font-size: 12px;
-      }
-    </style>
+    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <div class="container">
       <a href="../">UP</a>
-      <h2>Detecting information if OS Browser Bridge is connected to the server</h2>
+      <p class="help">Detecting information if OS Browser Bridge is connected to the server</p>
       <pre>
         window.addEventListener("os_browser_bridge_connection_status", (event) => {
             const { 
