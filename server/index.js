@@ -103,6 +103,10 @@ if (socket) {
       tab, // "c08c4190:1817282308"
       delay,
     } = data;
+
+    // figure out to send to one tab or to all tabs or to list or tabs
+    // maybe I could inject with the event information about available tabs ...
+    // but actually no: sending event back and just forwarding browserId:tabId will do
     
     console.log("fornodejs", data);
   });
