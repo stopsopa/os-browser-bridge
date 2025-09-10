@@ -1,21 +1,29 @@
 // Prevent duplicate injection side-effects when the script is reinjected
+// Use var so re-declaration on reinjection does not throw "Identifier 'debug' has already been declared"
+var debug = typeof debug === "undefined" ? true : debug;
 function error() {
-  console.error("content.js", ...arguments);
+  if (debug) {
+    console.error("content.js", ...arguments);
+  }
 }
 
 /**
- * Logs from here just observer on the page you loaded in Console, next to normal 
+ * Logs from here just observer on the page you loaded in Console, next to normal
  * console.log() from regular page in browser
  */
 function log() {
-  console.log("content.js", ...arguments);
+  if (debug) {
+    console.log("content.js", ...arguments);
+  }
 }
 
+log("debug: ", debug, "condition", !window.__osBrowserBridgeContentScriptInjected);
 if (!window.__osBrowserBridgeContentScriptInjected) {
   window.__osBrowserBridgeContentScriptInjected = true;
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.type === "os_browser_bridge_event") {
+    // debugger;
+    if (message.type === "os_browser_bridge") {
       try {
         let dataFromJson = null;
 
@@ -41,10 +49,10 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
 
         if (delay) {
           setTimeout(() => {
-            window.dispatchEvent(new CustomEvent(event, { detail: payload }));
+            document.dispatchEvent(new CustomEvent(event, { detail: payload }));
           }, delay);
         } else {
-          window.dispatchEvent(new CustomEvent(event, { detail: payload }));
+          document.dispatchEvent(new CustomEvent(event, { detail: payload }));
         }
       } catch (e) {
         error("Error parsing message payload:", e);
@@ -55,7 +63,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
         const { isConnected, details, timestamp } = message;
 
         // Dispatch a custom event for connection status
-        window.dispatchEvent(
+        document.dispatchEvent(
           new CustomEvent("os_browser_bridge_connection_status", {
             detail: {
               isConnected,
@@ -91,17 +99,19 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
   //  Listen for events fired by the page and forward to BG   //
   //////////////////////////////////////////////////////////////
 
-  window.addEventListener("fornodejs", (evt) => {
-    log('fornodejs')
+  document.documentElement.addEventListener("os_browser_bridge", (e) => {
     try {
-      const jsonString = JSON.stringify({ event: "fornodejs", payload: evt.detail || null });
+      const { event, payload } = e.detail;
 
-      debugger;
-      log('jsonString', jsonString)
-      chrome.runtime.sendMessage({
-        type: "os_browser_bridge_event_to_node",
-        jsonString,
-      });
+      const message = {
+        type: "transport_from_content_js_to_background_js",
+        event,
+        payload,
+      };
+
+      log("transport_from_content_js_to_background_js: ", message);
+
+      chrome.runtime.sendMessage(message);
     } catch (e) {
       error("Failed to forward 'fornodejs' event to background:", e);
     }

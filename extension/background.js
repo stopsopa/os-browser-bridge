@@ -9,7 +9,7 @@ function error() {
 
 /**
  * To see those : https://i.imgur.com/Klg5HfW.png
- * also use 
+ * also use
  *   debugger; in here - that will stop in the debugger you open using insturction above
  */
 function log() {
@@ -157,6 +157,12 @@ async function broadcastConnectionStatus(isConnected, details = {}) {
   }
 }
 
+function sendToNodeFactory(ws) {
+  return function sendToNode(data) {
+    ws.send(JSON.stringify(data));
+  };
+}
+
 async function connectWebSocket() {
   // Always clean up any previous socket before starting a new one
   cleanupWebSocket();
@@ -173,9 +179,7 @@ async function connectWebSocket() {
     const encodedBrowserInfo = base64EncodeUtf8(JSON.stringify(browserInfo || null));
     ws = new WebSocket(`${WS_SERVER_URL}?browser=${encodedBrowserInfo}`);
 
-    function sendToNode(...args) {
-      ws.send(...args);
-    }
+    const sendToNode = sendToNodeFactory(ws);
 
     ws.addEventListener("open", () => {
       reconnectAttempts = 0; // Reset reconnect attempts on successful connection
@@ -183,11 +187,13 @@ async function connectWebSocket() {
       broadcastConnectionStatus(true, { state: "connected", reconnectAttempts: 0 });
     });
 
+    // after some thoughts it seems that this method is only useful for allTabs special event
+    // because there is no other scenario where after event from node
+    // it makes sens to respond immediately back to node.js
     const events = {
       allTabs: async () => {
         const tabs = await chrome.tabs.query({});
 
-        debugger;
         return {
           event: "allTabs",
           payload: { browserInfo, tabs },
@@ -201,13 +207,12 @@ async function connectWebSocket() {
     ws.addEventListener("message", async (e) => {
       const { event, tab, rawJson } = splitOnce(e.data);
 
-      debugger;
       // If the server requests the list of all tab IDs, respond with them instead of / in addition to broadcasting.
       if (events[event]) {
         try {
           const data = await events[event]();
 
-          sendToNode(JSON.stringify(data || null));
+          sendToNode(data || null);
         } catch (e) {
           error("Failed to gather tab ids to send back to server", e);
         }
@@ -231,12 +236,10 @@ async function connectWebSocket() {
           if (ws && ws.readyState === WebSocket.OPEN) {
             const tabs = await chrome.tabs.query({});
 
-            sendToNode(
-              JSON.stringify({
-                event: tabEvent,
-                payload: { browserInfo, tabs },
-              })
-            );
+            sendToNode({
+              event: tabEvent,
+              payload: { browserInfo, tabs },
+            });
           }
         } catch (e) {
           error("Failed to send tab update to server", e);
@@ -263,6 +266,38 @@ async function connectWebSocket() {
         reason: event.reason,
       });
       scheduleReconnect();
+    });
+
+    const events2 = {
+      ping: (message, sender, sendResponse) => {
+        sendResponse({ type: "pong" });
+      },
+      transport_from_content_js_to_background_js: (message, sender, sendResponse) => {
+        try {
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            const tab = sender?.tab || "";
+
+            message.tab = `${browserId}:${tab?.id}`;
+
+            debugger;
+            sendToNode(message);
+          } else {
+            console.warn("WebSocket not connected, cannot forward event to server");
+          }
+        } catch (e) {
+          error("Failed to forward event to node server:", e);
+        }
+      },
+    };
+
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      const event = events2[message.type];
+
+      if (event) {
+        return event(message, sender, sendResponse);
+      }
+
+      log("event not handled", message.type);
     });
 
     // ws.addEventListener("error", (error) => {
@@ -322,13 +357,6 @@ chrome.runtime.onInstalled.addListener(() => {
 
 // Reinjection when the service worker starts up (e.g. after a reload).
 injectContentScriptIntoAllTabs();
-
-// Keep the service worker alive by responding to periodic messages
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === "ping") {
-    sendResponse({ type: "pong" });
-  }
-});
 
 /**
  * Observe how often ws connections are closing

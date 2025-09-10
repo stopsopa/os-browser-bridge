@@ -74,26 +74,37 @@ if (socket) {
     res.json(data);
   });
 
-  // connectionRegistry.on('');
-
   /**
    * Sends to all tabs, doesn't collect response
    * (you can specify tab id to send to specific tab)
    *
-   * curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"test"}}' "http://localhost:8080/broadcast?event=myevent" | jq
-   * curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"test"}}' "http://localhost:8080/broadcast?event=myevent&delay=1000" | jq
+   * curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"test"}}' "http://localhost:8080/just_broadcast?event=myevent" | jq
+   * curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"test"}}' "http://localhost:8080/just_broadcast?event=myevent&delay=1000" | jq
    *
    * To send to particular tab:
-   * curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"test"}}' "http://localhost:8080/broadcast?event=myevent&tab=1817280703" | jq
+   * curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"test"}}' "http://localhost:8080/just_broadcast?event=myevent&tab=1817280703" | jq
    */
-  app.post("/broadcast", async (req, res) => {
+  app.post("/just_broadcast", async (req, res) => {
     const { event, payload, tab, delay } = { ...req.query, ...req.body };
 
-    console.log(JSON.stringify({ endpoint: "/broadcast", event, payload: typeof payload, tab, delay }, null, 2));
+    console.log(JSON.stringify({ endpoint: "/just_broadcast", event, payload: typeof payload, tab, delay }, null, 2));
 
     connectionRegistry.broadcast(event, payload, tab, delay);
 
     res.json({ message: "Event sent" });
+  });
+
+  connectionRegistry.on("fornodejs", (data) => {
+    debugger;
+
+    const {
+      event, // 'fornodejs'
+      payload, // { message: "Hello from browser" }
+      tab, // "c08c4190:1817282308"
+      delay,
+    } = data;
+    
+    console.log("fornodejs", data);
   });
 }
 

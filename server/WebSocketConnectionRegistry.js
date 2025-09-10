@@ -106,7 +106,7 @@ export class WebSocketConnectionRegistry {
 
         this.events.forEach((eventName, callback) => {
           if (parsed.event === eventName) {
-            callback(data, isBinary);
+            callback(parsed);
           }
         });
       } catch (_) {

@@ -4,31 +4,37 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Regular Page - OS Browser Bridge Event Listener</title>
-    <style>
-      * {
-        font-family: monaco, Consolas, Lucida Console, monospace;
-        font-size: 12px;
-      }
-    </style>
+    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <div class="container">
       <a href="../">UP</a>
-      <h1>Testing subscribing to events forwarded from server via OS Browser Bridge</h1>
+      <p class="help">
+        This page is supposed to simulate a regular page emmiting and consuming events from our plugin. By default it is
+        listening to "myevent" event and prints the result in &lt;pre&gt; tag. But also it is emmitting "fornodejs"
+        event when button is clicked to the server.
+      </p>
+
       <pre>
-        window.addEventListener("myevent", (event) => {
-            const { 
-              ...
-            } = event.detail;
-        });
+        document.documentElement.dispatchEvent(
+          new CustomEvent("os_browser_bridge", {
+            detail: {
+              event: "fornodejs",
+              payload: { message: "Hello from browser" },
+            },
+          })
+        );
       </pre>
+
       <button id="clear">Clear</button>
+      <button id="send">Send Event to node.js</button>
       <pre id="logs"></pre>
     </div>
 
     <script>
       const pre = document.querySelector("#logs");
       const clear = document.querySelector("#clear");
+      const send = document.querySelector("#send");
 
       window.addEventListener("myevent", (event) => {
         const timeString = new Date().toLocaleTimeString();
@@ -40,6 +46,18 @@
 
       clear.addEventListener("click", () => {
         pre.innerText = "";
+      });
+
+      send.addEventListener("click", () => {
+        console.log("send");
+        document.documentElement.dispatchEvent(
+          new CustomEvent("os_browser_bridge", {
+            detail: {
+              event: "fornodejs",
+              payload: { message: "Hello from browser" },
+            },
+          })
+        );
       });
     </script>
   </body>
