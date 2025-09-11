@@ -141,7 +141,7 @@ async function broadcastConnectionStatus(isConnected, details = {}) {
           isConnected,
           details,
           timestamp: Date.now(),
-          tabId: tab.id,
+          tabId: `browserId_${browserId}_tabId_${tab.id}`,
         });
       } catch (error) {
         if (error.message.includes("Could not establish connection. Receiving end does not exist.")) {
@@ -280,7 +280,7 @@ async function connectWebSocket() {
           if (ws && ws.readyState === WebSocket.OPEN) {
             const tab = sender?.tab || "";
 
-            message.tab = `${browserId}:${tab?.id}`;
+            message.tab = `browserId_${browserId}_tabId_${tab?.id}`;
 
             debugger;
             sendToNode(message);

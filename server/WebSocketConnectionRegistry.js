@@ -208,7 +208,7 @@ export class WebSocketConnectionRegistry {
 
         tab.browserId = set?.browserInfo?.browserId;
 
-        const id = `${set?.browserInfo?.name}_tab:${tab.id}`;
+        const id = `browserId_${set?.browserInfo?.browserId}_tabId_${tab.id}`;
 
         tab.tab = id;
 
