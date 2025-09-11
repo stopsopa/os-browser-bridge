@@ -27,6 +27,10 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
       try {
         let dataFromJson = null;
 
+        const tabId = message.tabId;
+
+        // log('tabId', tabId);
+
         try {
           dataFromJson = JSON.parse(message.jsonString);
         } catch (e) {

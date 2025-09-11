@@ -102,8 +102,6 @@ async function broadcastToTabs(jsonString, tabs) {
       }
 
       tabs = tabs.filter(Boolean);
-
-      tabs = tabs.map((d) => parseInt(d, 10));
     } else {
       notTabSpecific = true;
       tabs = [];
@@ -113,12 +111,12 @@ async function broadcastToTabs(jsonString, tabs) {
 
     for (const tab of list) {
       try {
-        if (notTabSpecific || tabs.includes(tab.id)) {
-          const tabId = tab.id;
+        const tabId = `browserId_${browserId}_tabId_${tab.id}`;
 
+        if (notTabSpecific || tabs.includes(tabId)) {
           const message = { type: "os_browser_bridge_event_backgrond_script_to_content_script", jsonString, tabId };
 
-          await chrome.tabs.sendMessage(tabId, message);
+          await chrome.tabs.sendMessage(tab.id, message);
         }
       } catch (error) {
         if (error.message.includes("Could not establish connection. Receiving end does not exist.")) {

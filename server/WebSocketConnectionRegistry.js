@@ -28,7 +28,7 @@ export function broadcast(ws, event, payload, tab = null, delay = 0) {
       payload,
     })}`;
 
-    ws.send(msg);
+    ws.send(msg); // this will send to background.js and trigger function broadcastToTabs()
     return true;
   }
   return false;
