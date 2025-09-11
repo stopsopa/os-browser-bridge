@@ -23,7 +23,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // debugger;
-    if (message.type === "os_browser_bridge_event") {
+    if (message.type === "os_browser_bridge_event_backgrond_script_to_content_script") {
       try {
         let dataFromJson = null;
 

@@ -20,7 +20,7 @@ Project Plan: Node.js Server to Browser Tab Event Emission
     *   Establish a WebSocket connection to the Node.js server.
     *   Listen for events from the Node.js server.
     *   When an event is received from the server, broadcast it to all active browser tabs using `chrome.tabs.sendMessage` (or `browser.tabs.sendMessage` for WebExtensions).
-    * let background.js emit event by name 'os_browser_bridge_event'
+    * let background.js emit event by name 'os_browser_bridge_event_backgrond_script_to_content_script'
 3.  **Content Script (`content.js`):**
     *   Inject this script into all active tabs (or specific URLs, depending on manifest settings).
     *   Listen for messages from the background script.

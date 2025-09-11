@@ -59,10 +59,10 @@ Server runs on `http://localhost:8080`
 - Injected into all web pages
 - Listens for messages from background script
 - Dispatches custom DOM events on `window` object
-- Event name: `os_browser_bridge_event`
+- Event name: `os_browser_bridge_event_backgrond_script_to_content_script`
 
 ### Web Pages
-- Listen for `os_browser_bridge_event` on `window`
+- Listen for `os_browser_bridge_event_backgrond_script_to_content_script` on `window`
 - Receive event data in `event.detail`
 - Can handle server events in any web application
 
@@ -120,13 +120,13 @@ Server runs on `http://localhost:8080`
 4. Web pages can filter by event type in their listeners
 
 ### Customizing Event Names
-- Change `os_browser_bridge_event` in content script and web pages
+- Change `os_browser_bridge_event_backgrond_script_to_content_script` in content script and web pages
 - Update background script message type if needed
 
 ### Adding New Test Pages
 - Add HTML files to `server/public/`
 - They'll automatically appear in directory listing
-- Include event listeners for `os_browser_bridge_event`
+- Include event listeners for `os_browser_bridge_event_backgrond_script_to_content_script`
 
 ## Dependencies
 

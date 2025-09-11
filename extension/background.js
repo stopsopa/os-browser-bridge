@@ -116,7 +116,7 @@ async function broadcastToTabs(jsonString, tabs) {
         if (notTabSpecific || tabs.includes(tab.id)) {
           const tabId = tab.id;
 
-          const message = { type: "os_browser_bridge_event", jsonString, tabId: tab.id };
+          const message = { type: "os_browser_bridge_event_backgrond_script_to_content_script", jsonString, tabId };
 
           await chrome.tabs.sendMessage(tabId, message);
         }
