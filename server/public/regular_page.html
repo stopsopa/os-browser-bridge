@@ -32,14 +32,18 @@
     </div>
 
     <script>
+      function log(...args) {
+        console.log("regular_page.html", ...args);
+      }
       const pre = document.querySelector("#logs");
       const clear = document.querySelector("#clear");
       const send = document.querySelector("#send");
 
-      window.addEventListener("myevent", (event) => {
+      document.addEventListener("myevent", (event) => {
         const timeString = new Date().toLocaleTimeString();
 
         const line = `time: ${timeString}, event: ${event.type}, detail: ${JSON.stringify(event.detail)}`;
+        log("myevent event:", line);
 
         pre.innerText = line + "\n" + pre.innerText;
       });

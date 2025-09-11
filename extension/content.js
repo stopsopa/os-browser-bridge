@@ -23,7 +23,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // debugger;
-    if (message.type === "os_browser_bridge") {
+    if (message.type === "os_browser_bridge_event") {
       try {
         let dataFromJson = null;
 
@@ -49,10 +49,23 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
 
         if (delay) {
           setTimeout(() => {
-            document.dispatchEvent(new CustomEvent(event, { detail: payload }));
+            document.dispatchEvent(
+              new CustomEvent("myevent", {
+                detail: payload,
+                bubbles: true, // ←--- enable bubbling
+                composed: true, // optional: crosses shadow-DOM boundaries
+              })
+            );
           }, delay);
         } else {
-          document.dispatchEvent(new CustomEvent(event, { detail: payload }));
+
+          document.dispatchEvent(
+            new CustomEvent("myevent", {
+              detail: payload,
+              bubbles: true, // ←--- enable bubbling
+              composed: true, // optional: crosses shadow-DOM boundaries
+            })
+          );
         }
       } catch (e) {
         error("Error parsing message payload:", e);
