@@ -11,7 +11,7 @@
       <a href="../">UP</a>
       <p class="help">Detecting information if OS Browser Bridge is connected to the server</p>
       <pre>
-        window.addEventListener("os_browser_bridge_connection_status", (event) => {
+        document.addEventListener("os_browser_bridge_connection_status", (event) => {
             const { 
                 isConnected: boolean, 
                 details: object, 
@@ -28,7 +28,7 @@
       const clear = document.querySelector("#clear");
 
       // Listen for connection status events
-      window.addEventListener("os_browser_bridge_connection_status", (event) => {
+      document.addEventListener("os_browser_bridge_connection_status", (event) => {
         const timeString = new Date().toLocaleTimeString();
         const line = `time: ${timeString}, event.detail: ${JSON.stringify(event.detail || null)}`;
 

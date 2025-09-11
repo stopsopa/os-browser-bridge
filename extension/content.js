@@ -83,6 +83,8 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
               details,
               timestamp,
             },
+            bubbles: true, // ←--- enable bubbling
+            composed: true, // optional: crosses shadow-DOM boundaries
           })
         );
       } catch (e) {
