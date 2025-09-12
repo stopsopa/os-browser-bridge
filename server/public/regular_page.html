@@ -27,7 +27,8 @@
       </pre>
 
       <button id="clear">Clear</button>
-      <button id="send">Send Event to node.js</button>
+      <button id="send">Send Event to node.js - response from node.js</button>
+      <button id="identify">Identify this tab - response from background.js</button>
       <pre id="logs"></pre>
     </div>
 
@@ -38,6 +39,7 @@
       const pre = document.querySelector("#logs");
       const clear = document.querySelector("#clear");
       const send = document.querySelector("#send");
+      const identify = document.querySelector("#identify");
 
       document.addEventListener("myevent", (event) => {
         const timeString = new Date().toLocaleTimeString();
@@ -53,7 +55,7 @@
       });
 
       send.addEventListener("click", () => {
-        console.log("send");
+        console.log("fornodejs event sent");
         document.documentElement.dispatchEvent(
           new CustomEvent("os_browser_bridge", {
             detail: {
@@ -63,6 +65,30 @@
           })
         );
       });
+
+      {
+        /**
+         * Block demonstraging how to get id of this tab
+         * Pay attention that we are registering event listener in document
+         * and only then dispatching event
+         */
+        document.addEventListener("os_browser_bridge_identify_tab", (event) => {
+          const timeString = new Date().toLocaleTimeString();
+
+          const line = `time: ${timeString}, event: ${event.type}, detail: ${event.detail}`;
+          log("myevent event:", line);
+
+          pre.innerText = line + "\n" + pre.innerText;
+        });
+        identify.addEventListener("click", () => {
+          console.log("identify_tab event sent");
+          document.documentElement.dispatchEvent(
+            new CustomEvent("os_browser_bridge", {
+              detail: { event: "identify_tab" },
+            })
+          );
+        });
+      }
     </script>
   </body>
 </html>

@@ -62,7 +62,6 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
             );
           }, delay);
         } else {
-
           document.dispatchEvent(
             new CustomEvent("myevent", {
               detail: payload,
@@ -117,7 +116,6 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
   //////////////////////////////////////////////////////////////
   //  Listen for events fired by the page and forward to BG   //
   //////////////////////////////////////////////////////////////
-
   document.documentElement.addEventListener("os_browser_bridge", (e) => {
     try {
       const { event, payload } = e.detail;
@@ -128,9 +126,18 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
         payload,
       };
 
-      log("transport_from_content_js_to_background_js: ", message);
-
-      chrome.runtime.sendMessage(message);
+      chrome.runtime.sendMessage(message, (reply) => {
+        if (typeof reply.event !== "string" || !reply.event.trim()) {
+          return error("reply.event is not a string or is empty", reply);
+        }
+        document.dispatchEvent(
+          new CustomEvent(reply.event, {
+            detail: reply.detail,
+            bubbles: true, // ←--- enable bubbling
+            composed: true, // optional: crosses shadow-DOM boundaries
+          })
+        );
+      });
     } catch (e) {
       error("Failed to forward 'fornodejs' event to background:", e);
     }
