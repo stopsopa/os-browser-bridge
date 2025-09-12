@@ -54,7 +54,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
         if (delay) {
           setTimeout(() => {
             document.dispatchEvent(
-              new CustomEvent("myevent", {
+              new CustomEvent(event, {
                 detail: payload,
                 bubbles: true, // ←--- enable bubbling
                 composed: true, // optional: crosses shadow-DOM boundaries
@@ -63,7 +63,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
           }, delay);
         } else {
           document.dispatchEvent(
-            new CustomEvent("myevent", {
+            new CustomEvent(event, {
               detail: payload,
               bubbles: true, // ←--- enable bubbling
               composed: true, // optional: crosses shadow-DOM boundaries
@@ -126,26 +126,32 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
         payload,
       };
 
-      // for identify_tab we will handle response from background 
-      // and forward to browser the server the response
-      // defining reply function will require the sendResponse() in background.js to be used
-      // otherwise it will emmit error:
-      //  Unchecked runtime.lastError: The message port closed before a response was received.
-      if (event === "identify_tab") {
-        chrome.runtime.sendMessage(message, (reply) => {
-          // log("incoming", reply);
+      switch (event) {
+        case "identify_tab": {
+          // for identify_tab we will handle response from background
+          // and forward to browser the server the response
+          // defining reply function will require the sendResponse() in background.js to be used
+          // otherwise it will emmit error:
+          //  Unchecked runtime.lastError: The message port closed before a response was received.
 
-          const customEventInit = {
-            detail: reply.detail,
-            bubbles: true,
-            composed: true,
-          };
+          chrome.runtime.sendMessage(message, (reply) => {
+            // log("incoming", reply);
 
-          document.dispatchEvent(new CustomEvent(reply.event, customEventInit));
-        });
-      } else {
-        // Fire-and-forget – no callback, so Chrome won't complain about a missing response.
-        chrome.runtime.sendMessage(message);
+            const customEventInit = {
+              detail: reply.detail,
+              bubbles: true,
+              composed: true,
+            };
+
+            document.dispatchEvent(new CustomEvent(reply.event, customEventInit));
+          });
+          break;
+        }
+        default: {
+          // Fire-and-forget – no callback, so Chrome won't complain about a missing response.
+          chrome.runtime.sendMessage(message);
+          break;
+        }
       }
     } catch (e) {
       error("Failed to forward 'os_browser_bridge' event to background:", e);

@@ -144,3 +144,68 @@ Server runs on `http://localhost:8080`
 - WebSocket connection is unencrypted (ws://)
 - Content script injection is limited to specified URLs
 - Consider HTTPS/WSS for production use
+
+
+# examples
+
+## from browser
+
+### browser -> server
+
+browser side:
+
+```js
+
+document.documentElement.dispatchEvent(
+  new CustomEvent("os_browser_bridge", {
+    detail: {
+      event: "fornodejs",
+      payload: { message: "Hello from browser" },
+    },
+  })
+);
+
+```
+
+server handler:
+
+```js
+
+connectionRegistry.on("fornodejs", (data) => {
+  const {
+    event, // 'fornodejs'
+    payload, // { message: "Hello from browser" }
+    tab, // "c08c4190:1817282308"
+    delay,
+  } = data;
+});
+    
+```
+
+## from server
+
+server side:
+
+```js
+
+const event = 'myevent',
+payload = {mydata: 'data'},
+tab = `browserId_dd596c87_tabId_1628889998` // or undefined
+delay = 1000 // in ms, or undefined
+
+connectionRegistry.broadcast(event, payload, tab, delay);
+
+```
+
+browser side:
+
+```js
+
+document.addEventListener("myevent", (event) => {
+  const { 
+    type, // 'myevent'
+    detail // {def: 'test'}
+  } = event;
+});
+
+```

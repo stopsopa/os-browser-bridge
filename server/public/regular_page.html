@@ -42,9 +42,16 @@
       const identify = document.querySelector("#identify");
 
       document.addEventListener("myevent", (event) => {
+        debugger;
+        const {
+          type, // 'myevent'
+          detail, // {def: 'test'}
+        } = event;
+
         const timeString = new Date().toLocaleTimeString();
 
-        const line = `time: ${timeString}, event: ${event.type}, detail: ${JSON.stringify(event.detail)}`;
+        const line = `time: ${timeString}, event: ${type}, detail: ${JSON.stringify(detail)}`;
+
         log("myevent event:", line);
 
         pre.innerText = line + "\n" + pre.innerText;
