@@ -175,7 +175,7 @@ connectionRegistry.on("fornodejs", (data) => {
   const {
     event, // 'fornodejs'
     payload, // { message: "Hello from browser" }
-    tab, // "c08c4190:1817282308"
+    tab, // "browserId_dd596c87_tabId_1628889999"
     delay,
   } = data;
 });
@@ -207,5 +207,53 @@ document.addEventListener("myevent", (event) => {
     detail // {def: 'test'}
   } = event;
 });
+
+```
+
+get all tabs:
+
+```js
+
+app.get("/allTabs", async (req, res) => {
+  const data = await connectionRegistry.allTabs();
+
+  res.json(data);
+});
+
+/*
+{
+  "browserId_dd596c87_tabId_1628889998": {
+    "active": false,
+    "audible": false,
+    "autoDiscardable": true,
+    "discarded": false,
+    "favIconUrl": "",
+    "frozen": false,
+    "groupId": 1432078859,
+    "height": 805,
+    "highlighted": false,
+    "id": 1628889998,
+    "incognito": false,
+    "index": 0,
+    "lastAccessed": 1757718184717.026,
+    "mutedInfo": {
+      "muted": false
+    },
+    "pinned": false,
+    "selected": false,
+    "splitViewId": -1,
+    "status": "complete",
+    "title": "Extensions",
+    "url": "chrome://extensions/?errors=gpgnclhecipnnfikdcomhedaokikifoo",
+    "width": 1304,
+    "windowId": 1628889929,
+    "name": "Brave",
+    "__": "__",
+    "browserId": "dd596c87",
+    "tab": "browserId_dd596c87_tabId_1628889998"
+  },
+  ...
+}  
+  */
 
 ```

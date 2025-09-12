@@ -105,7 +105,7 @@ if (socket) {
     const {
       event, // 'fornodejs'
       payload, // { message: "Hello from browser" }
-      tab, // "c08c4190:1817282308"
+      tab, // "browserId_dd596c87_tabId_1628889999"
       delay,
     } = data;
 
