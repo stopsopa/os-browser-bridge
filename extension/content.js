@@ -126,17 +126,23 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
         payload,
       };
 
+      // log("before sending to background.js", message);
+
       chrome.runtime.sendMessage(message, (reply) => {
+        // log("incomming", reply);
         if (typeof reply.event !== "string" || !reply.event.trim()) {
           return error("reply.event is not a string or is empty", reply);
         }
-        document.dispatchEvent(
-          new CustomEvent(reply.event, {
-            detail: reply.detail,
-            bubbles: true, // ←--- enable bubbling
-            composed: true, // optional: crosses shadow-DOM boundaries
-          })
-        );
+        if (!Number.isInteger(reply?.detail?.id)) {
+          return error("reply.id is not a number", reply);
+        }
+        const message = {
+          detail: reply.detail,
+          bubbles: true, // ←--- enable bubbling
+          composed: true, // optional: crosses shadow-DOM boundaries
+        };
+        // log("sending back to browser from content.js:", message);
+        document.dispatchEvent(new CustomEvent(reply.event, message));
       });
     } catch (e) {
       error("Failed to forward 'fornodejs' event to background:", e);

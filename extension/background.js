@@ -282,13 +282,17 @@ async function connectWebSocket() {
 
             const tabId = `browserId_${browserId}_tabId_${tab?.id}`;
 
+            // log("incomming from content.js", message);
+
             if (message?.event === "identify_tab") {
+              const reply = { event: "os_browser_bridge_identify_tab", detail: { tabId, ...message?.payload } };
+              // log("reply", reply);
               /**
                * I can send string or object at any shape.
                * It will be transported to content.js as such.
                * But I want to stick to the convention of passing object with event and detail properties.
                */
-              sendResponse({ event: "os_browser_bridge_identify_tab", detail: tabId });
+              sendResponse(reply);
 
               return;
             }
