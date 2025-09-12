@@ -286,7 +286,7 @@ async function connectWebSocket() {
 
             if (message?.event === "identify_tab") {
               const reply = { event: "os_browser_bridge_identify_tab", detail: { tabId, ...message?.payload } };
-              // log("reply", reply);
+              log("reply", reply);
               /**
                * I can send string or object at any shape.
                * It will be transported to content.js as such.

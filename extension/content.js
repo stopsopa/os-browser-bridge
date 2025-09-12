@@ -126,26 +126,29 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
         payload,
       };
 
-      // log("before sending to background.js", message);
+      // for identify_tab we will handle response from background 
+      // and forward to browser the server the response
+      // defining reply function will require the sendResponse() in background.js to be used
+      // otherwise it will emmit error:
+      //  Unchecked runtime.lastError: The message port closed before a response was received.
+      if (event === "identify_tab") {
+        chrome.runtime.sendMessage(message, (reply) => {
+          // log("incoming", reply);
 
-      chrome.runtime.sendMessage(message, (reply) => {
-        // log("incomming", reply);
-        if (typeof reply.event !== "string" || !reply.event.trim()) {
-          return error("reply.event is not a string or is empty", reply);
-        }
-        if (!Number.isInteger(reply?.detail?.id)) {
-          return error("reply.id is not a number", reply);
-        }
-        const message = {
-          detail: reply.detail,
-          bubbles: true, // ←--- enable bubbling
-          composed: true, // optional: crosses shadow-DOM boundaries
-        };
-        // log("sending back to browser from content.js:", message);
-        document.dispatchEvent(new CustomEvent(reply.event, message));
-      });
+          const customEventInit = {
+            detail: reply.detail,
+            bubbles: true,
+            composed: true,
+          };
+
+          document.dispatchEvent(new CustomEvent(reply.event, customEventInit));
+        });
+      } else {
+        // Fire-and-forget – no callback, so Chrome won't complain about a missing response.
+        chrome.runtime.sendMessage(message);
+      }
     } catch (e) {
-      error("Failed to forward 'fornodejs' event to background:", e);
+      error("Failed to forward 'os_browser_bridge' event to background:", e);
     }
   });
 }
