@@ -68,7 +68,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
 
   chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     // debugger;
-    if (message.type === "os_browser_bridge_event_backgrond_script_to_content_script") {
+    if (message.type === "os_browser_bridge_event_background_script_to_content_script") {
       try {
         let dataFromJson = null;
 
@@ -163,8 +163,8 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
         payload,
       };
 
-      switch (event) {
-        case "identify_tab": {
+      switch (true) {
+        case event === "identify_tab": {
           // for identify_tab we will handle response from background
           // and forward to browser the server the response
           // defining reply function will require the sendResponse() in background.js to be used
@@ -184,6 +184,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
           });
           break;
         }
+        case event.startsWith("other_tabs:"):
         default: {
           // Fire-and-forget – no callback, this is mode where we send events one way to background.js
           // but not waiting for response from background.js

@@ -1,1 +1,121 @@
-need demo for tabs events - created - deleted tab and so on
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Regular Page - OS Browser Bridge Event Listener</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <a href="../">UP</a>
+      <p class="tip">
+        <span class="status"></span>
+        Send event to othr tabs <br />
+        To all other tabs in the same browser <br />
+        or to all tabs across all browsers if extension is connected to the server
+      </p>
+      <p class="info">
+        When it comes to testing it is good idea to test sending evnets to other tabs when server is connected to see if
+        it is propagating to different browser tabs and also when server is not connected to see if it is propagating to
+        all tabs in the current browser
+      </p>
+      <p class="tip">
+        when it comes to testing when not connected use 'node --watch --env-file=.env server/index.js' server mode to
+        DON'T run socket this way you can still load http://localhost:8080/tabs_events.html but extensions will be
+        offline.
+      </p>
+
+      <pre>
+        document.documentElement.dispatchEvent(
+          new CustomEvent("os_browser_bridge", {
+            detail: {
+              event: "other_tabs:broadcast",
+              payload: { message: "Hello other tabs" },
+            },
+          })
+        );
+      </pre>
+
+      <button id="clear">Clear</button>
+      <button id="broadcast">Send events to other tabs</button>
+      <pre id="logs"></pre>
+    </div>
+
+    <script type="module">
+      function log(...args) {
+        console.log("tabs_events.html", ...args);
+      }
+      function updateStatus(status) {
+        const statusElement = document.querySelector(".status");
+        statusElement.classList.remove("connected", "disconnected", "connecting", "connection_failed");
+        statusElement.classList.add(status);
+      }
+
+      document.addEventListener("os_browser_bridge_connection_status", (event) => {
+        const {
+          type, // "os_browser_bridge_connection_status"
+          detail: {
+            isConnected, // boolean
+            details: {
+              state, // "connected"
+            },
+          },
+        } = event;
+
+        updateStatus(state);
+      });
+
+      const pre = document.querySelector("#logs");
+      const clear = document.querySelector("#clear");
+      const broadcast = document.querySelector("#broadcast");
+
+      document.addEventListener("myevent", (event) => {
+        const {
+          type, // 'myevent'
+          detail, // {def: 'test'}
+        } = event;
+
+        const timeString = new Date().toLocaleTimeString();
+
+        const line = `time: ${timeString}, event: ${type}, detail: ${JSON.stringify(detail)}`;
+
+        log("myevent event:", line);
+
+        pre.innerText = line + "\n" + pre.innerText;
+      });
+
+      clear.addEventListener("click", () => {
+        pre.innerText = "";
+      });
+
+      document.addEventListener("other_tabs:broadcast", (event) => {
+        debugger;
+        const {
+          type, // 'myevent'
+          detail, // {def: 'test'}
+        } = event;
+
+        const timeString = new Date().toLocaleTimeString();
+
+        const line = `time: ${timeString}, event: ${type}, detail: ${JSON.stringify(detail)}`;
+
+        log("myevent event:", line);
+
+        pre.innerText = line + "\n" + pre.innerText;
+      });
+
+      broadcast.addEventListener("click", () => {
+        console.log("fornodejs event sent");
+        document.documentElement.dispatchEvent(
+          new CustomEvent("os_browser_bridge", {
+            detail: {
+              event: "other_tabs:broadcast",
+              payload: { message: "Hello other tabs" },
+            },
+          })
+        );
+      });
+    </script>
+  </body>
+</html>

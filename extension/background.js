@@ -80,8 +80,8 @@ let browserName = "Unknown",
 
         // log("incomming from content.js", message);
 
-        switch (message?.event) {
-          case "identify_tab": {
+        switch (true) {
+          case message?.event === "identify_tab": {
             const reply = {
               event: "os_browser_bridge_identify_tab",
               detail: { tabId, ...message?.payload, connected },
@@ -93,6 +93,28 @@ let browserName = "Unknown",
              * But I want to stick to the convention of passing object with event and detail properties.
              */
             sendResponse(reply);
+
+            return;
+          }
+          case message?.event?.startsWith("other_tabs:"): {
+            // debugger; // no connection
+            if (connected) {
+              const _debugger = "true";
+            } else {
+              const reply = {
+                event: message?.event,
+                detail: { tabId, ...message?.payload, connected },
+              };
+              // log("reply", reply);
+              /**
+               * I can send string or object at any shape.
+               * It will be transported to content.js as such.
+               * But I want to stick to the convention of passing object with event and detail properties.
+               */
+              // sendResponse(reply);
+
+              broadcastToTabs(JSON.stringify(reply), [], [tab?.id]);
+            }
 
             return;
           }
@@ -165,23 +187,37 @@ function cleanupWebSocket() {
   ws = null;
 }
 
-async function broadcastToTabs(jsonString, tabs) {
+/**
+ * @param {string | string[]} tabs
+ * @returns {string[]}
+ */
+function normalizeTabsList(tabs) {
+  if (tabs && typeof tabs !== "undefined") {
+    if (typeof tabs === "string") {
+      tabs = tabs.split(",");
+    }
+
+    if (!Array.isArray(tabs)) {
+      tabs = [tabs];
+    }
+
+    tabs = tabs.filter(Boolean);
+  } else {
+    tabs = [];
+  }
+
+  return tabs.map(String);
+}
+
+async function broadcastToTabs(jsonString, tabs, excludeTabs) {
   // https://developer.chrome.com/docs/extensions/reference/api/tabs
   try {
-    let notTabSpecific = false;
-    if (tabs && typeof tabs !== "undefined") {
-      if (typeof tabs === "string") {
-        tabs = tabs.split(",");
-      }
+    tabs = normalizeTabsList(tabs);
 
-      if (!Array.isArray(tabs)) {
-        tabs = [tabs];
-      }
+    excludeTabs = normalizeTabsList(excludeTabs);
 
-      tabs = tabs.filter(Boolean);
-    } else {
-      notTabSpecific = true;
-      tabs = [];
+    if (tabs.length > 0 && excludeTabs.length > 0) {
+      throw new Error("tabs and excludeTabs cannot be used together");
     }
 
     const list = await chrome.tabs.query({});
@@ -190,10 +226,27 @@ async function broadcastToTabs(jsonString, tabs) {
       try {
         const tabId = `browserId_${browserId}_tabId_${tab.id}`;
 
-        if (notTabSpecific || tabs.includes(tabId)) {
-          const message = { type: "os_browser_bridge_event_backgrond_script_to_content_script", jsonString, tabId };
+        const tabIdShort = String(tab.id);
 
-          await chrome.tabs.sendMessage(tab.id, message);
+        const message = { type: "os_browser_bridge_event_background_script_to_content_script", jsonString, somestuff: {dddd: 'data'}, tabId };
+
+        switch (true) {
+          case tabs.length > 0: {
+            if (tabs.includes(tabId) || tabs.includes(tabIdShort)) {
+              await chrome.tabs.sendMessage(tab.id, message);
+            }
+            break;
+          }
+          case excludeTabs.length > 0: {
+            if (!excludeTabs.includes(tabId) && !excludeTabs.includes(tabIdShort)) {
+              await chrome.tabs.sendMessage(tab.id, message);
+            }
+            break;
+          }
+          default: {
+            await chrome.tabs.sendMessage(tab.id, message);
+            break;
+          }
         }
       } catch (error) {
         if (error.message.includes("Could not establish connection. Receiving end does not exist.")) {
@@ -362,8 +415,8 @@ async function connectWebSocket() {
 
             // log("incomming from content.js", message);
 
-            switch (message?.event) {
-              case "identify_tab": {
+            switch (true) {
+              case message?.event === "identify_tab": {
                 // handle that not in the scope of the ws socket, this one can be handled independently
 
                 // const reply = { event: "os_browser_bridge_identify_tab", detail: { tabId, ...message?.payload } };
@@ -374,6 +427,25 @@ async function connectWebSocket() {
                 //  * But I want to stick to the convention of passing object with event and detail properties.
                 //  */
                 // sendResponse(reply);
+
+                return;
+              }
+              case message?.event?.startsWith("other_tabs:"): {
+                debugger; // connected
+                const reply = {
+                  event: message?.event,
+                  detail: { tabId, ...message?.payload, connected },
+                };
+                // log("reply", reply);
+                /**
+                 * I can send string or object at any shape.
+                 * It will be transported to content.js as such.
+                 * But I want to stick to the convention of passing object with event and detail properties.
+                 */
+                // sendResponse(reply);
+
+                // // here I would like to send the event to all other tabs
+                // broadcastToTabs(JSON.stringify(reply), tabId);
 
                 return;
               }
