@@ -55,6 +55,23 @@ let browserName = "Unknown",
     ping: (message, sender, sendResponse) => {
       sendResponse({ type: "pong" });
     },
+    // Provide current connection status immediately upon request from content script
+    get_connection_status: (message, sender, sendResponse) => {
+      try {
+        const tab = sender?.tab || {};
+        const tabId = `browserId_${browserId}_tabId_${tab?.id}`;
+
+        sendResponse({
+          type: "os_browser_bridge_connection_status",
+          isConnected: connected,
+          details: { state: connected ? "connected" : "disconnected" },
+          timestamp: Date.now(),
+          tabId,
+        });
+      } catch (e) {
+        error("Failed to provide connection status:", e);
+      }
+    },
     transport_from_content_js_to_background_js: (message, sender, sendResponse) => {
       try {
         const tab = sender?.tab || "";

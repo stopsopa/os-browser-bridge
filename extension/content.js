@@ -10,6 +10,9 @@ function error() {
 function emmitForBrowser(...args) {
   document.dispatchEvent(...args);
 }
+function emmitForBackground(...args) {
+  chrome.runtime.sendMessage(...args);
+}
 
 function wait(ms) {
   return new Promise((resolve) => {
@@ -30,6 +33,38 @@ function log() {
 log("debug: ", debug, "condition", !window.__osBrowserBridgeContentScriptInjected);
 if (!window.__osBrowserBridgeContentScriptInjected) {
   window.__osBrowserBridgeContentScriptInjected = true;
+
+  // Immediately request current connection status so the page can get initial status
+  (async () => {
+    try {
+      const reply = await new Promise((resolve) => {
+        try {
+          emmitForBackground({ type: "get_connection_status" }, (response) => {
+            resolve(response);
+          });
+        } catch (e) {
+          resolve(null);
+        }
+      });
+
+      if (reply && reply.type === "os_browser_bridge_connection_status") {
+        // Re-emit so the page can consume the same event interface
+        emmitForBrowser(
+          new CustomEvent("os_browser_bridge_connection_status", {
+            detail: {
+              isConnected: reply.isConnected,
+              details: reply.details,
+              timestamp: reply.timestamp,
+            },
+            bubbles: true,
+            composed: true,
+          })
+        );
+      }
+    } catch (e) {
+      error("Failed to get initial connection status:", e);
+    }
+  })();
 
   chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     // debugger;
@@ -101,7 +136,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
   // Keep the background script alive by sending periodic pings
   setInterval(async () => {
     try {
-      await chrome.runtime.sendMessage({ type: "ping" });
+      await emmitForBackground({ type: "ping" });
     } catch (e) {
       // Ignore the expected error that occurs when the extension background
       // context is momentarily unavailable (e.g., right after the extension
@@ -136,7 +171,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
           // otherwise it will emmit error:
           //  Unchecked runtime.lastError: The message port closed before a response was received.
 
-          chrome.runtime.sendMessage(message, (reply) => {
+          emmitForBackground(message, (reply) => {
             // log("incoming", reply);
 
             const customEventInit = {
@@ -152,7 +187,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
         default: {
           // Fire-and-forget – no callback, this is mode where we send events one way to background.js
           // but not waiting for response from background.js
-          chrome.runtime.sendMessage(message);
+          emmitForBackground(message);
           break;
         }
       }
