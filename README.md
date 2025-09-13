@@ -15,17 +15,21 @@ Node.js Server (WebSocket) → Chrome Extension (Background Script) → Content 
 ## Quick Start
 
 ### 1. Start the Server
+
 ```bash
-cd server
-npm install
-node index.js
+
+clone the repo
+cp .env.example .env
+(cd server && yarn install)
+SOCKET=1 node --watch --env-file=.env server/index.js
+
 ```
 Server runs on `http://localhost:8080`
 
 ### 2. Load the Chrome Extension
 1. Open Chrome and go to `chrome://extensions/`
 2. Enable "Developer mode" (top right toggle)
-3. Click "Load unpacked" and select the `extension/` folder
+3. Click "Load unpacked" and select the `extension/` folder from this repository
 4. The extension should appear in your extensions list
 
 ### 3. Test the System
@@ -37,47 +41,57 @@ Server runs on `http://localhost:8080`
 ## How It Works
 
 ### Server (`server/index.js`)
-- WebSocket server on port 8080
-- Emits events every 3 seconds with format:
-  ```json
-  {
-    "type": "myevent",
-    "timestamp": "2024-01-01T12:00:00.000Z",
-    "message": "Hello from server!"
-  }
-  ```
-- Serves static files from `public/` directory
+- launches WebSocket server on port 8080
+- Server can emmit events for the browsers tabs on any interaction with it
+- server can also subscribe to any event emmited in the browsers
+- For testing serves static files from `public/` directory
 - Shows directory listing at root path (no auto-index.html)
+- There is special library for server to help with creating server events for browsers tabs
+
+### Extension in general
+
+Extension in general is trying to maintain constant connection with the server
+and forwards to it all special events emmited via individual tab to the server and other way around.
+
+Extension can be installed in multiple browsers (chrome, brave, chromium) as long as it is chromium based browser.
+Also since all instances of this extension in no matter how many instances of chrome based browsers are trying to keep connection with our server, as long as those connections are maintaned, We can broadcast events from server to all of these browsers - to individual tabs or all tabs across all of these browsers.
+
+In this case server might serve (and in fact does that) as a central hub for communication between many tabs in many browsers.
 
 ### Extension Background Script (`extension/background.js`)
+
 - Connects to WebSocket server (`ws://localhost:8080`)
 - Listens for server messages
 - Broadcasts messages to all browser tabs via `chrome.tabs.sendMessage()`
 - Auto-reconnects if connection drops
 
 ### Extension Content Script (`extension/content.js`)
-- Injected into all web pages
+- Injected into all web pages (browser tabs)
 - Listens for messages from background script
-- Dispatches custom DOM events on `window` object
-- Event name: `os_browser_bridge_event_backgrond_script_to_content_script`
+- Dispatches custom DOM events on `document` object
 
 ### Web Pages
-- Listen for `os_browser_bridge_event_backgrond_script_to_content_script` on `window`
-- Receive event data in `event.detail`
-- Can handle server events in any web application
+From individual web pages (browser tabs) we can subscribe to events emmited on server forwarded by the plugin.
+We can also emmit events from the browser tab in js which can be attached to on the server
 
 ## File Structure
 ```
 ├── server/
-│   ├── index.js              # WebSocket server + static file server
-│   ├── package.json          # Node.js dependencies
+│   ├── index.js                     # Central server hub with WebSocket + static file server
+│   ├── package.json                 # Node.js dependencies
 │   └── public/
-│       ├── index.html        # Direct WebSocket test page
-│       └── regular_page.html # Extension event listener test page
+│       ├── index.html               # Direct WebSocket test page
+│       ├── ajax_to_server.html      # AJAX → server demo
+│       ├── connection_status_demo.html # Connection-status live view
+│       ├── regular_page.html        # Demo what's possible from regular user page
+│       └── style.css                # Shared page styles
 ├── extension/
-│   ├── manifest.json         # Extension configuration
-│   ├── background.js        # Background script (WebSocket client)
-│   └── content.js           # Content script (DOM event dispatcher)
+│   ├── manifest.json                # Extension configuration
+│   ├── background.js                # Background script (WebSocket client)
+│   ├── content.js                   # Content script (DOM event dispatcher)
+│   ├── tools.js                     # Helper utilities shared by scripts
+│   └── tools.test.js                # Unit tests for helper utilities
+├── .env.example                     # Sample environment variables
 └── README.md
 ```
 
