@@ -5,11 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Regular Page - OS Browser Bridge Event Listener</title>
     <link rel="stylesheet" href="style.css" />
+    <style>
+      .status {
+        width: 20px;
+      }
+    </style>
   </head>
   <body>
     <div class="container">
       <a href="../">UP</a>
-      <p class="help">
+      <p class="tip">
+        <span class="status"></span>
         This page is supposed to simulate a regular page emmiting and consuming events from our plugin. By default it is
         listening to "myevent" event and prints the result in &lt;pre&gt; tag. But also it is emmitting "fornodejs"
         event when button is clicked to the server.
@@ -30,12 +36,37 @@
       <button id="send">Send Event to node.js - response from node.js</button>
       <button id="identify">Identify this tab - response from background.js</button>
       <pre id="logs"></pre>
+      <input
+        onfocus="this.select()"
+        style="width: 90%"
+        value='curl -v -X POST -H "Content-Type: application/json" -d &#39;{"payload":{"def":"test"}}&#39; "http://localhost:8080/just_broadcast?event=myevent" | jq'
+      />
     </div>
 
-    <script>
+    <script type="module">
       function log(...args) {
         console.log("regular_page.html", ...args);
       }
+      function updateStatus(status) {
+        const statusElement = document.querySelector(".status");
+        statusElement.classList.remove("connected", "disconnected", "connecting", "connection_failed");
+        statusElement.classList.add(status);
+      }
+
+      document.addEventListener("os_browser_bridge_connection_status", (event) => {
+        const {
+          type, // "os_browser_bridge_connection_status"
+          detail: {
+            isConnected, // boolean
+            details: {
+              state, // "connected"
+            },
+          },
+        } = event;
+
+        updateStatus(state);
+      });
+
       const pre = document.querySelector("#logs");
       const clear = document.querySelector("#clear");
       const send = document.querySelector("#send");

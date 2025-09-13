@@ -5,39 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Connection Status Demo - OS Browser Bridge</title>
     <link rel="stylesheet" href="style.css" />
-    <style>
-      /* states: connection_failed, disconnected, connected, connecting */
-      .status {
-        background-color: gray;
-        border-radius: 100px;
-        display: inline-block;
-        width: 13px;
-        height: 13px;
-        margin-right: 10px;
-        vertical-align: middle;
 
-        &.connected {
-          background-color: green;
-        }
-        &.disconnected {
-          background-color: red;
-        }
-        &.connecting {
-          background-color: orange;
-        }
-        &.connection_failed {
-          background-color: darkred;
-        }
-      }
-    </style>
   </head>
   <body>
     <div class="container">
       <a href="../">UP</a>
-      <p class="help">
+      <p class="tip">browser subscribes to event 'os_browser_bridge_connection_status'</p>
+      <p class="info">
         <span class="status"></span>Detecting information if OS Browser Bridge is connected to the server
       </p>
-      <p class="help">
+      <p class="info">
         This is improved version of connection_status_demo.html. Here we can just subscribe to he event
         'os_browser_bridge_connection_status' which from now on is guaranteed to be emitted immediately after page is
         loaded
@@ -119,7 +96,7 @@
         const {
           type, // "os_browser_bridge_connection_status"
           detail: {
-            isConnected, // true
+            isConnected, // boolean
             details: {
               state, // "connected"
             },
@@ -142,7 +119,7 @@
         const {
           type, // "os_browser_bridge_connection_status"
           detail: {
-            isConnected, // true
+            isConnected, // boolean
             details: {
               state, // "connected"
             },

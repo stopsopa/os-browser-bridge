@@ -132,7 +132,7 @@ document.addEventListener("os_browser_bridge_connection_status", (event) => {
   const {
     type, // "os_browser_bridge_connection_status"
     detail: {
-      isConnected, // true
+      isConnected, // boolean
       details: { 
         state // "connected"
       },
