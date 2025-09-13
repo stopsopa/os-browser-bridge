@@ -130,3 +130,8 @@ export function processTabs(raw) {
 
   return tabs;
 }
+
+function browserAndTab(tab) {
+  const [, browserId, , tabId] = String(tab).split("_");
+  return { browserId, tabId };
+}
