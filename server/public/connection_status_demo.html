@@ -101,12 +101,13 @@
         statusElement.classList.remove("connected", "disconnected", "connecting", "connection_failed");
         statusElement.classList.add(status);
       }
-      window.updateStatus = updateStatus;
 
       let { connected, tabId } = await getWsStatus();
 
+      // set initial status after loading page
       updateStatus(connected ? "connected" : "disconnected");
 
+      // and then subscribe to any status changes
       document.addEventListener("os_browser_bridge_connection_status", (event) => {
         const {
           type, // "os_browser_bridge_connection_status"
@@ -120,7 +121,6 @@
 
         updateStatus(state);
       });
-
 
       /// --- above is universal, below is custom to this page
       /// --- above is universal, below is custom to this page
