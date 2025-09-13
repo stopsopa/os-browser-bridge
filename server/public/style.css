@@ -20,3 +20,51 @@ p.help {
   border-left: 0.25em solid #0969da;
   background-color: rgba(9, 105, 218, 0.1);
 }
+
+/* Callout variants */
+.note,
+.tip,
+.info,
+.important,
+.warning,
+.caution,
+.error {
+  margin: 16px 0;
+  padding: 0.6em 1em;
+  border-left: 0.25em solid;
+}
+
+.note {
+  border-left-color: #0969da;
+  background-color: rgba(9, 105, 218, 0.1);
+}
+
+.tip {
+  border-left-color: #1a7f37;
+  background-color: rgba(26, 127, 55, 0.1);
+}
+
+.info {
+  border-left-color: #1f6feb;
+  background-color: rgba(31, 111, 235, 0.1);
+}
+
+.important {
+  border-left-color: #8250df;
+  background-color: rgba(130, 80, 223, 0.1);
+}
+
+.warning {
+  border-left-color: #9a6700;
+  background-color: rgba(154, 103, 0, 0.1);
+}
+
+.caution {
+  border-left-color: #d29922;
+  background-color: rgba(210, 153, 34, 0.1);
+}
+
+.error {
+  border-left-color: #d1242f;
+  background-color: rgba(209, 36, 47, 0.1);
+}
