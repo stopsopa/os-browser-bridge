@@ -1,5 +1,7 @@
 import { splitOnce } from "./tools.js";
 
+let connected = false;
+
 let debug = true;
 function error() {
   if (debug) {
@@ -63,7 +65,10 @@ let browserName = "Unknown",
 
         switch (message?.event) {
           case "identify_tab": {
-            const reply = { event: "os_browser_bridge_identify_tab", detail: { tabId, ...message?.payload } };
+            const reply = {
+              event: "os_browser_bridge_identify_tab",
+              detail: { tabId, ...message?.payload, connected },
+            };
             // log("reply", reply);
             /**
              * I can send string or object at any shape.
@@ -187,6 +192,7 @@ async function broadcastToTabs(jsonString, tabs) {
 }
 
 async function broadcastConnectionStatus(isConnected, details = {}) {
+  connected = isConnected;
   try {
     const tabs = await chrome.tabs.query({});
     for (const tab of tabs) {
@@ -469,6 +475,7 @@ chrome.runtime.onInstalled.addListener(() => {
     chrome.alarms.create("keepAlive", { periodInMinutes: 0.4 }); // 24s
   } catch (_) {}
 });
+
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "keepAlive") {
     // A trivial task to keep the worker awake

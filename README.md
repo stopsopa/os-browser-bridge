@@ -125,6 +125,30 @@ We can also emmit events from the browser tab in js which can be attached to on 
 
 # Events
 
+## events to subscribe to
+
+```js
+document.addEventListener("os_browser_bridge_connection_status", (event) => {
+  const {
+    type, // "os_browser_bridge_connection_status"
+    detail: {
+      isConnected, // true
+      details: { 
+        state // "connected"
+      },
+    },
+  } = event;
+
+  if (event?.detail?.details?.isConnected) {
+
+  }
+  else {
+
+  }
+});
+
+```
+
 ## emmitting events from browser
 
 ### browser -> server

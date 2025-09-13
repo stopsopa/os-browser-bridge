@@ -7,6 +7,16 @@ function error() {
   }
 }
 
+function emmitForBrowser(...args) {
+  document.dispatchEvent(...args);
+}
+
+function wait(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 /**
  * Logs from here just observer on the page you loaded in Console, next to normal
  * console.log() from regular page in browser
@@ -21,7 +31,7 @@ log("debug: ", debug, "condition", !window.__osBrowserBridgeContentScriptInjecte
 if (!window.__osBrowserBridgeContentScriptInjected) {
   window.__osBrowserBridgeContentScriptInjected = true;
 
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     // debugger;
     if (message.type === "os_browser_bridge_event_backgrond_script_to_content_script") {
       try {
@@ -52,24 +62,16 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
         }
 
         if (delay) {
-          setTimeout(() => {
-            document.dispatchEvent(
-              new CustomEvent(event, {
-                detail: payload,
-                bubbles: true, // ←--- enable bubbling
-                composed: true, // optional: crosses shadow-DOM boundaries
-              })
-            );
-          }, delay);
-        } else {
-          document.dispatchEvent(
-            new CustomEvent(event, {
-              detail: payload,
-              bubbles: true, // ←--- enable bubbling
-              composed: true, // optional: crosses shadow-DOM boundaries
-            })
-          );
+          await wait(delay);
         }
+
+        emmitForBrowser(
+          new CustomEvent(event, {
+            detail: payload,
+            bubbles: true, // ←--- enable bubbling
+            composed: true, // optional: crosses shadow-DOM boundaries
+          })
+        );
       } catch (e) {
         error("Error parsing message payload:", e);
       }
@@ -79,7 +81,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
         const { isConnected, details, timestamp } = message;
 
         // Dispatch a custom event for connection status
-        document.dispatchEvent(
+        emmitForBrowser(
           new CustomEvent("os_browser_bridge_connection_status", {
             detail: {
               isConnected,
@@ -143,12 +145,12 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
               composed: true,
             };
 
-            document.dispatchEvent(new CustomEvent(reply.event, customEventInit));
+            emmitForBrowser(new CustomEvent(reply.event, customEventInit));
           });
           break;
         }
         default: {
-          // Fire-and-forget – no callback, this is mode where we send events one way to background.js 
+          // Fire-and-forget – no callback, this is mode where we send events one way to background.js
           // but not waiting for response from background.js
           chrome.runtime.sendMessage(message);
           break;
