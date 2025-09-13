@@ -38,7 +38,9 @@
         <span class="status"></span>Detecting information if OS Browser Bridge is connected to the server
       </p>
       <p class="help">
-        General conclusion is that we will have to send request for status and then subscribe to event to track it later
+        This is improved version of connection_status_demo.html. Here we can just subscribe to he event
+        'os_browser_bridge_connection_status' which from now on is guaranteed to be emitted immediately after page is
+        loaded
       </p>
       <pre>
         document.addEventListener("os_browser_bridge_connection_status", (event) => {
