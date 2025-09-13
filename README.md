@@ -24,15 +24,18 @@ cp .env.example .env
 SOCKET=1 node --watch --env-file=.env server/index.js
 
 ```
+
 Server runs on `http://localhost:8080`
 
 ### 2. Load the Chrome Extension
+
 1. Open Chrome and go to `chrome://extensions/`
 2. Enable "Developer mode" (top right toggle)
 3. Click "Load unpacked" and select the `extension/` folder from this repository
 4. The extension should appear in your extensions list
 
 ### 3. Test the System
+
 1. Visit `http://localhost:8080/` - shows directory listing
 2. Choose a test page:
    - `index.html` - Direct WebSocket connection test
@@ -41,6 +44,7 @@ Server runs on `http://localhost:8080`
 ## How It Works
 
 ### Server (`server/index.js`)
+
 - launches WebSocket server on port 8080
 - Server can emmit events for the browsers tabs on any interaction with it
 - server can also subscribe to any event emmited in the browsers
@@ -58,6 +62,13 @@ Also since all instances of this extension in no matter how many instances of ch
 
 In this case server might serve (and in fact does that) as a central hub for communication between many tabs in many browsers.
 
+Server might also do whatever you wish and server as an extension of native capabilites of the browser.
+For example:
+
+- it might broadcast OS events which are not normally "visible" in the browser context. Like: if OS just woke up from being suspended or if OS is going to sleep
+- it might broadcast events about changes in network connection or changes in battery level
+- and so on. Whatever you wish to achieve.
+
 ### Extension Background Script (`extension/background.js`)
 
 - Connects to WebSocket server (`ws://localhost:8080`)
@@ -66,15 +77,18 @@ In this case server might serve (and in fact does that) as a central hub for com
 - Auto-reconnects if connection drops
 
 ### Extension Content Script (`extension/content.js`)
+
 - Injected into all web pages (browser tabs)
 - Listens for messages from background script
 - Dispatches custom DOM events on `document` object
 
 ### Web Pages
+
 From individual web pages (browser tabs) we can subscribe to events emmited on server forwarded by the plugin.
 We can also emmit events from the browser tab in js which can be attached to on the server
 
 ## File Structure
+
 ```
 ├── server/
 │   ├── index.js                     # Central server hub with WebSocket + static file server
@@ -95,25 +109,19 @@ We can also emmit events from the browser tab in js which can be attached to on 
 └── README.md
 ```
 
-
 ## Troubleshooting
 
 ### Extension Not Working
+
 - Check `chrome://extensions/` - extension should be enabled
 - Check browser console for errors
 - Reload extension if you make changes to extension files
 
 ### No Events Received
+
 - Verify server is running (`node server/index.js`)
 - Check WebSocket connection in server background script console
 - Verify event listener is attached to `document` element
-
-### Permission Issues
-- Extension needs `activeTab` permission
-- May need to refresh pages after loading extension - but usually not
-
-
-
 
 # Examples
 
@@ -124,7 +132,6 @@ We can also emmit events from the browser tab in js which can be attached to on 
 browser side:
 
 ```js
-
 document.documentElement.dispatchEvent(
   new CustomEvent("os_browser_bridge", {
     detail: {
@@ -133,13 +140,11 @@ document.documentElement.dispatchEvent(
     },
   })
 );
-
 ```
 
 server handler:
 
 ```js
-
 connectionRegistry.on("fornodejs", (data) => {
   const {
     event, // 'fornodejs'
@@ -148,13 +153,11 @@ connectionRegistry.on("fornodejs", (data) => {
     delay,
   } = data;
 });
-    
 ```
 
 get tab id:
 
 ```js
-
 {
   let i = 0;
   const resolvers = {};
@@ -204,33 +207,28 @@ get tab id:
 server side:
 
 ```js
-
-const event = 'myevent',
-payload = {mydata: 'data'},
-tab = `browserId_dd596c87_tabId_1628889998` // or undefined
-delay = 1000 // in ms, or undefined
+const event = "myevent",
+  payload = { mydata: "data" },
+  tab = `browserId_dd596c87_tabId_1628889998`; // or undefined
+delay = 1000; // in ms, or undefined
 
 connectionRegistry.broadcast(event, payload, tab, delay);
-
 ```
 
 browser side:
 
 ```js
-
 document.addEventListener("myevent", (event) => {
-  const { 
+  const {
     type, // 'myevent'
-    detail // {def: 'test'}
+    detail, // {def: 'test'}
   } = event;
 });
-
 ```
 
 get all tabs:
 
 ```js
-
 app.get("/allTabs", async (req, res) => {
   const data = await connectionRegistry.allTabs();
 
@@ -272,5 +270,4 @@ app.get("/allTabs", async (req, res) => {
   ...
 }  
 */
-
 ```
