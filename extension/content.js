@@ -148,7 +148,8 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
           break;
         }
         default: {
-          // Fire-and-forget – no callback, so Chrome won't complain about a missing response.
+          // Fire-and-forget – no callback, this is mode where we send events one way to background.js 
+          // but not waiting for response from background.js
           chrome.runtime.sendMessage(message);
           break;
         }

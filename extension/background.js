@@ -49,6 +49,61 @@ let browserName = "Unknown",
     // keep default "Unknown" on failure
   }
 
+  const events2 = {
+    ping: (message, sender, sendResponse) => {
+      sendResponse({ type: "pong" });
+    },
+    transport_from_content_js_to_background_js: (message, sender, sendResponse) => {
+      try {
+        const tab = sender?.tab || "";
+
+        const tabId = `browserId_${browserId}_tabId_${tab?.id}`;
+
+        // log("incomming from content.js", message);
+
+        switch (message?.event) {
+          case "identify_tab": {
+            const reply = { event: "os_browser_bridge_identify_tab", detail: { tabId, ...message?.payload } };
+            // log("reply", reply);
+            /**
+             * I can send string or object at any shape.
+             * It will be transported to content.js as such.
+             * But I want to stick to the convention of passing object with event and detail properties.
+             */
+            sendResponse(reply);
+
+            return;
+          }
+          default: {
+            // skip this one for independent handler
+
+            // message.tab = tabId;
+            // // message:
+            // //   event: "identify_tab"
+            // //   tab: "browserId_c08c4190_tabId_1817282704"
+            // //   type:"transport_from_content_js_to_background_js"
+
+            // sendToNode(message);
+
+            return;
+          }
+        }
+      } catch (e) {
+        error("Failed to forward event to node server:", e);
+      }
+    },
+  };
+
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    const event = events2[message.type];
+
+    if (event) {
+      return event(message, sender, sendResponse);
+    }
+
+    log("event not handled independent", message.type);
+  });
+
   connectWebSocket();
 })();
 
@@ -272,9 +327,9 @@ async function connectWebSocket() {
     });
 
     const events2 = {
-      ping: (message, sender, sendResponse) => {
-        sendResponse({ type: "pong" });
-      },
+      // ping: (message, sender, sendResponse) => {
+      //   sendResponse({ type: "pong" });
+      // },
       transport_from_content_js_to_background_js: (message, sender, sendResponse) => {
         try {
           if (ws && ws.readyState === WebSocket.OPEN) {
@@ -286,14 +341,16 @@ async function connectWebSocket() {
 
             switch (message?.event) {
               case "identify_tab": {
-                const reply = { event: "os_browser_bridge_identify_tab", detail: { tabId, ...message?.payload } };
-                // log("reply", reply);
-                /**
-                 * I can send string or object at any shape.
-                 * It will be transported to content.js as such.
-                 * But I want to stick to the convention of passing object with event and detail properties.
-                 */
-                sendResponse(reply);
+                // handle that not in the scope of the ws socket, this one can be handled independently
+
+                // const reply = { event: "os_browser_bridge_identify_tab", detail: { tabId, ...message?.payload } };
+                // // log("reply", reply);
+                // /**
+                //  * I can send string or object at any shape.
+                //  * It will be transported to content.js as such.
+                //  * But I want to stick to the convention of passing object with event and detail properties.
+                //  */
+                // sendResponse(reply);
 
                 return;
               }
@@ -305,6 +362,7 @@ async function connectWebSocket() {
                 //   type:"transport_from_content_js_to_background_js"
 
                 sendToNode(message);
+
                 return;
               }
             }

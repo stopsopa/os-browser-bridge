@@ -123,9 +123,9 @@ We can also emmit events from the browser tab in js which can be attached to on 
 - Check WebSocket connection in server background script console
 - Verify event listener is attached to `document` element
 
-# Examples
+# Events
 
-## from browser
+## emmitting events from browser
 
 ### browser -> server
 
@@ -154,6 +154,12 @@ connectionRegistry.on("fornodejs", (data) => {
   } = data;
 });
 ```
+
+## browser tab -> background.js
+
+This event is not going all the way to the server.
+
+In fact it doesn't even require chrome extension to be connected to the server.
 
 get tab id:
 
@@ -202,7 +208,7 @@ get tab id:
 }
 ```
 
-## from server
+## emmitting events from server
 
 server side:
 
