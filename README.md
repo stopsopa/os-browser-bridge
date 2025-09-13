@@ -95,18 +95,6 @@ We can also emmit events from the browser tab in js which can be attached to on 
 └── README.md
 ```
 
-## Testing
-
-### Test 1: Direct WebSocket Connection
-1. Open `http://localhost:8080/index.html`
-2. Should see WebSocket messages directly from server
-3. No extension required
-
-### Test 2: Extension Event Bridge
-1. Load the Chrome extension
-2. Open `http://localhost:8080/regular_page.html`
-3. Should see events coming through the extension
-4. Events appear in the page's event log
 
 ## Troubleshooting
 
@@ -117,50 +105,17 @@ We can also emmit events from the browser tab in js which can be attached to on 
 
 ### No Events Received
 - Verify server is running (`node server/index.js`)
-- Check WebSocket connection in background script console
-- Ensure content script is injected (check page console)
-- Verify event listener is attached to `window`
+- Check WebSocket connection in server background script console
+- Verify event listener is attached to `document` element
 
 ### Permission Issues
 - Extension needs `activeTab` permission
-- May need to refresh pages after loading extension
-
-## Development Notes
-
-### Adding New Event Types
-1. Modify server to emit different event types
-2. Update background script to handle new events
-3. Content script automatically forwards all messages
-4. Web pages can filter by event type in their listeners
-
-### Customizing Event Names
-- Change `os_browser_bridge_event_backgrond_script_to_content_script` in content script and web pages
-- Update background script message type if needed
-
-### Adding New Test Pages
-- Add HTML files to `server/public/`
-- They'll automatically appear in directory listing
-- Include event listeners for `os_browser_bridge_event_backgrond_script_to_content_script`
-
-## Dependencies
-
-### Server
-- `express` - HTTP server
-- `ws` - WebSocket server
-- `serve-index` - Directory listing
-
-### Extension
-- Vanilla JavaScript (no external dependencies)
-- Chrome Extension APIs
-
-## Security Notes
-- Extension only works on `http://localhost:8080` by default
-- WebSocket connection is unencrypted (ws://)
-- Content script injection is limited to specified URLs
-- Consider HTTPS/WSS for production use
+- May need to refresh pages after loading extension - but usually not
 
 
-# examples
+
+
+# Examples
 
 ## from browser
 
