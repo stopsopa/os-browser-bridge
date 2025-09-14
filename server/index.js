@@ -79,28 +79,30 @@ if (socket) {
    * (you can specify tab id to send to specific tab)
    *
    * curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"test"}}' "http://localhost:8080/just_broadcast?event=myevent" | jq
-   * curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"test"}}' "http://localhost:8080/just_broadcast?event=myevent&tab=browserId_c08c4190_tabId_1817282704" | jq
+   * curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"test"}}' "http://localhost:8080/just_broadcast?event=myevent&include=browserId_c08c4190_tabId_1817282704" | jq
    * curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"test"}}' "http://localhost:8080/just_broadcast?event=myevent&delay=1000" | jq
    *
    * To send to particular tab:
-   * curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"test"}}' "http://localhost:8080/just_broadcast?event=myevent&tab=1817280703" | jq
+   * curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"test"}}' "http://localhost:8080/just_broadcast?event=myevent&include=1817280703" | jq
    */
   app.post("/just_broadcast", async (req, res) => {
     // tab will have format like
     //   "browserId_c08c4190_tabId_1817282704"
     // or list of these comma separated
 
-    const { event, payload, tab, delay } = { ...req.query, ...req.body };
+    const { event, payload, include, exclude, delay } = { ...req.query, ...req.body };
 
-    console.log(JSON.stringify({ endpoint: "/just_broadcast", event, payload: typeof payload, tab, delay }, null, 2));
+    console.log(
+      JSON.stringify({ endpoint: "/just_broadcast", event, payload: typeof payload, include, exclude, delay }, null, 2)
+    );
 
-    connectionRegistry.broadcast(event, payload, tab, delay);
+    connectionRegistry.broadcast({ event, payload, include, exclude, delay });
 
     res.json({ message: "Event sent" });
   });
 
   connectionRegistry.on("fornodejs", (data) => {
-    debugger;
+    // debugger;
 
     const {
       event, // 'fornodejs'
@@ -112,7 +114,7 @@ if (socket) {
     // figure out to send to one tab or to all tabs or to list or tabs
     // maybe I could inject with the event information about available tabs ...
     // but actually no: sending event back and just forwarding browserId:tabId will do
-    
+
     console.log("fornodejs", data);
   });
 }

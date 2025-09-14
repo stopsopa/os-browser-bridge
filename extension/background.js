@@ -1,4 +1,4 @@
-import { splitOnce } from "./tools.js";
+import { splitOnce, normalizeListToArray, stringToIncludeExclude } from "./tools.js";
 
 let connected = false;
 
@@ -18,6 +18,10 @@ function log() {
   if (debug) {
     console.log("background.js", ...arguments);
   }
+}
+
+function emmitForContentJs(...args) {
+  return chrome.tabs.sendMessage(...args);
 }
 
 const WS_SERVER_URL = "ws://localhost:8080";
@@ -187,36 +191,15 @@ function cleanupWebSocket() {
   ws = null;
 }
 
-/**
- * @param {string | string[]} tabs
- * @returns {string[]}
- */
-function normalizeTabsList(tabs) {
-  if (tabs && typeof tabs !== "undefined") {
-    if (typeof tabs === "string") {
-      tabs = tabs.split(",");
-    }
-
-    if (!Array.isArray(tabs)) {
-      tabs = [tabs];
-    }
-
-    tabs = tabs.filter(Boolean);
-  } else {
-    tabs = [];
-  }
-
-  return tabs.map(String);
-}
-
-async function broadcastToTabs(jsonString, tabs, excludeTabs) {
+async function broadcastToTabs(jsonString, includeTabs, excludeTabs) {
   // https://developer.chrome.com/docs/extensions/reference/api/tabs
   try {
-    tabs = normalizeTabsList(tabs);
+    debugger;
+    includeTabs = normalizeListToArray(includeTabs);
 
-    excludeTabs = normalizeTabsList(excludeTabs);
+    excludeTabs = normalizeListToArray(excludeTabs);
 
-    if (tabs.length > 0 && excludeTabs.length > 0) {
+    if (includeTabs.length > 0 && excludeTabs.length > 0) {
       throw new Error("tabs and excludeTabs cannot be used together");
     }
 
@@ -228,36 +211,41 @@ async function broadcastToTabs(jsonString, tabs, excludeTabs) {
 
         const tabIdShort = String(tab.id);
 
-        const message = { type: "os_browser_bridge_event_background_script_to_content_script", jsonString, somestuff: {dddd: 'data'}, tabId };
+        const message = {
+          type: "os_browser_bridge_event_background_script_to_content_script",
+          jsonString,
+          somestuff: { dddd: "data" },
+          tabId,
+        };
 
         switch (true) {
-          case tabs.length > 0: {
-            if (tabs.includes(tabId) || tabs.includes(tabIdShort)) {
-              await chrome.tabs.sendMessage(tab.id, message);
+          case includeTabs.length > 0: {
+            if (includeTabs.includes(tabId) || includeTabs.includes(tabIdShort)) {
+              await emmitForContentJs(tab.id, message);
             }
             break;
           }
           case excludeTabs.length > 0: {
             if (!excludeTabs.includes(tabId) && !excludeTabs.includes(tabIdShort)) {
-              await chrome.tabs.sendMessage(tab.id, message);
+              await emmitForContentJs(tab.id, message);
             }
             break;
           }
           default: {
-            await chrome.tabs.sendMessage(tab.id, message);
+            await emmitForContentJs(tab.id, message);
             break;
           }
         }
-      } catch (error) {
-        if (error.message.includes("Could not establish connection. Receiving end does not exist.")) {
+      } catch (e) {
+        if (e.message.includes("Could not establish connection. Receiving end does not exist.")) {
           console.warn(`Content script not active in tab ${tab.id} (${tab.url || "unknown url"}). Skipping message.`);
         } else {
-          error(`Error sending message to tab ${tab.id}:`, error);
+          error(`Error sending message to tab ${tab.id}:`, e);
         }
       }
     }
-  } catch (error) {
-    error("Error querying tabs:", error);
+  } catch (e) {
+    error("Error querying tabs:", e);
   }
 }
 
@@ -267,22 +255,22 @@ async function broadcastConnectionStatus(isConnected, details = {}) {
     const tabs = await chrome.tabs.query({});
     for (const tab of tabs) {
       try {
-        await chrome.tabs.sendMessage(tab.id, {
+        await emmitForContentJs(tab.id, {
           type: "os_browser_bridge_connection_status",
           isConnected,
           details,
           timestamp: Date.now(),
           tabId: `browserId_${browserId}_tabId_${tab.id}`,
         });
-      } catch (error) {
-        if (error.message.includes("Could not establish connection. Receiving end does not exist.")) {
+      } catch (e) {
+        if (e.message.includes("Could not establish connection. Receiving end does not exist.")) {
           console.warn(
             `Content script not active in tab ${tab.id} (${
               tab.url || "unknown url"
             }). Skipping connection status message.`
           );
         } else {
-          error(`Error sending connection status to tab ${tab.id}:`, error);
+          error(`Error sending connection status to tab ${tab.id}:`, e);
         }
       }
     }
@@ -341,6 +329,8 @@ async function connectWebSocket() {
     ws.addEventListener("message", async (e) => {
       const { event, tab, rawJson } = splitOnce(e.data);
 
+      const { include, exclude } = stringToIncludeExclude(tab);
+
       // If the server requests the list of all tab IDs, respond with them instead of / in addition to broadcasting.
       if (events[event]) {
         try {
@@ -355,7 +345,7 @@ async function connectWebSocket() {
       }
 
       // Default behaviour – forward whatever came from the server to the tabs
-      broadcastToTabs(rawJson, tab);
+      broadcastToTabs(rawJson, include, exclude);
     });
 
     // bind here
@@ -430,25 +420,7 @@ async function connectWebSocket() {
 
                 return;
               }
-              case message?.event?.startsWith("other_tabs:"): {
-                debugger; // connected
-                const reply = {
-                  event: message?.event,
-                  detail: { tabId, ...message?.payload, connected },
-                };
-                // log("reply", reply);
-                /**
-                 * I can send string or object at any shape.
-                 * It will be transported to content.js as such.
-                 * But I want to stick to the convention of passing object with event and detail properties.
-                 */
-                // sendResponse(reply);
-
-                // // here I would like to send the event to all other tabs
-                // broadcastToTabs(JSON.stringify(reply), tabId);
-
-                return;
-              }
+              case message?.event?.startsWith("other_tabs:"):
               default: {
                 message.tab = tabId;
                 // message:
@@ -512,21 +484,21 @@ async function injectContentScriptIntoAllTabs() {
           target: { tabId: tab.id /* top-frame only to avoid duplicates */ },
           files: ["content.js"],
         });
-      } catch (error) {
+      } catch (e) {
         // It's normal to get errors for restricted URLs (e.g. chrome://) or
         // tabs where the script has already been injected – ignore them.
         if (
           !(
-            error?.message?.includes("Cannot access a chrome:// URL") ||
-            error?.message?.includes("The extensions gallery cannot be scripted")
+            e?.message?.includes("Cannot access a chrome:// URL") ||
+            e?.message?.includes("The extensions gallery cannot be scripted")
           )
         ) {
-          console.warn(`Failed to inject content script into tab ${tab.id}:`, error);
+          console.warn(`Failed to inject content script into tab ${tab.id}:`, e);
         }
       }
     }
-  } catch (error) {
-    error("Error querying tabs for script injection:", error);
+  } catch (e) {
+    error("Error querying tabs for script injection:", e);
   }
 }
 
@@ -676,8 +648,8 @@ async function detectBrowserName() {
     }
 
     return "Unknown";
-  } catch (error) {
-    error("Error detecting browser name:", error);
+  } catch (e) {
+    error("Error detecting browser name:", e);
     return "Unknown";
   }
 }
@@ -744,15 +716,15 @@ async function getBrowserInfo() {
       cookieEnabled: navigator.cookieEnabled,
       onLine: navigator.onLine,
     };
-  } catch (error) {
-    error("Error gathering browser info:", error);
+  } catch (e) {
+    error("Error gathering browser info:", e);
     return {
       name: "Unknown",
       version: chrome.runtime.getManifest().version,
       userAgent: navigator.userAgent,
       language: navigator.language,
 
-      error: error.message,
+      error: e.message,
     };
   }
 }

@@ -90,7 +90,6 @@
       });
 
       document.addEventListener("other_tabs:broadcast", (event) => {
-        debugger;
         const {
           type, // 'myevent'
           detail, // {def: 'test'}
@@ -106,7 +105,7 @@
       });
 
       broadcast.addEventListener("click", () => {
-        console.log("fornodejs event sent");
+        console.log("other_tabs:broadcast event sent");
         document.documentElement.dispatchEvent(
           new CustomEvent("os_browser_bridge", {
             detail: {

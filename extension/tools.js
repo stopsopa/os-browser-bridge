@@ -131,7 +131,70 @@ export function processTabs(raw) {
   return tabs;
 }
 
+/**
+ * @param {string | string[]} tabs
+ * @returns {string[]}
+ */
+export function normalizeListToArray(tabs) {
+  if (tabs && typeof tabs !== "undefined") {
+    if (typeof tabs === "string") {
+      tabs = tabs.split(",");
+    }
+
+    if (!Array.isArray(tabs)) {
+      tabs = [tabs];
+    }
+  } else {
+    tabs = [];
+  }
+
+  return tabs.filter(Boolean).map(stripBangPrefix).filter(Boolean).map(String);
+}
+
+export function normalizeListToCommaSeparatedString(tabs) {
+  const array = normalizeListToArray(tabs);
+
+  return array.join(",");
+}
+
 function browserAndTab(tab) {
   const [, browserId, , tabId] = String(tab).split("_");
   return { browserId, tabId };
+}
+
+/**
+ * @param {string} str
+ * @returns {string}
+ */
+export function stripBangPrefix(str) {
+  let i = 0;
+  while (i < str.length && str[i] === "!") {
+    i++;
+  }
+  return str.slice(i);
+}
+
+/**
+ * @type {import("./tools.types").StringToIncludeExcludeFn}
+ */
+export function stringToIncludeExclude(str) {
+  /** @type {string[]} */
+  let exclude = [];
+  /** @type {string[]} */
+  let include = [];
+  if (str.startsWith("!")) {
+    exclude = [stripBangPrefix(str)];
+  } else {
+    include = [str];
+  }
+  return { include, exclude };
+}
+
+export function escapeForHtmlAttr(str) {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }

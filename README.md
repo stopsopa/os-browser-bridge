@@ -239,10 +239,10 @@ server side:
 ```js
 const event = "myevent",
   payload = { mydata: "data" },
-  tab = `browserId_dd596c87_tabId_1628889998`; // or undefined
+  include = `browserId_dd596c87_tabId_1628889998`; // or undefined
 delay = 1000; // in ms, or undefined
 
-connectionRegistry.broadcast(event, payload, tab, delay);
+connectionRegistry.broadcast({ event, payload, include, delay });
 ```
 
 browser side:

@@ -1,6 +1,6 @@
 import { WebSocket } from "ws";
 
-import { processTabs } from "../extension/tools.js";
+import { normalizeListToCommaSeparatedString, processTabs } from "../extension/tools.js";
 
 const debug = true;
 function log(...args) {
@@ -14,17 +14,29 @@ function error(...args) {
     console.error("WebSocketConnectionRegistry: ", ...args);
   }
 }
+
 /**
  * This is probably one of the most important function here because it is sending event to the plugin in it's expected format
  * Rest of surrounding code is just abstraction for the purpose of reusable implementation
+ * @type {import("./WebSocketConnectionRegistry.types").BroadCastWsFn}
  */
-export function broadcast(ws, event, payload, tab = null, delay = 0) {
+export function broadcast(options) {
+  let { ws, event, payload, include, exclude, delay = 0 } = options;
+
   if (ws.readyState === WebSocket.OPEN) {
-    if (typeof tab !== "string") {
-      tab = "";
+    include = normalizeListToCommaSeparatedString(include);
+
+    exclude = normalizeListToCommaSeparatedString(exclude);
+
+    if (include && exclude) {
+      throw new Error("include and exclude cannot be used together");
     }
 
-    const msg = `${event}::${tab}::${JSON.stringify({
+    if (exclude) {
+      include = `!${exclude}`;
+    }
+
+    const msg = `${event}::${include}::${JSON.stringify({
       event,
       delay,
       payload,
@@ -99,21 +111,42 @@ export class WebSocketConnectionRegistry {
     ws.on("message", (data, isBinary) => {
       if (isBinary) return;
 
+      let parsed = null;
       try {
-        const parsed = JSON.parse(data);
-
-        if (!parsed?.event) {
-          return;
-        }
-
-        this.events.forEach((eventName, callback) => {
-          if (parsed.event === eventName) {
-            callback(parsed);
-          }
-        });
+        parsed = JSON.parse(data);
       } catch (_) {
         return; // ignore non-json control messages
       }
+
+      if (!parsed?.event) {
+        return;
+      }
+
+      if (parsed.event.startsWith("other_tabs:")) {
+
+        const { event, payload, tab, delay } = parsed;
+        // parsed = {
+        //   type: "transport_from_content_js_to_background_js",
+        //   event: "other_tabs:broadcast",
+        //   payload: {
+        //     message: "Hello other tabs",
+        //   },
+        //   tab: "browserId_c08c4190_tabId_1817282917",
+        // }
+        debugger;
+        this.broadcast({ event, payload, exclude: tab, delay });
+        return;
+      }
+
+      this.events.forEach((eventName, callback) => {
+        if (parsed.event === eventName) {
+          try {
+            callback(parsed);
+          } catch (e) {
+            error("Failed to call callback for event:", parsed.event, e, "data:", parsed);
+          }
+        }
+      });
     });
   }
 
@@ -138,9 +171,15 @@ export class WebSocketConnectionRegistry {
     this.connections.forEach(callback);
   }
 
-  broadcast(event, payload, tab = null, delay = 0) {
+  /**
+   * Broadcasts an event to all connected clients.
+   * @type {import("./WebSocketConnectionRegistry.types").BroadCastFn}
+   */
+  broadcast(options) {
+    const { event, payload, include, exclude, delay = 0 } = options;
+
     this.connections.forEach((ws) => {
-      broadcast(ws, event, payload, tab, delay);
+      broadcast({ ws, event, payload, include, exclude, delay });
     });
   }
 
@@ -159,7 +198,7 @@ export class WebSocketConnectionRegistry {
    *
    * WARNING: keep in mind that this event is designed to only reach background.js - no further
    */
-  #broadcastFromServerToBackgroundAndGatherResponsesFromExtensionsInOneResponse(eventName, data, options = {}) {
+  #broadcastFromServerToBackgroundAndGatherResponsesFromExtensionsInOneResponse(event, payload, options = {}) {
     const { timeoutMs = 1500, processFn = null } = options;
 
     return new Promise((resolve, reject) => {
@@ -174,7 +213,7 @@ export class WebSocketConnectionRegistry {
             ws.off("message", fn);
           }
         });
-        reject(new Error(`${eventName}() timeout`));
+        reject(new Error(`${event}() timeout`));
       };
 
       let collected = [];
@@ -197,7 +236,7 @@ export class WebSocketConnectionRegistry {
           return; // ignore non-json control messages
         }
 
-        if (parsed.event === eventName) {
+        if (parsed.event === event) {
           wsIncomming.delete(ws);
           collected.push(parsed.payload);
 
@@ -229,7 +268,10 @@ export class WebSocketConnectionRegistry {
         ws.on("message", callback);
       });
 
-      this.broadcast(eventName, data);
+      this.broadcast({
+        event,
+        payload,
+      });
     });
   }
 }
