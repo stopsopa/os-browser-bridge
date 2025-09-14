@@ -15,7 +15,7 @@
   <body>
     <div class="container">
       <a href="../">UP</a>
-      <p class="tip">Testing Direct WebSocket connection browser &lt;-&gt; server</p>
+      <p class="tip">broadcast from server via curl (including/excluding individual tabs)</p>
 
       <button id="clear">Clear</button>
       <pre id="logs"></pre>
@@ -59,13 +59,13 @@
         curl1.value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa1111"}}' "http://localhost:8080/just_broadcast?event=myevent" | jq`;
 
         const curl2 = document.querySelector("#curl2");
-        curl2.value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa2222"}}' "http://localhost:8080/just_broadcast?event=myevent&include=${tabId}" | jq`;
-
+        curl2.value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa2222"}}' "http://localhost:8080/just_broadcast?event=myevent&delay=1000" | jq`;
+        
         const curl3 = document.querySelector("#curl3");
-        curl3.value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa3333"}}' "http://localhost:8080/just_broadcast?event=myevent&delay=1000" | jq`;
+        curl3.value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa3333"}}' "http://localhost:8080/just_broadcast?event=myevent&include=${tabId}" | jq`;
 
         const curl4 = document.querySelector("#curl4");
-        curl4.value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa2222"}}' "http://localhost:8080/just_broadcast?event=myevent&exclude=${tabId}" | jq`;
+        curl4.value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa4444"}}' "http://localhost:8080/just_broadcast?event=myevent&exclude=${tabId}" | jq`;
 
         [curl1, curl2, curl3, curl4].forEach((input) => {
           input.addEventListener("focus", () => {
