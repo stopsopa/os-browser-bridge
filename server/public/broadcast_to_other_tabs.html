@@ -42,7 +42,11 @@
         console.log("direct_to_socket.html", ...args);
       }
 
-      await waitForConnectionStatus();
+      try {
+        await waitForConnectionStatus(1500);
+      } catch (e) {
+        prependToPre("error: " + e.message);
+      }
 
       const event = await sendIdentifyTabEvent();
 
