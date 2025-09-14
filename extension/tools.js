@@ -148,7 +148,7 @@ export function normalizeListToArray(tabs) {
     tabs = [];
   }
 
-  return tabs.filter(Boolean).map(stripBangPrefix).filter(Boolean).map(String);
+  return tabs.filter(Boolean).map(String).map(stripBangPrefix).filter(Boolean).map(String);
 }
 
 export function normalizeListToCommaSeparatedString(tabs) {
