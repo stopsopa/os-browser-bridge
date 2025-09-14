@@ -47,7 +47,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
         }
       });
 
-      if (reply && reply.type === "os_browser_bridge_connection_status") {
+      if (reply && reply?.type === "os_browser_bridge_connection_status") {
         // Re-emit so the page can consume the same event interface
         emmitForBrowser(
           new CustomEvent("os_browser_bridge_connection_status", {

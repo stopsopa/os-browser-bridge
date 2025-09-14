@@ -5,21 +5,77 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Event Listener Example (Direct WebSocket)</title>
     <link rel="stylesheet" href="styles.css" />
+    <style>
+      input {
+        width: 98%;
+        font-size: 10px;
+      }
+    </style>
   </head>
   <body>
     <div class="container">
       <a href="../">UP</a>
       <p class="tip">Testing Direct WebSocket connection browser &lt;-&gt; server</p>
 
+      <a id="clone" target="_blank">Open cloned tabs for testing</a>
+      <input id="curl1" />
+      <input id="curl2" />
+      <input id="curl3" />
+      <input id="curl4" />
       <button id="clear">Clear</button>
       <pre id="logs"></pre>
-      <input onfocus="this.select()" style="width: 90%;" value="curl -v -X POST -H &quot;Content-Type: application/json&quot; -d &#39;{&quot;payload&quot;:{&quot;def&quot;:&quot;test&quot;}}&#39; &quot;http://localhost:8080/just_broadcast?event=myevent&quot; | jq" />
     </div>
 
     <script type="module">
-      import { splitOnce, decodeJson } from "./tools.js";
+      import { splitOnce, decodeJson, escapeForHtmlAttr } from "./tools.js";
+
+      import { sendIdentifyTabEvent, waitForConnectionStatus } from "./bridge.js";
+
+      document.querySelector("#clone").setAttribute("href", location.href);
 
       const pre = document.querySelector("#logs");
+
+      function prependToPre(...args) {
+        const timeString = new Date().toISOString();
+        pre.innerText = `time: ${timeString}, ${args.join(" ")}` + "\n" + pre.innerText;
+      }
+
+      function log(...args) {
+        console.log("direct_to_socket.html", ...args);
+      }
+
+      await waitForConnectionStatus();
+
+      const event = await sendIdentifyTabEvent();
+
+      const tabId = event?.detail?.tabId;
+
+      prependToPre("tabId:", tabId);
+
+      {
+        document.querySelector(
+          "#curl1"
+        ).value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa1111"}}' "http://localhost:8080/just_broadcast?event=myevent" | jq`;
+
+        document.querySelector(
+          "#curl2"
+        ).value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa3333"}}' "http://localhost:8080/just_broadcast?event=myevent&delay=1000" | jq`;
+
+        document.querySelector(
+          "#curl3"
+        ).value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa3333"}}' "http://localhost:8080/just_broadcast?event=myevent&include=${tabId}" | jq`;
+
+        document.querySelector(
+          "#curl4"
+        ).value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa4444"}}' "http://localhost:8080/just_broadcast?event=myevent&exclude=${tabId}" | jq`;
+
+        document.addEventListener("click", (event) => {
+          if (event.target.matches("[id^='curl']")) {
+            event.target.select();
+          }
+        });
+      }
+
       const clear = document.querySelector("#clear");
 
       // --- WebSocket with exponential-backoff reconnect ----------------------------------
@@ -31,17 +87,12 @@
       const MAX_DELAY = 30000; // 30s (same max used on the server when sending events)
       let reconnectDelay = INITIAL_DELAY;
 
-      function logLine(text) {
-        const timeString = new Date().toLocaleTimeString();
-        pre.innerText = `time: ${timeString}, ${text}` + "\n" + pre.innerText;
-      }
-
       function connectSocket() {
-        logLine(`status: attempting WebSocket connection (delay ${reconnectDelay}ms)`);
+        prependToPre(`status: attempting WebSocket connection (delay ${reconnectDelay}ms)`);
         ws = new WebSocket(WS_URL);
 
         ws.onopen = () => {
-          logLine("status: WebSocket connected");
+          prependToPre("status: WebSocket connected");
           reconnectDelay = INITIAL_DELAY; // reset back-off on successful connection
         };
 
@@ -69,19 +120,19 @@
               line = `event: ${event}, tab: ${tab}, detail: ${rawJson}`;
             }
 
-            logLine(line);
+            prependToPre(line);
           } catch (e) {
-            logLine(`error: ${e.message}`);
+            prependToPre(`error: ${e.message}`);
           }
         };
 
         ws.onclose = () => {
-          logLine("status: WebSocket disconnected");
+          prependToPre("status: WebSocket disconnected");
           scheduleReconnect();
         };
 
         ws.onerror = (err) => {
-          logLine(`error: WebSocket error - ${err.message || "Unknown error"}`);
+          prependToPre(`error: WebSocket error - ${err.message || "Unknown error"}`);
           // onerror does NOT necessarily close the socket, so we leave reconnect to onclose
         };
       }
@@ -100,8 +151,6 @@
       clear.addEventListener("click", () => {
         pre.innerText = "";
       });
-
-      console.log("WebSocket client initialised");
     </script>
   </body>
 </html>

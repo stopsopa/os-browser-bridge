@@ -34,15 +34,15 @@
   <body>
     <div class="container">
       <a href="../">UP</a>
+      <p class="warning">
+        Obsolete, see&nbsp;<a href="connection_status_demo_improved.html">connection_status_demo_improved.html</a>
+      </p>
       <p class="tip">
         browser emmits event, content.js emmits event back <br />
         then browser subscribes to event 'os_browser_bridge_connection_status'
       </p>
       <p class="info">
         <span class="status"></span>Detecting information if OS Browser Bridge is connected to the server
-      </p>
-      <p class="info">
-        General conclusion is that we will have to send request for status and then subscribe to event to track it later
       </p>
       <pre>
         document.addEventListener("os_browser_bridge_connection_status", (event) => {

@@ -1,4 +1,3 @@
-
 /**
  
    const event = await sendIdentifyTabEvent();
@@ -41,6 +40,18 @@ export const sendIdentifyTabEvent = (function () {
   };
 })();
 
+/** 
+  try {
+    await waitForConnectionStatus(1500);
+  } catch (e) {
+    console.log("error: " + e.message);
+  }
+
+  WARNING: If you planning to listen to
+  document.addEventListener("os_browser_bridge_connection_status", (event) => {
+    then subscribe to it before wating for waitForConnectionStatus()
+    because initial event os_browser_bridge_connection_status will arrive before waitForConnectionStatus()
+*/
 export function waitForConnectionStatus(timeout = 5000) {
   return new Promise((resolve, reject) => {
     const handler = setTimeout(timeoutFn, timeout);

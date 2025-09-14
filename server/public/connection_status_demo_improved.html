@@ -5,27 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Connection Status Demo - OS Browser Bridge</title>
     <link rel="stylesheet" href="styles.css" />
-
   </head>
   <body>
     <div class="container">
       <a href="../">UP</a>
-      <p class="tip">browser subscribes to event 'os_browser_bridge_connection_status'</p>
-      <p class="info">
-        <span class="status"></span>Detecting information if OS Browser Bridge is connected to the server
-      </p>
+      <p class="tip"><span class="status"></span> browser subscribes to event 'os_browser_bridge_connection_status'</p>
+
       <p class="info">
         This is improved version of connection_status_demo.html. Here we can just subscribe to he event
         'os_browser_bridge_connection_status' which from now on is guaranteed to be emitted immediately after page is
         loaded
       </p>
+      <p class="warning">
+        WARNING: If you planning to listen to os_browser_bridge_connection_status event then subscribe to it before
+        wating for waitForConnectionStatus() because initial event os_browser_bridge_connection_status will arrive
+        before waitForConnectionStatus()
+      </p>
       <pre>
+        /* subscribe before waitForConnectionStatus() */
         document.addEventListener("os_browser_bridge_connection_status", (event) => {
-            const { 
-                isConnected: boolean, 
-                details: object, 
-                timestamp: string 
-            } = event.detail;
+          const {
+            type, // "os_browser_bridge_connection_status"
+            detail: {
+              isConnected, // boolean
+              details: {
+                state, // "connected"
+              },
+            },
+          } = event;
         });        
       </pre>
       <button id="clear">Clear</button>
@@ -92,19 +99,6 @@
       // updateStatus(connected ? "connected" : "disconnected");
 
       // and then subscribe to any status changes
-      document.addEventListener("os_browser_bridge_connection_status", (event) => {
-        const {
-          type, // "os_browser_bridge_connection_status"
-          detail: {
-            isConnected, // boolean
-            details: {
-              state, // "connected"
-            },
-          },
-        } = event;
-
-        updateStatus(state);
-      });
 
       /// --- above is universal, below is custom to this page
       /// --- above is universal, below is custom to this page
@@ -114,7 +108,18 @@
       const pre = document.querySelector("#logs");
       const clear = document.querySelector("#clear");
 
-      // Listen for connection status events
+      function prependToPre(...args) {
+        const timeString = new Date().toISOString();
+        pre.innerText = `time: ${timeString}, ${args.join(" ")}` + "\n" + pre.innerText;
+      }
+
+      /**
+       * WARNING: If you planning to listen to
+       * document.addEventListener("os_browser_bridge_connection_status", (event) => {
+       *   then subscribe to it before wating for waitForConnectionStatus()
+       *   because initial event os_browser_bridge_connection_status will arrive before waitForConnectionStatus()
+       * }
+       */
       document.addEventListener("os_browser_bridge_connection_status", (event) => {
         const {
           type, // "os_browser_bridge_connection_status"
@@ -126,14 +131,12 @@
           },
         } = event;
 
-        if (event?.detail?.details?.isConnected) {
-        } else {
-        }
-
         const timeString = new Date().toLocaleTimeString();
         const line = `time: ${timeString}, event.detail: ${JSON.stringify(event.detail || null)}`;
 
-        pre.innerText = line + "\n" + pre.innerText;
+        prependToPre(line);
+
+        updateStatus(state);
       });
 
       clear.addEventListener("click", () => {
@@ -141,9 +144,7 @@
       });
 
       // Initialize
-      pre.innerText =
-        `time: ${new Date().toLocaleTimeString()}, message: Page loaded, waiting for connection status...\n` +
-        pre.innerText;
+      prependToPre("message: Page loaded, waiting for connection status...");
     </script>
   </body>
 </html>

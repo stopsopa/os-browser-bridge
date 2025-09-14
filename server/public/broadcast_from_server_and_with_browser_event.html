@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Event Listener Example (Direct WebSocket)</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      input {
+        width: 98%;
+        font-size: 10px;
+      }
+    </style>
+    <link rel="stylesheet" href="https://stopsopa.github.io/tabs/vanilla-tabs.css" />
+  </head>
+  <body>
+    <div class="container">
+      <a href="../">UP</a>
+      <br />
+
+      <span class="status"></span>
+      <a id="clone" target="_blank">Open cloned tabs for testing</a>
+      <br />
+
+      <div data-vanilla-tabs>
+        <div data-buttons>
+          <a href="javascript:;" class="active">curl</a>
+          <span>event</span>
+        </div>
+        <div data-tabs>
+          <div>
+            <p class="tip">broadcast from server via curl (including/excluding individual tabs)</p>
+
+            <input id="curl1" />
+            <input id="curl2" />
+            <input id="curl3" />
+            <input id="curl4" />
+          </div>
+          <div>my stuff for tab 3</div>
+        </div>
+      </div>
+      <br />
+      <button id="clear">Clear</button>
+      <pre id="logs"></pre>
+    </div>
+
+    <script src="https://stopsopa.github.io/tabs/vanilla-tabs.js"></script>
+    <script type="module">
+      import { splitOnce, decodeJson, escapeForHtmlAttr } from "./tools.js";
+
+      import { sendIdentifyTabEvent, waitForConnectionStatus } from "./bridge.js";
+
+      document.querySelector("#clone").setAttribute("href", location.href);
+
+      const unbind = vanillaTabs.bind();
+      vanillaTabs.active();
+
+      const pre = document.querySelector("#logs");
+
+      function prependToPre(...args) {
+        const timeString = new Date().toISOString();
+        pre.innerText = `time: ${timeString}, ${args.join(" ")}` + "\n" + pre.innerText;
+      }
+
+      {
+        // status dot
+        function updateStatus(status) {
+          const statusElement = document.querySelector(".status");
+          statusElement.classList.remove("connected", "disconnected", "connecting", "connection_failed");
+          statusElement.classList.add(status);
+        }
+
+        /**
+         * WARNING: If you planning to listen to
+         * document.addEventListener("os_browser_bridge_connection_status", (event) => {
+         *   then subscribe to it before wating for waitForConnectionStatus()
+         *   because initial event os_browser_bridge_connection_status will arrive before waitForConnectionStatus()
+         * }
+         */
+        document.addEventListener("os_browser_bridge_connection_status", (event) => {
+          const {
+            type, // "os_browser_bridge_connection_status"
+            detail: {
+              isConnected, // boolean
+              details: {
+                state, // "connected"
+              },
+            },
+          } = event;
+
+          console.log("os_browser_bridge_connection_status", {
+            type,
+            isConnected,
+            state,
+          });
+
+          updateStatus(state);
+        });
+      }
+
+      try {
+        await waitForConnectionStatus(1500);
+      } catch (e) {
+        prependToPre("error: " + e.message);
+      }
+
+      const event = await sendIdentifyTabEvent();
+
+      const tabId = event?.detail?.tabId;
+
+      prependToPre("tabId:", tabId);
+
+      {
+        const curl1 = document.querySelector("#curl1");
+        curl1.value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa1111"}}' "http://localhost:8080/just_broadcast?event=myevent" | jq`;
+
+        const curl2 = document.querySelector("#curl2");
+        curl2.value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa2222"}}' "http://localhost:8080/just_broadcast?event=myevent&delay=1000" | jq`;
+
+        const curl3 = document.querySelector("#curl3");
+        curl3.value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa3333"}}' "http://localhost:8080/just_broadcast?event=myevent&include=${tabId}" | jq`;
+
+        const curl4 = document.querySelector("#curl4");
+        curl4.value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa4444"}}' "http://localhost:8080/just_broadcast?event=myevent&exclude=${tabId}" | jq`;
+
+        document.addEventListener("click", (event) => {
+          if (event.target.matches("[id^='curl']")) {
+            event.target.select();
+          }
+        });
+      }
+
+      {
+        // listening for incoming events
+        document.addEventListener("myevent", (event) => {
+          const {
+            type, // 'myevent'
+            detail, // {def: 'test'}
+          } = event;
+
+          const timeString = new Date().toLocaleTimeString();
+
+          const line = `time: ${timeString}, event: ${type}, detail: ${JSON.stringify(detail)}`;
+
+          prependToPre(line);
+        });
+
+        document.querySelector("#clear").addEventListener("click", () => {
+          pre.innerText = "";
+        });
+      }
+
+      {
+        //
+      }
+    </script>
+  </body>
+</html>
