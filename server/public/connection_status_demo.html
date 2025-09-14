@@ -111,21 +111,6 @@
       // set initial status after loading page
       updateStatus(connected ? "connected" : "disconnected");
 
-      // and then subscribe to any status changes
-      document.addEventListener("os_browser_bridge_connection_status", (event) => {
-        const {
-          type, // "os_browser_bridge_connection_status"
-          detail: {
-            isConnected, // boolean
-            details: {
-              state, // "connected"
-            },
-          },
-        } = event;
-
-        updateStatus(state);
-      });
-
       /// --- above is universal, below is custom to this page
       /// --- above is universal, below is custom to this page
       /// --- above is universal, below is custom to this page
@@ -133,6 +118,11 @@
       /// --- above is universal, below is custom to this page
       const pre = document.querySelector("#logs");
       const clear = document.querySelector("#clear");
+
+      function prependToPre(...args) {
+        const timeString = new Date().toISOString();
+        pre.innerText = `time: ${timeString}, ${args.join(" ")}` + "\n" + pre.innerText;
+      }
 
       // Listen for connection status events
       document.addEventListener("os_browser_bridge_connection_status", (event) => {
@@ -146,24 +136,14 @@
           },
         } = event;
 
-        if (event?.detail?.details?.isConnected) {
-        } else {
-        }
+        updateStatus(state);
 
-        const timeString = new Date().toLocaleTimeString();
-        const line = `time: ${timeString}, event.detail: ${JSON.stringify(event.detail || null)}`;
-
-        pre.innerText = line + "\n" + pre.innerText;
+        prependToPre(`event.detail: ${JSON.stringify(event.detail || null)}`);
       });
 
       clear.addEventListener("click", () => {
         pre.innerText = "";
       });
-
-      // Initialize
-      pre.innerText =
-        `time: ${new Date().toLocaleTimeString()}, message: Page loaded, waiting for connection status...\n` +
-        pre.innerText;
     </script>
   </body>
 </html>

@@ -85,3 +85,13 @@ export function waitForConnectionStatus(timeout = 5000) {
     document.addEventListener("os_browser_bridge_connection_status", bind);
   });
 }
+
+export function unique(pattern) {
+  // node.js require('crypto').randomBytes(16).toString('hex');
+  pattern || (pattern = "xyxyxy");
+  return pattern.replace(/[xy]/g, function (c) {
+    var r = (Math.random() * 16) | 0,
+      v = c == "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}

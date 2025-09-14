@@ -8,37 +8,10 @@
   </head>
   <body>
     <div class="container">
-      <a href="../">UP</a>
-      <p class="tip">
-        <span class="status"></span>
-        Send event to othr tabs <br />
-        To all other tabs in the same browser <br />
-        or to all tabs across all browsers if extension is connected to the server
-      </p>
-      <p class="info">
-        When it comes to testing it is good idea to test sending evnets to other tabs when server is connected to see if
-        it is propagating to different browser tabs and also when server is not connected to see if it is propagating to
-        all tabs in the current browser
-      </p>
-      <p class="tip">
-        when it comes to testing when not connected use 'node --watch --env-file=.env server/index.js' server mode to
-        DON'T run socket this way you can still load http://localhost:8080/tabs_events.html but extensions will be
-        offline.
-      </p>
-
-      <pre>
-        document.documentElement.dispatchEvent(
-          new CustomEvent("os_browser_bridge", {
-            detail: {
-              event: "other_tabs:broadcast",
-              payload: { message: "Hello other tabs" },
-            },
-          })
-        );
-      </pre>
+      <a href="../">UP</a> &nbsp;
+      <span class="status"></span>
 
       <button id="clear">Clear</button>
-      <button id="broadcast">Send events to other tabs</button>
       <pre id="logs"></pre>
     </div>
 
@@ -68,7 +41,6 @@
 
       const pre = document.querySelector("#logs");
       const clear = document.querySelector("#clear");
-      const broadcast = document.querySelector("#broadcast");
 
       document.addEventListener("myevent", (event) => {
         const {
@@ -76,44 +48,13 @@
           detail, // {def: 'test'}
         } = event;
 
-        const timeString = new Date().toLocaleTimeString();
-
-        const line = `time: ${timeString}, event: ${type}, detail: ${JSON.stringify(detail)}`;
-
-        log("myevent event:", line);
+        const line = `event: ${type}, detail: ${JSON.stringify(detail)}`;
 
         pre.innerText = line + "\n" + pre.innerText;
       });
 
       clear.addEventListener("click", () => {
         pre.innerText = "";
-      });
-
-      document.addEventListener("other_tabs:broadcast", (event) => {
-        const {
-          type, // 'myevent'
-          detail, // {def: 'test'}
-        } = event;
-
-        const timeString = new Date().toLocaleTimeString();
-
-        const line = `time: ${timeString}, event: ${type}, detail: ${JSON.stringify(detail)}`;
-
-        log("myevent event:", line);
-
-        pre.innerText = line + "\n" + pre.innerText;
-      });
-
-      broadcast.addEventListener("click", () => {
-        console.log("other_tabs:broadcast event sent");
-        document.documentElement.dispatchEvent(
-          new CustomEvent("os_browser_bridge", {
-            detail: {
-              event: "other_tabs:broadcast",
-              payload: { message: "Hello other tabs" },
-            },
-          })
-        );
       });
     </script>
   </body>

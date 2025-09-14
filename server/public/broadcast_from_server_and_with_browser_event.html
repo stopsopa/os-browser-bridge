@@ -16,27 +16,62 @@
   <body>
     <div class="container">
       <a href="../">UP</a>
-      <br />
 
       <span class="status"></span>
       <a id="clone" target="_blank">Open cloned tabs for testing</a>
+      <br />
       <br />
 
       <div data-vanilla-tabs>
         <div data-buttons>
           <a href="javascript:;" class="active">curl</a>
           <span>event</span>
+          <span>event - code example</span>
         </div>
         <div data-tabs>
           <div>
-            <p class="tip">broadcast from server via curl (including/excluding individual tabs)</p>
+            <p class="tip">
+              broadcast from server via curl (including/excluding individual tabs). In this case we are including or
+              excluding current tab
+            </p>
 
             <input id="curl1" />
             <input id="curl2" />
             <input id="curl3" />
             <input id="curl4" />
           </div>
-          <div>my stuff for tab 3</div>
+          <div>
+            <p class="tip">
+              <span class="status"></span>
+              Send event to other tabs <br />
+              To all other tabs in the same browser <br />
+              or to all tabs across all browsers if extension is connected to the server
+            </p>
+            <p class="info">
+              When it comes to testing it is good idea to test sending events to other tabs when server is connected to
+              see if it is propagating to different browser tabs and also when server is not connected to see if it is
+              propagating to all tabs in the current browser
+            </p>
+            <p class="tip">
+              when it comes to testing when not connected use 'node --watch --env-file=.env server/index.js' server mode
+              to DON'T run socket this way you can still load http://localhost:8080/tabs_events.html but extensions will
+              be offline.
+            </p>
+
+            <button id="broadcast">send other_tabs:broadcast event</button>
+          </div>
+          <div>
+            <pre>
+              document.documentElement.dispatchEvent(
+                new CustomEvent("os_browser_bridge", {
+                  detail: {
+                    event: "other_tabs:broadcast",
+                    payload: { message: "Hello other tabs" },
+                  },
+                })
+              );
+            </pre>
+          </div>
         </div>
       </div>
       <br />
@@ -48,7 +83,7 @@
     <script type="module">
       import { splitOnce, decodeJson, escapeForHtmlAttr } from "./tools.js";
 
-      import { sendIdentifyTabEvent, waitForConnectionStatus } from "./bridge.js";
+      import { sendIdentifyTabEvent, waitForConnectionStatus, unique } from "./bridge.js";
 
       document.querySelector("#clone").setAttribute("href", location.href);
 
@@ -138,11 +173,7 @@
             detail, // {def: 'test'}
           } = event;
 
-          const timeString = new Date().toLocaleTimeString();
-
-          const line = `time: ${timeString}, event: ${type}, detail: ${JSON.stringify(detail)}`;
-
-          prependToPre(line);
+          prependToPre(`event: ${type}, detail: ${JSON.stringify(detail)}`);
         });
 
         document.querySelector("#clear").addEventListener("click", () => {
@@ -151,7 +182,31 @@
       }
 
       {
-        //
+        document.addEventListener("other_tabs:broadcast", (event) => {
+          const {
+            type, // 'myevent'
+            detail, // {def: 'test'}
+          } = event;
+
+          prependToPre(`event: ${type}, detail: ${JSON.stringify(detail)}`);
+        });
+
+        const broadcast = document.querySelector("#broadcast");
+
+        broadcast.addEventListener("click", () => {
+          const unq = unique();
+
+          prependToPre(`other_tabs:broadcast event sent: ${unq}`);
+
+          document.documentElement.dispatchEvent(
+            new CustomEvent("os_browser_bridge", {
+              detail: {
+                event: "other_tabs:broadcast",
+                payload: { message: "Hello other tabs", unique: unq },
+              },
+            })
+          );
+        });
       }
     </script>
   </body>

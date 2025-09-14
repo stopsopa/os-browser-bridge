@@ -15,6 +15,11 @@
   <body>
     <div class="container">
       <a href="../">UP</a>
+      <p class="warning">
+        connecting directly from browser to server ws socket seems to break broadcasting when targetting particular
+        tabs. When browser ws connected, broadcasting seems to send requests with 'include' still to all tabs. Where it
+        should send just to specified tab.
+      </p>
       <p class="tip">Testing Direct WebSocket connection browser &lt;-&gt; server</p>
 
       <a id="clone" target="_blank">Open cloned tabs for testing</a>

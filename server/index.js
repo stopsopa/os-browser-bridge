@@ -102,7 +102,8 @@ if (socket) {
   });
 
   connectionRegistry.on("fornodejs", (data) => {
-    // debugger;
+    // WARNING: leave this debug here for demo purposes
+    debugger;
 
     const {
       event, // 'fornodejs'

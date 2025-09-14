@@ -133,7 +133,6 @@ export class WebSocketConnectionRegistry {
         //   },
         //   tab: "browserId_c08c4190_tabId_1817282917",
         // }
-        debugger;
         this.broadcast({ event, payload, exclude: tab, delay });
         return;
       }
