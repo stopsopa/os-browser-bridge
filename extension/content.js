@@ -7,10 +7,10 @@ function error() {
   }
 }
 
-function emmitForBrowser(...args) {
+function emitForBrowser(...args) {
   document.dispatchEvent(...args);
 }
-function emmitForBackground(...args) {
+function emitForBackground(...args) {
   chrome.runtime.sendMessage(...args);
 }
 
@@ -39,7 +39,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
     try {
       const reply = await new Promise((resolve) => {
         try {
-          emmitForBackground({ type: "get_connection_status" }, (response) => {
+          emitForBackground({ type: "get_connection_status" }, (response) => {
             resolve(response);
           });
         } catch (e) {
@@ -49,7 +49,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
 
       if (reply && reply?.type === "os_browser_bridge_connection_status") {
         // Re-emit so the page can consume the same event interface
-        emmitForBrowser(
+        emitForBrowser(
           new CustomEvent("os_browser_bridge_connection_status", {
             detail: {
               isConnected: reply.isConnected,
@@ -100,7 +100,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
 
         log(`event >${event}< payload:`, customEventInit);
 
-        emmitForBrowser(new CustomEvent(event, customEventInit));
+        emitForBrowser(new CustomEvent(event, customEventInit));
       } catch (e) {
         error("Error parsing message payload:", e);
       }
@@ -110,7 +110,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
         const { isConnected, details, timestamp } = message;
 
         // Dispatch a custom event for connection status
-        emmitForBrowser(
+        emitForBrowser(
           new CustomEvent("os_browser_bridge_connection_status", {
             detail: {
               isConnected,
@@ -130,7 +130,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
   // Keep the background script alive by sending periodic pings
   setInterval(async () => {
     try {
-      await emmitForBackground({ type: "ping" });
+      await emitForBackground({ type: "ping" });
     } catch (e) {
       // Ignore the expected error that occurs when the extension background
       // context is momentarily unavailable (e.g., right after the extension
@@ -165,7 +165,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
           // otherwise it will emmit error:
           //  Unchecked runtime.lastError: The message port closed before a response was received.
 
-          emmitForBackground(message, (reply) => {
+          emitForBackground(message, (reply) => {
             // log("incoming", reply);
 
             const customEventInit = {
@@ -174,7 +174,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
               composed: true,
             };
 
-            emmitForBrowser(new CustomEvent(reply.event, customEventInit));
+            emitForBrowser(new CustomEvent(reply.event, customEventInit));
           });
           break;
         }
@@ -182,7 +182,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
         default: {
           // Fire-and-forget – no callback, this is mode where we send events one way to background.js
           // but not waiting for response from background.js
-          emmitForBackground(message);
+          emitForBackground(message);
           break;
         }
       }

@@ -46,8 +46,8 @@ Server runs on `http://localhost:8080`
 ### Server (`server/index.js`)
 
 - launches WebSocket server on port 8080
-- Server can emmit events for the browsers tabs on any interaction with it
-- server can also subscribe to any event emmited in the browsers
+- Server can emit events for the browsers tabs on any interaction with it
+- server can also subscribe to any event emited in the browsers
 - For testing serves static files from `public/` directory
 - Shows directory listing at root path (no auto-index.html)
 - There is special library for server to help with creating server events for browsers tabs
@@ -55,7 +55,7 @@ Server runs on `http://localhost:8080`
 ### Extension in general
 
 Extension in general is trying to maintain constant connection with the server
-and forwards to it all special events emmited via individual tab to the server and other way around.
+and forwards to it all special events emited via individual tab to the server and other way around.
 
 Extension can be installed in multiple browsers (chrome, brave, chromium) as long as it is chromium based browser.
 Also since all instances of this extension in no matter how many instances of chrome based browsers are trying to keep connection with our server, as long as those connections are maintaned, We can broadcast events from server to all of these browsers - to individual tabs or all tabs across all of these browsers.
@@ -84,8 +84,8 @@ For example:
 
 ### Web Pages
 
-From individual web pages (browser tabs) we can subscribe to events emmited on server forwarded by the plugin.
-We can also emmit events from the browser tab in js which can be attached to on the server
+From individual web pages (browser tabs) we can subscribe to events emited on server forwarded by the plugin.
+We can also emit events from the browser tab in js which can be attached to on the server
 
 ## File Structure
 
@@ -175,7 +175,7 @@ These are events fired by background.js script, pushed to the server and server 
 });
 ```
 
-## emmitting events from browser
+## emitting events from browser
 
 ### browser -> server
 
@@ -208,8 +208,9 @@ connectionRegistry.on("fornodejs", (data) => {
 ## browser tab -> background.js
 
 > [!NOTE]
-> This event is not going all the way to the server.
+> This event is not going all the way to the server - only to background.js script.
 > In fact it doesn't even require chrome extension to be connected to the server.
+> background.js have all what it is needed to get the tab id.
 
 get tab id:
 
@@ -232,20 +233,26 @@ get tab id:
 </script>
 ```
 
-## emmitting events from server
+## emitting events from server
 
-server side:
+server side (emitting event):
 
 ```js
 const event = "myevent",
   payload = { mydata: "data" },
   include = `browserId_c08c4190_tabId_1817283378`, // or undefined
+  // which tabs to include (accept single tab id or list of tab ids comma separated)
+  // when not specified to .broadcast() it will include all tabs
+
+  exclude = undefined,
+  // which tabs to ignore (accept single tab id or list of tab ids comma separated)
+
   delay = 1000; // in ms, or undefined
 
-connectionRegistry.broadcast({ event, payload, include, delay });
+connectionRegistry.broadcast({ event, payload, include, exclude, delay });
 ```
 
-browser side:
+browser side (listening to event):
 
 ```js
 document.addEventListener("myevent", (event) => {

@@ -20,7 +20,7 @@ function log() {
   }
 }
 
-function emmitForContentJs(...args) {
+function emitForContentJs(...args) {
   return chrome.tabs.sendMessage(...args);
 }
 
@@ -220,18 +220,18 @@ async function broadcastToTabs(payload, includeTabs, excludeTabs) {
         switch (true) {
           case includeTabs.length > 0: {
             if (includeTabs.includes(tabId) || includeTabs.includes(tabIdShort)) {
-              await emmitForContentJs(tab.id, message);
+              await emitForContentJs(tab.id, message);
             }
             break;
           }
           case excludeTabs.length > 0: {
             if (!excludeTabs.includes(tabId) && !excludeTabs.includes(tabIdShort)) {
-              await emmitForContentJs(tab.id, message);
+              await emitForContentJs(tab.id, message);
             }
             break;
           }
           default: {
-            await emmitForContentJs(tab.id, message);
+            await emitForContentJs(tab.id, message);
             break;
           }
         }
@@ -255,7 +255,7 @@ async function broadcastConnectionStatus(isConnected, details = {}) {
     const tabs = await chrome.tabs.query({});
     for (const tab of tabs) {
       try {
-        await emmitForContentJs(tab.id, {
+        await emitForContentJs(tab.id, {
           type: "os_browser_bridge_connection_status",
           isConnected,
           details,
