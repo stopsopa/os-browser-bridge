@@ -70,19 +70,11 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
     // debugger;
     if (message.type === "os_browser_bridge_event_background_script_to_content_script") {
       try {
-        let dataFromJson = null;
-
         const tabId = message.tabId;
 
         // log('tabId', tabId);
 
-        try {
-          dataFromJson = JSON.parse(message.jsonString);
-        } catch (e) {
-          error("Error parsing JSON string:", e);
-        }
-
-        let { event, detail, delay } = dataFromJson || {};
+        let { event, detail, delay } = message?.payload || {};
 
         if (typeof delay !== "undefined") {
           delay = parseInt(delay, 10);

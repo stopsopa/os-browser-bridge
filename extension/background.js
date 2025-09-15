@@ -117,7 +117,7 @@ let browserName = "Unknown",
                */
               // sendResponse(reply);
 
-              broadcastToTabs(JSON.stringify(reply), [], [tab?.id]);
+              broadcastToTabs(reply, [], [tab?.id]);
             }
 
             return;
@@ -191,7 +191,7 @@ function cleanupWebSocket() {
   ws = null;
 }
 
-async function broadcastToTabs(jsonString, includeTabs, excludeTabs) {
+async function broadcastToTabs(payload, includeTabs, excludeTabs) {
   // https://developer.chrome.com/docs/extensions/reference/api/tabs
   try {
     debugger;
@@ -213,7 +213,7 @@ async function broadcastToTabs(jsonString, includeTabs, excludeTabs) {
 
         const message = {
           type: "os_browser_bridge_event_background_script_to_content_script",
-          jsonString, // .detail xx002
+          payload, // .detail xx002
           tabId,
         };
 
@@ -329,6 +329,13 @@ async function connectWebSocket() {
     ws.addEventListener("message", async (e) => {
       const { event, tab, rawJson } = splitOnce(e.data);
 
+      let decodedFromJson = null;
+      try {
+        decodedFromJson = JSON.parse(rawJson);
+      } catch (e) {
+        error("Error parsing JSON string:", e);
+      }
+
       const { include, exclude } = stringToIncludeExclude(tab);
 
       // If the server requests the list of all tab IDs, respond with them instead of / in addition to broadcasting.
@@ -345,7 +352,7 @@ async function connectWebSocket() {
       }
 
       // Default behaviour – forward whatever came from the server to the tabs
-      broadcastToTabs(rawJson, include, exclude);
+      broadcastToTabs(decodedFromJson, include, exclude);
     });
 
     // bind here
