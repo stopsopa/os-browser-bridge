@@ -16,8 +16,15 @@
     </div>
 
     <script type="module">
-      function log(...args) {
-        console.log("tabs_events.html", ...args);
+      const pre = document.querySelector("#logs");
+      const clear = document.querySelector("#clear");
+
+      clear.addEventListener("click", () => {
+        pre.innerText = "";
+      });
+      function prependToPre(...args) {
+        const timeString = new Date().toISOString();
+        pre.innerText = `time: ${timeString}, ${args.join(" ")}` + "\n" + pre.innerText;
       }
       function updateStatus(status) {
         const statusElement = document.querySelector(".status");
@@ -39,22 +46,15 @@
         updateStatus(state);
       });
 
-      const pre = document.querySelector("#logs");
-      const clear = document.querySelector("#clear");
+      ["onCreated", "onRemoved", "onUpdated", "onActivated", "onReplaced", "onAttached"].forEach((tabEvent) => {
+        document.addEventListener(tabEvent, (event) => {
+          const {
+            type, // 'myevent'
+            detail, // {def: 'test'}
+          } = event;
 
-      document.addEventListener("myevent", (event) => {
-        const {
-          type, // 'myevent'
-          detail, // {def: 'test'}
-        } = event;
-
-        const line = `event: ${type}, detail: ${JSON.stringify(detail)}`;
-
-        pre.innerText = line + "\n" + pre.innerText;
-      });
-
-      clear.addEventListener("click", () => {
-        pre.innerText = "";
+          prependToPre(`event: ${type}, detail: ${JSON.stringify(detail, null, 4)}`);
+        });
       });
     </script>
   </body>

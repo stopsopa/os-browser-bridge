@@ -1,4 +1,4 @@
-import { splitOnce, normalizeListToArray, stringToIncludeExclude } from "./tools.js";
+import { splitOnce, normalizeListToArray, stringToIncludeExclude, enrichTab } from "./tools.js";
 
 let connected = false;
 
@@ -360,16 +360,57 @@ async function connectWebSocket() {
     //  Bind tab change events  //
     ///////////////////////////////
 
-    const sendAllTabsUpdate = (tabEvent) => {
-      return async () => {
+    const sendSingleTabUpdate = (tabEvent) => {
+      return async (...args) => {
         try {
           // Send only if socket is open
           if (ws && ws.readyState === WebSocket.OPEN) {
-            const tabs = await chrome.tabs.query({});
+            let tab; // The single tab that triggered the event
+
+            switch (tabEvent) {
+              case "onCreated":
+                // New tab was created - tab object is provided directly
+                [tab] = args;
+                break;
+
+              case "onUpdated":
+                // Tab was updated (e.g., navigated to different page)
+                // Args: (tabId, changeInfo, tab)
+                [, , tab] = args; // 3rd argument is the full tab object
+                break;
+
+              case "onActivated":
+                // Tab became active (user switched to it)
+                // Args: (activeInfo) where activeInfo = { tabId, windowId }
+                const [{ tabId }] = args;
+                tab = await chrome.tabs.get(tabId);
+                break;
+
+              case "onRemoved":
+                // Tab was closed - no tab object exists anymore
+                // Args: (tabId, removeInfo)
+                const [removedTabId] = args;
+                tab = { id: removedTabId, removed: true };
+                break;
+
+              case "onAttached":
+                // Tab was attached to a window (e.g., dragged between windows)
+                // Args: (tabId, attachInfo)
+                const [attachedTabId] = args;
+                tab = await chrome.tabs.get(attachedTabId);
+                break;
+
+              case "onReplaced":
+                // Tab was replaced with another tab (rare, e.g., tab prerendering)
+                // Args: (addedTabId, removedTabId)
+                const [replacedTabId] = args;
+                tab = await chrome.tabs.get(replacedTabId);
+                break;
+            }
 
             sendToNode({
               event: tabEvent,
-              payload: { browserInfo, tabs },
+              payload: { browserInfo, tab: enrichTab(tab, browserInfo) },
             });
           }
         } catch (e) {
@@ -382,7 +423,7 @@ async function connectWebSocket() {
     // const tabEvents = ["onCreated", "onRemoved", "onUpdated", "onActivated", "onReplaced", "onAttached"];
     const tabEvents = ["onCreated", "onRemoved", "onUpdated", "onActivated", "onReplaced", "onAttached"];
 
-    tabEvents.forEach((tabEvent) => chrome.tabs[tabEvent].addListener(sendAllTabsUpdate(tabEvent)));
+    tabEvents.forEach((tabEvent) => chrome.tabs[tabEvent].addListener(sendSingleTabUpdate(tabEvent)));
 
     ///////////////////////////////
     //  End tab change bindings  //

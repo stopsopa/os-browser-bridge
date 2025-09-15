@@ -118,6 +118,19 @@ if (socket) {
 
     console.log("fornodejs", data);
   });
+  [
+    "onCreated", // New tab was created
+    "onRemoved", // Tab was closed
+    "onUpdated", // Tab was updated (e.g., navigated to different page, title changed, loading state changed)
+    "onActivated", // Tab became active (user switched to it)
+    "onReplaced", // Tab was replaced with another tab (rare, e.g., tab prerendering)
+    "onAttached", // Tab was attached to a window (e.g., dragged between windows)
+  ].forEach((ev) => {
+    connectionRegistry.on(ev, (data) => {
+      const { event, payload } = data;
+      connectionRegistry.broadcast({ event, payload });
+    });
+  });
 }
 
 // Serve static files first from 'public' directory, then fallback to 'extension' directory

@@ -113,22 +113,23 @@ export function processTabs(raw) {
   const tabs = {};
 
   for (const set of raw) {
+    // set = { browserInfo, tabs }
     for (const tab of set.tabs) {
-      tab.name = set?.browserInfo?.name;
+      const tmp = enrichTab(tab, set?.browserInfo);
 
-      tab.__ = "__";
-
-      tab.browserId = set?.browserInfo?.browserId;
-
-      const id = `browserId_${set?.browserInfo?.browserId}_tabId_${tab.id}`;
-
-      tab.tab = id;
-
-      tabs[id] = tab;
+      tabs[tmp.tab] = tmp;
     }
   }
 
   return tabs;
+}
+
+export function enrichTab(tab, browserInfo) {
+  tab.name = browserInfo?.name;
+  tab.__ = "__";
+  tab.browserId = browserInfo?.browserId;
+  tab.tab = `browserId_${browserInfo?.browserId}_tabId_${tab.id}`;
+  return tab;
 }
 
 /**
