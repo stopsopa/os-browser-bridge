@@ -82,7 +82,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
           error("Error parsing JSON string:", e);
         }
 
-        let { event, payload, delay } = dataFromJson || {};
+        let { event, detail, delay } = dataFromJson || {};
 
         if (typeof delay !== "undefined") {
           delay = parseInt(delay, 10);
@@ -101,7 +101,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
         }
 
         const customEventInit = {
-          detail: payload,
+          detail,
           bubbles: true, // ←--- enable bubbling
           composed: true, // optional: crosses shadow-DOM boundaries
         };
@@ -157,12 +157,12 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
   //////////////////////////////////////////////////////////////
   document.documentElement.addEventListener("os_browser_bridge", (e) => {
     try {
-      const { event, payload } = e.detail;
+      const { event, payload } = e.detail; // fine
 
       const message = {
         type: "transport_from_content_js_to_background_js",
         event,
-        payload,
+        payload, // xx001
       };
 
       switch (true) {

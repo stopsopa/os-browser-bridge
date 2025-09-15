@@ -39,7 +39,7 @@ export function broadcast(options) {
     const msg = `${event}::${include}::${JSON.stringify({
       event,
       delay,
-      payload,
+      detail: payload,
     })}`;
 
     ws.send(msg); // this will send to background.js and trigger function broadcastToTabs()

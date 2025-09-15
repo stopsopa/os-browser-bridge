@@ -107,7 +107,7 @@ let browserName = "Unknown",
             } else {
               const reply = {
                 event: message?.event,
-                detail: { tabId, ...message?.payload, connected },
+                detail: { tabId, ...message?.payload /* xx001 */, connected }, // xx002
               };
               // log("reply", reply);
               /**
@@ -213,8 +213,7 @@ async function broadcastToTabs(jsonString, includeTabs, excludeTabs) {
 
         const message = {
           type: "os_browser_bridge_event_background_script_to_content_script",
-          jsonString,
-          somestuff: { dddd: "data" },
+          jsonString, // .detail xx002
           tabId,
         };
 
@@ -424,6 +423,11 @@ async function connectWebSocket() {
               case message?.event?.startsWith("other_tabs:"):
               default: {
                 message.tab = tabId;
+                if (typeof message?.payload === "undefined") {
+                  message.payload = {};
+                }
+                message.payload.tabId = tabId;
+                message.payload.connected = connected;
                 // message:
                 //   event: "identify_tab"
                 //   tab: "browserId_c08c4190_tabId_1817282704"
