@@ -207,9 +207,9 @@ connectionRegistry.on("fornodejs", (data) => {
 
 ## browser tab -> background.js
 
-This event is not going all the way to the server.
-
-In fact it doesn't even require chrome extension to be connected to the server.
+> [!NOTE]
+> This event is not going all the way to the server.
+> In fact it doesn't even require chrome extension to be connected to the server.
 
 get tab id:
 
