@@ -24,7 +24,7 @@ export const sendIdentifyTabEvent = (function () {
     }
   });
 
-  return async function sendIdentifyTabEvent() {
+  return async function () {
     i += 1;
     const message = {
       detail: { event: "identify_tab", payload: { id: i } },

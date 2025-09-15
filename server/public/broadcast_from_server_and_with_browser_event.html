@@ -80,6 +80,14 @@
     </div>
 
     <script src="https://stopsopa.github.io/tabs/vanilla-tabs.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "./bridge.js": "https://stopsopa.github.io/os-browser-bridge/server/public/bridge.js",
+          "./tools.js": "https://stopsopa.github.io/os-browser-bridge/extension/tools.js"
+        }
+      }
+    </script>
     <script type="module">
       import { splitOnce, decodeJson, escapeForHtmlAttr } from "./tools.js";
 
