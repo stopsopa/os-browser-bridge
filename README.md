@@ -213,49 +213,23 @@ In fact it doesn't even require chrome extension to be connected to the server.
 
 get tab id:
 
-```js
-{
-  let i = 0;
-  const resolvers = {};
-  /**
-   * Block demonstraging how to get id of this tab
-   * Pay attention that we are registering event listener in document
-   * and only then dispatching event
-   */
-  document.addEventListener("os_browser_bridge_identify_tab", (event) => {
-    if (event?.detail?.id && resolvers[event?.detail?.id]) {
-      resolvers[event?.detail?.id]?.resolve(event.detail.tabId);
-      delete resolvers[event?.detail?.id];
+```html
+<script type="importmap">
+  {
+    "imports": {
+      "./bridge.js": "https://stopsopa.github.io/os-browser-bridge/server/public/bridge.js"
     }
-
-    // I don't have stop here, I can continue with logging this event
-    const timeString = new Date().toLocaleTimeString();
-
-    const line = `time: ${timeString}, event: ${event.type}, detail: ${JSON.stringify(event.detail)}`;
-
-    log("myevent event:", line);
-    // regular_page.html myevent event: time: 11:19:51, event: os_browser_bridge_identify_tab, detail: {"tabId":"browserId_c08c4190_tabId_1817282670","id":3}
-  });
-  async function sendIdentifyTabEvent() {
-    i += 1;
-    const message = {
-      detail: { event: "identify_tab", payload: { id: i } },
-    };
-    // log("identify_tab event sent", message);
-    const promise = new Promise((resolve, reject) => {
-      resolvers[i] = { resolve, reject };
-    });
-
-    document.documentElement.dispatchEvent(new CustomEvent("os_browser_bridge", message));
-
-    return promise;
   }
-  identify.addEventListener("click", async () => {
-    const data = await sendIdentifyTabEvent();
+</script>
+<script type="module">
+  import { sendIdentifyTabEvent, waitForConnectionStatus, unique } from "./bridge.js";
 
-    console.log("got my id:", data); // browserId_dd596c87_tabId_1628889999
-  });
-}
+  const event = await sendIdentifyTabEvent();
+
+  const tabId = event?.detail?.tabId;
+
+  console.log("tabId:", tabId);
+</script>
 ```
 
 ## emmitting events from server
@@ -265,8 +239,8 @@ server side:
 ```js
 const event = "myevent",
   payload = { mydata: "data" },
-  include = `browserId_dd596c87_tabId_1628889998`; // or undefined
-delay = 1000; // in ms, or undefined
+  include = `browserId_c08c4190_tabId_1817283378`, // or undefined
+  delay = 1000; // in ms, or undefined
 
 connectionRegistry.broadcast({ event, payload, include, delay });
 ```
@@ -277,7 +251,7 @@ browser side:
 document.addEventListener("myevent", (event) => {
   const {
     type, // 'myevent'
-    detail, // {def: 'test'}
+    detail, // {mydata: 'data'}
   } = event;
 });
 ```

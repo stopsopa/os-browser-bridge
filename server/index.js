@@ -141,11 +141,11 @@ const staticOptions = {
   lastModified: false, // Disable Last-Modified header
   setHeaders: (res, path, stat) => {
     // Set cache control headers to prevent any caching
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
-    res.set('Pragma', 'no-cache');
-    res.set('Expires', '0');
-    res.set('Surrogate-Control', 'no-store');
-  }
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+    res.set("Pragma", "no-cache");
+    res.set("Expires", "0");
+    res.set("Surrogate-Control", "no-store");
+  },
 };
 
 // Serve static files first from 'public' directory, then fallback to 'extension' directory
