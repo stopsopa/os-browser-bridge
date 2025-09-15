@@ -127,13 +127,14 @@ We can also emmit events from the browser tab in js which can be attached to on 
 
 ## events to subscribe to
 
+### os_browser_bridge_connection_status
+
 > [!WARNING]
 > When you planning to use waitForConnectionStatus() with listening to 'os_browser_bridge_connection_status' event
 > then first add listening to 'os_browser_bridge_connection_status' event
 > and only then call waitForConnectionStatus()
-> 
+>
 > because initial event os_browser_bridge_connection_status will arrive before waitForConnectionStatus()
-> 
 
 ```js
 document.addEventListener("os_browser_bridge_connection_status", (event) => {
@@ -141,20 +142,33 @@ document.addEventListener("os_browser_bridge_connection_status", (event) => {
     type, // "os_browser_bridge_connection_status"
     detail: {
       isConnected, // boolean
-      details: { 
-        state // "connected"
+      details: {
+        state, // "connected"
       },
     },
   } = event;
 
   if (event?.detail?.details?.isConnected) {
-
-  }
-  else {
-
+  } else {
   }
 });
+```
 
+### tabs events
+
+These are events fired by background.js script, pushed to the server and server is broadcasting them to all tabs across all connected browsers.
+
+```js
+["onCreated", "onRemoved", "onUpdated", "onActivated", "onReplaced", "onAttached"].forEach((tabEvent) => {
+  document.addEventListener(tabEvent, (event) => {
+    const {
+      type, // 'myevent'
+      detail, // {def: 'test'}
+    } = event;
+
+    prependEvent(type, detail);
+  });
+});
 ```
 
 ## emmitting events from browser
