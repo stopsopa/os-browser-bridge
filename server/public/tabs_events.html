@@ -5,27 +5,257 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Regular Page - OS Browser Bridge Event Listener</title>
     <link rel="stylesheet" href="styles.css" />
+    <style>
+      .main-container {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      .header {
+        padding: 10px;
+        border-bottom: 1px solid #ddd;
+        flex-shrink: 0;
+      }
+
+      .logs-container {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+      }
+
+      .events-list {
+        width: 40%;
+        border-right: 1px solid #ddd;
+        overflow-y: auto;
+        background-color: #f9f9f9;
+      }
+
+      .event-item {
+        padding: 10px;
+        border-bottom: 1px solid #e0e0e0;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+
+      .event-item:hover {
+        background-color: #e8e8e8;
+      }
+
+      .event-item.selected {
+        background-color: #d0e0ff;
+        border-left: 3px solid #0969da;
+      }
+
+      .event-item.latest {
+        animation: highlight 0.5s ease-in-out;
+      }
+
+      @keyframes highlight {
+        0% {
+          background-color: #ffffcc;
+        }
+        100% {
+          background-color: inherit;
+        }
+      }
+
+      .event-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 4px;
+      }
+
+      .event-time {
+        color: #666;
+        font-size: 11px;
+        margin-right: 8px;
+        flex-shrink: 0;
+      }
+
+      .event-name {
+        font-weight: bold;
+        color: #333;
+        font-size: 12px;
+      }
+
+      .event-url {
+        color: #999;
+        font-size: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-left: 0;
+      }
+
+      .json-viewer {
+        flex: 1;
+        overflow-y: auto;
+        padding: 15px;
+        background-color: #ffffff;
+      }
+
+      .json-content {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        font-family: monaco, Consolas, "Lucida Console", monospace;
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      .empty-state {
+        color: #999;
+        text-align: center;
+        margin-top: 50px;
+      }
+
+      #clear {
+        margin-left: 10px;
+      }
+    </style>
   </head>
   <body>
-    <div class="container">
-      <a href="../">UP</a> &nbsp;
-      <span class="status"></span>
-
-      <button id="clear">Clear</button>
-      <pre id="logs"></pre>
+    <div class="main-container">
+      <div class="header">
+        <a href="../">UP</a> &nbsp;
+        <span class="status"></span>
+        <button id="clear">Clear</button>
+      </div>
+      
+      <div class="logs-container">
+        <div class="events-list" id="eventsList"></div>
+        <div class="json-viewer">
+          <div id="jsonContent" class="json-content">
+            <div class="empty-state">Select an event to view details</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script type="module">
-      const pre = document.querySelector("#logs");
+      const eventsList = document.querySelector("#eventsList");
+      const jsonContent = document.querySelector("#jsonContent");
       const clear = document.querySelector("#clear");
+      
+      let eventsData = new Map(); // Use Map to store events by ID
+      let selectedEventId = null;
+      let eventIdCounter = 0;
 
       clear.addEventListener("click", () => {
-        pre.innerText = "";
+        eventsData.clear();
+        eventsList.innerHTML = "";
+        jsonContent.innerHTML = '<div class="empty-state">Select an event to view details</div>';
+        selectedEventId = null;
       });
-      function prependToPre(...args) {
-        const timeString = new Date().toISOString();
-        pre.innerText = `time: ${timeString}, ${args.join(" ")}` + "\n" + pre.innerText;
+
+      function formatEventTime(date) {
+        return date.toLocaleTimeString('en-US', { 
+          hour12: false, 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          second: '2-digit',
+          fractionalSecondDigits: 3 
+        });
       }
+
+      function extractUrlFromDetail(detail) {
+        if (detail && detail.tab && detail.tab.url) {
+          return detail.tab.url;
+        }
+        return '';
+      }
+
+      function createEventElement(event, eventId) {
+        const div = document.createElement('div');
+        div.className = 'event-item';
+        div.dataset.eventId = eventId;
+        
+        // Create header with time and event name
+        const eventHeader = document.createElement('div');
+        eventHeader.className = 'event-header';
+        
+        const eventTime = document.createElement('span');
+        eventTime.className = 'event-time';
+        eventTime.textContent = formatEventTime(event.timestamp);
+        
+        const eventName = document.createElement('span');
+        eventName.className = 'event-name';
+        eventName.textContent = event.type;
+        
+        eventHeader.appendChild(eventTime);
+        eventHeader.appendChild(eventName);
+        
+        // Create URL element
+        const eventUrl = document.createElement('div');
+        eventUrl.className = 'event-url';
+        eventUrl.textContent = event.url || '(no URL)';
+        
+        div.appendChild(eventHeader);
+        div.appendChild(eventUrl);
+        
+        div.addEventListener('click', () => selectEvent(eventId));
+        
+        return div;
+      }
+
+      function selectEvent(eventId) {
+        // Remove previous selection
+        const previousSelected = eventsList.querySelector('.selected');
+        if (previousSelected) {
+          previousSelected.classList.remove('selected');
+        }
+        
+        // Add selection to new item
+        const eventElement = eventsList.querySelector(`[data-event-id="${eventId}"]`);
+        if (eventElement) {
+          eventElement.classList.add('selected');
+        }
+        
+        selectedEventId = eventId;
+        
+        // Display full event JSON (not just detail)
+        const event = eventsData.get(eventId);
+        if (event) {
+          const eventDisplay = {
+            type: event.type,
+            timestamp: event.timestamp.toISOString(),
+            url: event.url || null,
+            detail: event.detail
+          };
+          jsonContent.innerHTML = `<pre>${JSON.stringify(eventDisplay, null, 2)}</pre>`;
+        }
+      }
+
+      function prependEvent(type, detail) {
+        const timestamp = new Date();
+        const url = extractUrlFromDetail(detail);
+        const eventId = ++eventIdCounter;
+        
+        const eventData = {
+          type,
+          detail,
+          timestamp,
+          url
+        };
+        
+        // Store event in Map
+        eventsData.set(eventId, eventData);
+        
+        // Create and prepend element
+        const eventElement = createEventElement(eventData, eventId);
+        eventElement.classList.add('latest');
+        eventsList.prepend(eventElement);
+        
+        // Auto-select the latest event
+        selectEvent(eventId);
+        
+        // Remove the highlight animation after it completes
+        setTimeout(() => {
+          eventElement.classList.remove('latest');
+        }, 500);
+      }
+
       function updateStatus(status) {
         const statusElement = document.querySelector(".status");
         statusElement.classList.remove("connected", "disconnected", "connecting", "connection_failed");
@@ -53,7 +283,57 @@
             detail, // {def: 'test'}
           } = event;
 
-          prependToPre(`event: ${type}, detail: ${JSON.stringify(detail, null, 4)}`);
+          // where type is one of values from ["onCreated", "onRemoved", "onUpdated", "onActivated", "onReplaced", "onAttached"]
+          // where detail is:
+          // detail = {
+          //   browserInfo: {
+          //     name: "Brave",
+          //     browserId: "dd596c87",
+          //     version: "1.0",
+          //     userAgent:
+          //       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+          //     language: "en-GB",
+          //     platform: {
+          //       os: "mac",
+          //       arch: "arm64",
+          //       nacl_arch: "arm",
+          //     },
+          //     languages: ["en-GB", "en-US", "en"],
+          //     onLine: true,
+          //   },
+          //   tab: {
+          //     active: true,
+          //     audible: false,
+          //     autoDiscardable: true,
+          //     discarded: false,
+          //     frozen: false,
+          //     groupId: -1,
+          //     height: 805,
+          //     highlighted: true,
+          //     id: 1628890071,
+          //     incognito: false,
+          //     index: 2,
+          //     lastAccessed: 1757945493770.099,
+          //     mutedInfo: {
+          //       muted: false,
+          //     },
+          //     openerTabId: 1628890052,
+          //     pinned: false,
+          //     selected: true,
+          //     splitViewId: -1,
+          //     status: "complete",
+          //     title: "New tab",
+          //     url: "chrome://newtab/",
+          //     width: 938,
+          //     windowId: 1628889929,
+          //     name: "Brave",
+          //     __: "__",
+          //     browserId: "dd596c87",
+          //     tab: "browserId_dd596c87_tabId_1628890071",
+          //   },
+          // };
+
+          prependEvent(type, detail);
         });
       });
     </script>
