@@ -233,7 +233,9 @@ get tab id:
 </script>
 ```
 
-## emitting events from server
+## broadcasting
+
+### from server
 
 server side (emitting event):
 
@@ -263,7 +265,35 @@ document.addEventListener("myevent", (event) => {
 });
 ```
 
-get all tabs:
+## from browser tab to other tabs in all browsers (except this tab)
+
+prefix `other_tabs:` before event emited in browser will propagate the event to all tabs in this browser (except this tab).
+and also to all tabs in all other opened browsers
+
+```js
+// emit event
+document.documentElement.dispatchEvent(
+  new CustomEvent("os_browser_bridge", {
+    detail: {
+      event: "other_tabs:broadcast",
+      payload: { message: "Hello other tabs", unique: unq },
+    },
+  })
+);
+
+// and listen:
+
+document.addEventListener("other_tabs:broadcast", (event) => {
+  const {
+    type, // 'myevent'
+    detail, // { message: "Hello other tabs", unique: unq }
+  } = event;
+
+  prependToPre(`event: ${type}, detail: ${JSON.stringify(detail)}`);
+});
+```
+
+# get all tabs (node.js)
 
 ```js
 app.get("/allTabs", async (req, res) => {
