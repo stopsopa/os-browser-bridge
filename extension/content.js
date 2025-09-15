@@ -162,7 +162,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
           // for identify_tab we will handle response from background
           // and forward to browser the server the response
           // defining reply function will require the sendResponse() in background.js to be used
-          // otherwise it will emmit error:
+          // otherwise it will emit error:
           //  Unchecked runtime.lastError: The message port closed before a response was received.
 
           emitForBackground(message, (reply) => {
