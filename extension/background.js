@@ -238,6 +238,7 @@ async function broadcastToTabs(jsonString, includeTabs, excludeTabs) {
         }
       } catch (e) {
         if (e.message.includes("Could not establish connection. Receiving end does not exist.")) {
+          // this will trigger for example for page chrome://extensions/ where content.js is not active
           console.warn(`Content script not active in tab ${tab.id} (${tab.url || "unknown url"}). Skipping message.`);
         } else {
           error(`Error sending message to tab ${tab.id}:`, e);

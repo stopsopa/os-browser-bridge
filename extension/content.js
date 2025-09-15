@@ -100,13 +100,15 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
           await wait(delay);
         }
 
-        emmitForBrowser(
-          new CustomEvent(event, {
-            detail: payload,
-            bubbles: true, // ←--- enable bubbling
-            composed: true, // optional: crosses shadow-DOM boundaries
-          })
-        );
+        const customEventInit = {
+          detail: payload,
+          bubbles: true, // ←--- enable bubbling
+          composed: true, // optional: crosses shadow-DOM boundaries
+        };
+
+        log(`event >${event}< payload:`, customEventInit);
+
+        emmitForBrowser(new CustomEvent(event, customEventInit));
       } catch (e) {
         error("Error parsing message payload:", e);
       }
