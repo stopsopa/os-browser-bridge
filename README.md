@@ -129,6 +129,8 @@ We can also emmit events from the browser tab in js which can be attached to on 
 
 ### os_browser_bridge_connection_status
 
+[demo](https://stopsopa.github.io/os-browser-bridge/server/public/connection_status_demo_improved.html)
+
 > [!WARNING]
 > When you planning to use waitForConnectionStatus() with listening to 'os_browser_bridge_connection_status' event
 > then first add listening to 'os_browser_bridge_connection_status' event
@@ -156,11 +158,13 @@ document.addEventListener("os_browser_bridge_connection_status", (event) => {
 
 ### tabs events
 
+[demo](https://stopsopa.github.io/os-browser-bridge/server/public/tabs_events.html)
+
 These are events fired by background.js script, pushed to the server and server is broadcasting them to all tabs across all connected browsers.
 
 ```js
-["onCreated", "onRemoved", "onUpdated", "onActivated", "onReplaced", "onAttached"].forEach((tabEvent) => {
-  document.addEventListener(tabEvent, (event) => {
+["onCreated", "onRemoved", "onUpdated", "onActivated", "onReplaced", "onAttached"].forEach((en) => {
+  document.addEventListener(en, (event) => {
     const {
       type, // 'myevent'
       detail, // {def: 'test'}
