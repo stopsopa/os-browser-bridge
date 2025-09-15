@@ -133,16 +133,25 @@ if (socket) {
   });
 }
 
+// Configure static file serving options to disable caching
+const staticOptions = {
+  index: false, // stop automatically serve index.html if present. instead list content of directory
+  maxAge: 0, // Disable caching
+  etag: false, // Disable ETag generation
+  lastModified: false, // Disable Last-Modified header
+  setHeaders: (res, path, stat) => {
+    // Set cache control headers to prevent any caching
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.set('Surrogate-Control', 'no-store');
+  }
+};
+
 // Serve static files first from 'public' directory, then fallback to 'extension' directory
 app.use(
-  express.static(web, {
-    index: false, // stop automatically serve index.html if present. instead list content of directory
-    maxAge: "356 days", // in milliseconds max-age=30758400
-  }),
-  express.static(extensionDir, {
-    index: false,
-    maxAge: "356 days",
-  }),
+  express.static(web, staticOptions),
+  express.static(extensionDir, staticOptions),
   serveIndex(web, {
     icons: true,
     view: "details",

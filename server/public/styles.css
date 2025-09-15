@@ -7,6 +7,10 @@ button,
 a {
   font-size: 12px;
 }
+input {
+  margin-top: 2px;
+  margin-bottom: 2px;
+}
 
 h2 {
   margin-top: 2px;

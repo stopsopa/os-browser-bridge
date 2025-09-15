@@ -127,6 +127,12 @@ We can also emmit events from the browser tab in js which can be attached to on 
 
 ## events to subscribe to
 
+> [!WARNING]
+> If you planning to listen to
+> document.addEventListener("os_browser_bridge_connection_status", (event) => {
+> then subscribe to it before wating for waitForConnectionStatus()
+> because initial event os_browser_bridge_connection_status will arrive before waitForConnectionStatus()
+
 ```js
 document.addEventListener("os_browser_bridge_connection_status", (event) => {
   const {
