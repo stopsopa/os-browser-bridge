@@ -101,9 +101,14 @@ if (socket) {
     res.json({ message: "Event sent" });
   });
 
-  app.post("/test/:eventName", (req, res) => {
-    const { eventName } = req.params;
-    const { uniq } = req.body;
+  connectionRegistry.on("test_event", (data) => {
+    const {
+      event, // 'fornodejs'
+      payload: { uniq, eventName }, // { message: "Hello from browser" }
+      tab, // "browserId_dd596c87_tabId_1628889999"
+      delay,
+    } = data;
+
     connectionRegistry.broadcast({ event: eventName, payload: { message: `Hello from server ${uniq}` } });
     res.json({ message: `Event sent ${eventName} ${uniq}` });
   });

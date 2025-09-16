@@ -92,14 +92,14 @@
         eventsParentElement.appendChild(buttonTest);
         const testEvent = async () => {
           const uniq = unique();
-          const res = await fetch(`/test/${eventName}`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ uniq }),
-          });
-          const data = await res.json();
+          document.documentElement.dispatchEvent(
+            new CustomEvent("os_browser_bridge", {
+              detail: {
+                event: "test_event",
+                payload: { uniq, eventName },
+              },
+            })
+          );
           prependToPre(`triggered: ${eventName}, unique: ${uniq}`);
         };
         buttonTest.addEventListener("click", testEvent);
