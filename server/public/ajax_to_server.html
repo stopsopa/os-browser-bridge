@@ -5,17 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Document</title>
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="https://stopsopa.github.io/tabs/vanilla-tabs.css" />
   </head>
   <body>
     <a href="../">UP</a>
-    <p class="tip">browser -&gt; ajax -&gt; server</p>
-    <p class="info">
-      Server fetching all tabs information - nothing really special about browser side info fetched via regular ajax
-    </p>
-    <button id="allTabs">allTabs() ajax</button>
-    <button id="clear">Clear</button>
-    <pre id="logs"></pre>
+
+    <br />
+    <br />
+    <div data-vanilla-tabs>
+      <div data-buttons>
+        <a href="javascript:;">demo</a>
+        <span>code example</span>
+      </div>
+      <div data-tabs>
+        <div>
+          <p class="tip">browser -&gt; ajax -&gt; server</p>
+          <p class="info">
+            Server fetching all tabs information - nothing really special about browser side info fetched via regular
+            ajax
+          </p>
+          <button id="allTabs">allTabs() ajax</button>
+        </div>
+        <div>
+          <a href="https://github.com/stopsopa/os-browser-bridge?tab=readme-ov-file#get-all-tabs-nodejs">
+            documentation page
+          </a>
+          <pre>
+
+app.get("/allTabs", async (req, res) => {
+  const data = await connectionRegistry.allTabs();
+
+  res.json(data);
+});
+          </pre>
+        </div>
+      </div>
+      <br />
+      <button id="clear">Clear</button>
+      <pre id="logs"></pre>
+    </div>
+    <script src="https://stopsopa.github.io/tabs/vanilla-tabs.js"></script>
     <script>
+      const unbind = vanillaTabs.bind();
+      vanillaTabs.active();
+
       const URL = "http://localhost:8080";
 
       const pre = document.querySelector("#logs");
