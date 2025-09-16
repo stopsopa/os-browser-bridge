@@ -7,6 +7,21 @@
     "service_worker": "background.js",
     "type": "module"
   },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-gray-16.png",
+      "32": "icons/icon-gray-32.png",
+      "48": "icons/icon-gray-48.png",
+      "128": "icons/icon-gray-128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon-color-16.png",
+    "32": "icons/icon-color-32.png",
+    "48": "icons/icon-color-48.png",
+    "128": "icons/icon-color-128.png"
+  },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
@@ -14,6 +29,6 @@
       "comment": "default document_idle, i.e. after DOMContentLoaded and after most inline scripts have finished), Chrome injects content.js."
     }
   ],
-  "permissions": ["activeTab", "scripting", "tabs", "alarms"],
-  "host_permissions": ["http://localhost:8080/*", "ws://localhost:8080/*"]
+  "permissions": ["activeTab", "scripting", "tabs", "alarms", "storage"],
+  "host_permissions": ["<all_urls>"]
 }

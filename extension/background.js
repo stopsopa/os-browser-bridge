@@ -2,7 +2,7 @@ import { splitOnce, normalizeListToArray, stringToIncludeExclude, enrichTab } fr
 
 let connected = false;
 
-let debug = true;
+let debug = false;
 function error() {
   if (debug) {
     console.error("background.js", ...arguments);
@@ -24,7 +24,10 @@ function emitForContentJs(...args) {
   return chrome.tabs.sendMessage(...args);
 }
 
-const WS_SERVER_URL = "ws://localhost:8080";
+// Configuration from storage
+let WS_SERVER_URL = ""; // No default URL - must be set by user
+let connectionEnabled = false; // Default to disabled until user configures URL
+
 let ws = null;
 let reconnectTimer = null; // stores the id returned by setTimeout
 let reconnectAttempts = 0;
@@ -34,6 +37,54 @@ const MAX_RECONNECT_DELAY = 5000; // Maximum delay of 5 seconds
 let browserName = "Unknown",
   browserId = "Unknown",
   browserInfo = {};
+
+// Function to update extension icon based on connection state
+function updateIcon(state) {
+  const iconPaths = {
+    disabled: {
+      "16": "icons/icon-gray-16.png",
+      "32": "icons/icon-gray-32.png",
+      "48": "icons/icon-gray-48.png",
+      "128": "icons/icon-gray-128.png"
+    },
+    connected: {
+      "16": "icons/icon-connected-16.png",
+      "32": "icons/icon-connected-32.png",
+      "48": "icons/icon-connected-48.png",
+      "128": "icons/icon-connected-128.png"
+    },
+    disconnected: {
+      "16": "icons/icon-disconnected-16.png",
+      "32": "icons/icon-disconnected-32.png",
+      "48": "icons/icon-disconnected-48.png",
+      "128": "icons/icon-disconnected-128.png"
+    },
+    connecting: {
+      "16": "icons/icon-connecting-16.png",
+      "32": "icons/icon-connecting-32.png",
+      "48": "icons/icon-connecting-48.png",
+      "128": "icons/icon-connecting-128.png"
+    }
+  };
+
+  const icons = iconPaths[state] || iconPaths.disabled;
+  chrome.action.setIcon({ path: icons });
+}
+
+// Load settings from storage
+async function loadSettings() {
+  try {
+    const settings = await chrome.storage.local.get(['serverUrl', 'connectionEnabled']);
+    WS_SERVER_URL = settings.serverUrl || "";
+    // Only enable connection if we have a URL and it's explicitly enabled
+    connectionEnabled = !!settings.serverUrl && (settings.connectionEnabled === true);
+    log('Settings loaded:', { WS_SERVER_URL, connectionEnabled });
+    return { WS_SERVER_URL, connectionEnabled };
+  } catch (err) {
+    error('Error loading settings:', err);
+    return { WS_SERVER_URL, connectionEnabled };
+  }
+}
 
 // Detect browser name once, then initiate the first connection
 (async () => {
@@ -55,9 +106,74 @@ let browserName = "Unknown",
     // keep default "Unknown" on failure
   }
 
+  // Load settings before connecting
+  await loadSettings();
+  
+  // Set initial icon state based on connection enabled setting
+  updateIcon(connectionEnabled ? 'disconnected' : 'disabled');
+
   const events2 = {
     ping: (message, sender, sendResponse) => {
       sendResponse({ type: "pong" });
+    },
+    // Handle popup status request
+    get_popup_status: (message, sender, sendResponse) => {
+      sendResponse({
+        connectionEnabled,
+        isConnected: connected,
+        connectionState: ws ? (ws.readyState === WebSocket.CONNECTING ? 'connecting' : 
+                                ws.readyState === WebSocket.OPEN ? 'connected' : 'disconnected') : 'disconnected',
+        serverUrl: WS_SERVER_URL,
+        reconnectAttempts
+      });
+      return false; // Synchronous response, no need to return true
+    },
+    // Handle settings update from popup
+    update_settings: (message, sender, sendResponse) => {
+      // Handle async operation
+      (async () => {
+        try {
+          const oldEnabled = connectionEnabled;
+          const oldUrl = WS_SERVER_URL;
+          
+          // Update settings
+          WS_SERVER_URL = message.serverUrl || WS_SERVER_URL;
+          connectionEnabled = message.connectionEnabled;
+          
+          // Save settings to storage
+          await chrome.storage.local.set({
+            serverUrl: WS_SERVER_URL,
+            connectionEnabled: connectionEnabled
+          });
+          
+          // If connection settings changed
+          if (oldEnabled !== connectionEnabled || oldUrl !== WS_SERVER_URL) {
+            if (!connectionEnabled) {
+              // Disconnect if disabled
+              disconnectWebSocket();
+              updateIcon('disabled');
+            } else {
+              // Reconnect with new settings
+              disconnectWebSocket();
+              connectWebSocket();
+            }
+          }
+          
+          // Send current status back
+          sendResponse({
+            connectionEnabled,
+            isConnected: connected,
+            connectionState: ws ? (ws.readyState === WebSocket.CONNECTING ? 'connecting' : 
+                                    ws.readyState === WebSocket.OPEN ? 'connected' : 'disconnected') : 'disconnected',
+            serverUrl: WS_SERVER_URL,
+            reconnectAttempts
+          });
+        } catch (err) {
+          error('Error updating settings:', err);
+          sendResponse({ error: err.message });
+        }
+      })();
+      return true; // Return true to indicate async sendResponse
     },
     // Provide current connection status immediately upon request from content script
     get_connection_status: (message, sender, sendResponse) => {
@@ -152,10 +268,20 @@ let browserName = "Unknown",
     log("event not handled independent", message.type);
   });
 
-  connectWebSocket();
+  // Only connect if enabled
+  if (connectionEnabled) {
+    connectWebSocket();
+  } else {
+    updateIcon('disabled');
+  }
 })();
 
 function scheduleReconnect() {
+  if (!connectionEnabled) {
+    // Don't reconnect if connection is disabled
+    return;
+  }
+  
   if (reconnectTimer != null) {
     // a reconnection attempt is already scheduled
     return;
@@ -189,6 +315,20 @@ function cleanupWebSocket() {
   }
 
   ws = null;
+}
+
+// Function to disconnect WebSocket and clear reconnect timers
+function disconnectWebSocket() {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  cleanupWebSocket();
+  connected = false;
+  reconnectAttempts = 0;
+  broadcastConnectionStatus(false, { state: 'disconnected' });
+  // Update icon based on whether connection is enabled or not
+  updateIcon(connectionEnabled ? 'disconnected' : 'disabled');
 }
 
 async function broadcastToTabs(payload, includeTabs, excludeTabs) {
@@ -286,6 +426,12 @@ function sendToNodeFactory(ws) {
 }
 
 async function connectWebSocket() {
+  // Don't connect if disabled or no URL configured
+  if (!connectionEnabled || !WS_SERVER_URL) {
+    updateIcon('disabled');
+    return;
+  }
+  
   // Always clean up any previous socket before starting a new one
   cleanupWebSocket();
 
@@ -295,8 +441,9 @@ async function connectWebSocket() {
   }
 
   try {
-    // Emit connecting status
+    // Emit connecting status and update icon
     broadcastConnectionStatus(false, { state: "connecting", reconnectAttempts });
+    updateIcon('connecting');
 
     const encodedBrowserInfo = base64EncodeUtf8(JSON.stringify(browserInfo || null));
     ws = new WebSocket(`${WS_SERVER_URL}?browser=${encodedBrowserInfo}`);
@@ -305,8 +452,17 @@ async function connectWebSocket() {
 
     ws.addEventListener("open", () => {
       reconnectAttempts = 0; // Reset reconnect attempts on successful connection
-      // Emit connected status
+      // Emit connected status and update icon
       broadcastConnectionStatus(true, { state: "connected", reconnectAttempts: 0 });
+      updateIcon('connected');
+      // Notify popup if it's open
+      chrome.runtime.sendMessage({ 
+        type: 'status_update',
+        connectionEnabled,
+        isConnected: true,
+        connectionState: 'connected',
+        serverUrl: WS_SERVER_URL
+      }).catch(() => {}); // Ignore errors if popup is not open
     });
 
     // after some thoughts it seems that this method is only useful for allTabs special event
@@ -430,13 +586,22 @@ async function connectWebSocket() {
     ///////////////////////////////
 
     ws.addEventListener("close", (event) => {
-      // Emit disconnected status
+      // Emit disconnected status and update icon
       broadcastConnectionStatus(false, {
         state: "disconnected",
         reconnectAttempts,
         code: event.code,
         reason: event.reason,
       });
+      updateIcon(connectionEnabled ? 'disconnected' : 'disabled');
+      // Notify popup if it's open
+      chrome.runtime.sendMessage({ 
+        type: 'status_update',
+        connectionEnabled,
+        isConnected: false,
+        connectionState: 'disconnected',
+        serverUrl: WS_SERVER_URL
+      }).catch(() => {}); // Ignore errors if popup is not open
       scheduleReconnect();
     });
 
@@ -511,12 +676,13 @@ async function connectWebSocket() {
     //   // Don't call scheduleReconnect here as 'close' event will also fire
     // });
   } catch (e) {
-    // Emit connection failed status
+    // Emit connection failed status and update icon
     broadcastConnectionStatus(false, {
       state: "connection_failed",
       reconnectAttempts,
       error: e.message || "Failed to create WebSocket",
     });
+    updateIcon(connectionEnabled ? 'disconnected' : 'disabled');
     scheduleReconnect();
   }
 }
