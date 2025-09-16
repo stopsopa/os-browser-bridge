@@ -280,7 +280,8 @@ prefix `other_tabs:` before event emited in browser will propagate the event to 
 and also to all tabs in all other opened browsers
 
 ```js
-// emit event
+
+// emit event (in browser tab context)
 document.documentElement.dispatchEvent(
   new CustomEvent("os_browser_bridge", {
     detail: {
@@ -290,8 +291,7 @@ document.documentElement.dispatchEvent(
   })
 );
 
-// and listen:
-
+// and listen: (in the other tab context)
 document.addEventListener("other_tabs:broadcast", (event) => {
   const {
     type, // 'myevent'
@@ -300,6 +300,7 @@ document.addEventListener("other_tabs:broadcast", (event) => {
 
   prependToPre(`event: ${type}, detail: ${JSON.stringify(detail)}`);
 });
+
 ```
 
 # get all tabs (node.js)

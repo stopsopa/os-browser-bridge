@@ -62,14 +62,27 @@
           </div>
           <div>
             <pre>
-              document.documentElement.dispatchEvent(
-                new CustomEvent("os_browser_bridge", {
-                  detail: {
-                    event: "other_tabs:broadcast",
-                    payload: { message: "Hello other tabs" },
-                  },
-                })
-              );
+
+// emit event (in browser tab context)
+document.documentElement.dispatchEvent(
+  new CustomEvent("os_browser_bridge", {
+    detail: {
+      event: "other_tabs:broadcast",
+      payload: { message: "Hello other tabs", unique: unq },
+    },
+  })
+);
+
+// and listen: (in the other tab context)
+document.addEventListener("other_tabs:broadcast", (event) => {
+  const {
+    type, // 'myevent'
+    detail, // { message: "Hello other tabs", unique: unq }
+  } = event;
+
+  prependToPre(`event: ${type}, detail: ${JSON.stringify(detail)}`);
+});
+
             </pre>
           </div>
         </div>
