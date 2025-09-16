@@ -23,7 +23,7 @@
       <a id="clone" target="_blank">Open cloned tabs for testing</a>
       <hr />
       <div id="events">
-        <form id="eventForm" style="display: inline;">
+        <form id="eventForm" style="display: inline">
           <input type="text" id="eventName" required />
           <button type="submit">Add Event</button>
         </form>
@@ -40,7 +40,7 @@
     </div>
 
     <script type="module">
-      import { sendIdentifyTabEvent, waitForConnectionStatus } from "./bridge.js";
+      import { sendIdentifyTabEvent, waitForConnectionStatus, unique } from "./bridge.js";
 
       document.querySelector("#clone").setAttribute("href", location.href);
 
@@ -80,12 +80,29 @@
         if (events.has(eventName)) {
           return;
         }
-        
+
         const button = document.createElement("button");
         button.innerText = `${eventName}`;
         button.setAttribute("title", `unsubscribe from event ${eventName}`);
-
         eventsParentElement.appendChild(button);
+
+        const buttonTest = document.createElement("button");
+        buttonTest.innerText = `✔`;
+        buttonTest.setAttribute("title", `test event ${eventName}`);
+        eventsParentElement.appendChild(buttonTest);
+        const testEvent = async () => {
+          const uniq = unique();
+          const res = await fetch(`/test/${eventName}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ uniq }),
+          });
+          const data = await res.json();
+          prependToPre(`triggered: ${eventName}, unique: ${uniq}`);
+        };
+        buttonTest.addEventListener("click", testEvent);
 
         const fn = (event) => {
           const {
@@ -100,9 +117,11 @@
           button,
           eventName,
           fn,
+          buttonTest,
+          testEvent,
         });
         button.addEventListener("click", () => removeEvent(eventName));
-        
+
         // Update URL unless explicitly told not to (e.g., during initialization)
         if (!skipUrlUpdate) {
           addNameToUrl(eventName);
@@ -111,9 +130,14 @@
       function removeEvent(eventName) {
         const event = events.get(eventName);
         if (event) {
-          document.removeEventListener(eventName, event.fn);
-          event.button.remove();
           events.delete(eventName);
+
+          const { fn, button, buttonTest, testEvent } = event;
+          document.removeEventListener(eventName, fn);
+          button.remove();
+
+          buttonTest.removeEventListener("click", testEvent);
+          buttonTest.remove();
           removeNameFromUrl(eventName);
         }
       }
@@ -131,7 +155,7 @@
       function extractNamesFromUrl() {
         const url = new URL(window.location.href);
         const names = url.searchParams.get("names");
-        return names ? names.split(",").filter(n => n.trim()) : [];
+        return names ? names.split(",").filter((n) => n.trim()) : [];
       }
 
       function addNameToUrl(name) {
@@ -155,7 +179,7 @@
       function removeNameFromUrl(name) {
         const url = new URL(window.location.href);
         const currentNames = extractNamesFromUrl();
-        const filteredNames = currentNames.filter(n => n !== name);
+        const filteredNames = currentNames.filter((n) => n !== name);
         if (filteredNames.length > 0) {
           url.searchParams.set("names", filteredNames.join(","));
         } else {
@@ -167,7 +191,7 @@
       function removeNamesFromUrl(names) {
         const url = new URL(window.location.href);
         const currentNames = extractNamesFromUrl();
-        const filteredNames = currentNames.filter(n => !names.includes(n));
+        const filteredNames = currentNames.filter((n) => !names.includes(n));
         if (filteredNames.length > 0) {
           url.searchParams.set("names", filteredNames.join(","));
         } else {
@@ -178,7 +202,7 @@
 
       // Initialize events from URL on page load
       const initialNames = extractNamesFromUrl();
-      initialNames.forEach(name => {
+      initialNames.forEach((name) => {
         if (name) {
           addEvent(name, true); // Skip URL update during initialization
         }
@@ -194,7 +218,7 @@
         // Event management functions (these also update URL)
         addEvent: addEvent,
         removeEvent: removeEvent,
-        getEvents: () => Array.from(events.keys())
+        getEvents: () => Array.from(events.keys()),
       };
     </script>
   </body>

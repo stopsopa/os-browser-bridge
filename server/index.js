@@ -101,6 +101,13 @@ if (socket) {
     res.json({ message: "Event sent" });
   });
 
+  app.post("/test/:eventName", (req, res) => {
+    const { eventName } = req.params;
+    const { uniq } = req.body;
+    connectionRegistry.broadcast({ event: eventName, payload: { message: `Hello from server ${uniq}` } });
+    res.json({ message: `Event sent ${eventName} ${uniq}` });
+  });
+
   connectionRegistry.on("fornodejs", (data) => {
     // WARNING: leave this debug here for demo purposes
     debugger;
@@ -118,6 +125,7 @@ if (socket) {
 
     console.log("fornodejs", data);
   });
+
   [
     "onCreated", // New tab was created
     "onRemoved", // Tab was closed
