@@ -125,6 +125,9 @@ We can also emit events from the browser tab in js which can be attached to on t
 
 # Events
 
+Test particular event:
+https://stopsopa.github.io/os-browser-bridge/server/public/particular_event_tester.html?names=test%2Ctest2
+
 First of all to clear localstorage settings for the extension just got to chrome://extensions/ , find the extension and click 'Inspect views
 service worker' and then in console run:
 
