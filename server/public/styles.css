@@ -7,7 +7,7 @@ button,
 a {
   font-size: 12px;
 }
-input {
+input.wide {
   margin-top: 2px;
   margin-bottom: 2px;
 }
