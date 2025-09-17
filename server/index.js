@@ -16,15 +16,24 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 if (!process.env.PORT) {
-  throw new Error("PORT environment variable is required. Please set PORT in your .env file or environment.");
+  throw new Error(
+    "PORT environment variable is required. Please set PORT in your .env file or environment."
+  );
 }
 if (!process.env.HOST) {
-  throw new Error("HOST environment variable is required. Please set HOST in your .env file or environment.");
+  throw new Error(
+    "HOST environment variable is required. Please set HOST in your .env file or environment."
+  );
 }
 
 const PORT = process.env.PORT;
 const HOST = process.env.HOST;
 const socket = typeof process.env.SOCKET !== "undefined";
+
+function log(...args) {
+  const time = new Date().toISOString().substring(0, 19).replace("T", " ");
+  console.log(`[${time}]`, ...args);
+}
 
 const app = express();
 app.use(express.json());
@@ -45,7 +54,7 @@ if (socket) {
   wss.on("connection", async (ws, req) => {
     const browserInfo = await connectionRegistry.add(ws, req);
 
-    console.log(
+    log(
       `${now()} Client connected with ID: ${browserInfo?.name}_${
         browserInfo?.browserId
       }, Total connections: ${connectionRegistry.size()}`
@@ -54,7 +63,7 @@ if (socket) {
     ws.on("close", () => {
       connectionRegistry.remove(ws);
 
-      console.log(
+      log(
         `${now()} Client disconnected: ${browserInfo?.name}_${
           browserInfo?.browserId
         }, Total connections: ${connectionRegistry.size()}`
@@ -90,10 +99,24 @@ if (socket) {
     //   "browserId_c08c4190_tabId_1817282704"
     // or list of these comma separated
 
-    const { event, payload, include, exclude, delay } = { ...req.query, ...req.body };
+    const { event, payload, include, exclude, delay } = {
+      ...req.query,
+      ...req.body,
+    };
 
-    console.log(
-      JSON.stringify({ endpoint: "/just_broadcast", event, payload: typeof payload, include, exclude, delay }, null, 2)
+    log(
+      JSON.stringify(
+        {
+          endpoint: "/just_broadcast",
+          event,
+          payload: typeof payload,
+          include,
+          exclude,
+          delay,
+        },
+        null,
+        2
+      )
     );
 
     connectionRegistry.broadcast({ event, payload, include, exclude, delay });
@@ -103,13 +126,17 @@ if (socket) {
 
   connectionRegistry.on("test_event", (data) => {
     const {
-      event, // 'fornodejs'
+      event, // 'test_event'
       payload: { uniq, eventName }, // { message: "Hello from browser" }
       tab, // "browserId_dd596c87_tabId_1628889999"
       delay,
     } = data;
 
-    connectionRegistry.broadcast({ event: eventName, payload: { message: `Hello from server ${uniq}` } });
+    connectionRegistry.broadcast({
+      event: eventName,
+      payload: { message: `Hello from server ${uniq}` },
+    });
+
     res.json({ message: `Event sent ${eventName} ${uniq}` });
   });
 
@@ -128,7 +155,6 @@ if (socket) {
     // maybe I could inject with the event information about available tabs ...
     // but actually no: sending event back and just forwarding browserId:tabId will do
 
-    console.log("fornodejs", data);
   });
 
   [
@@ -154,7 +180,10 @@ const staticOptions = {
   lastModified: false, // Disable Last-Modified header
   setHeaders: (res, path, stat) => {
     // Set cache control headers to prevent any caching
-    res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+    res.set(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+    );
     res.set("Pragma", "no-cache");
     res.set("Expires", "0");
     res.set("Surrogate-Control", "no-store");
@@ -175,7 +204,7 @@ app.use(
 // WebSocket setup and routes are now registered earlier, before static middleware
 
 server.listen(PORT, HOST, () => {
-  console.log(`
+  log(`
 Server listening on: 
     🌎 http://${HOST}:${PORT}
 
