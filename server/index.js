@@ -185,7 +185,10 @@ if (socket) {
     let restarting = false;
     function start() {
       try {
-        const child = spawn("/bin/bash", [scriptPath], { stdio: ["ignore", "pipe", "pipe"] });
+        log("launching", scriptPath);
+        const child = spawn("/bin/bash", [scriptPath], {
+          stdio: ["ignore", "pipe", "pipe"],
+        });
 
         const rl = readline.createInterface({ input: child.stdout });
         rl.on("line", (line) => {
@@ -199,6 +202,7 @@ if (socket) {
                   // line,
                 },
               });
+              log("MacWakeWatcher: wokeup_v2 event detected and forwarded");
             }
           } catch (e) {}
         });
