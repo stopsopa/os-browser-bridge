@@ -176,16 +176,22 @@ if (socket) {
   });
 
   // Start macOS wake watcher v2 via bash script and broadcast as 'wokeup_v2'
-  (function setupMacWakeScriptWatcher() {
+  {
     // throw instead of early return when condition not met
-    if (process.platform !== "darwin") throw new Error("MacWakeWatcher: OS not supported");
+    if (process.platform !== "darwin")
+      throw new Error("MacWakeWatcher: OS not supported");
 
-    const scriptPath = path.join(__dirname, "tools", "detect_wakeup_macos_log.sh");
+    const scriptPath = path.join(
+      __dirname,
+      "tools",
+      "detect_wakeup_macos_log.sh"
+    );
 
     let restarting = false;
     function start() {
       try {
         log("launching", scriptPath);
+
         const child = spawn("/bin/bash", [scriptPath], {
           stdio: ["ignore", "pipe", "pipe"],
         });
@@ -193,7 +199,10 @@ if (socket) {
         const rl = readline.createInterface({ input: child.stdout });
         rl.on("line", (line) => {
           try {
-            if (typeof line === "string" && line.includes("EvaluateClamshellSleepState")) {
+            if (
+              typeof line === "string" &&
+              line.includes("EvaluateClamshellSleepState")
+            ) {
               connectionRegistry.broadcast({
                 event: "wokeup_v2",
                 payload: {
@@ -221,8 +230,8 @@ if (socket) {
       } catch (_) {}
     }
     start();
-  })();
-}
+  }
+} // Close the if (socket) block
 
 // Configure static file serving options to disable caching
 const staticOptions = {
