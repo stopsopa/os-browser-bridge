@@ -52,9 +52,13 @@ export function broadcast(options) {
  * holds the list of ws (websockets) connections
  */
 export class WebSocketConnectionRegistry {
-  constructor() {
+  constructor(opt) {
     this.connections = new Set();
     this.events = new Map();
+    const { enableTabsLifecycleEvents } = (this.options = {
+      enableTabsLifecycleEvents: true,
+      ...opt,
+    });
     /**
      * [function]: eventName
      *
@@ -65,6 +69,22 @@ export class WebSocketConnectionRegistry {
      *
      * .on() function will also return function which once triggered will unregister the event
      */
+
+    if (enableTabsLifecycleEvents) {
+      [
+        "onCreated", // New tab was created
+        "onRemoved", // Tab was closed
+        "onUpdated", // Tab was updated (e.g., navigated to different page, title changed, loading state changed)
+        "onActivated", // Tab became active (user switched to it)
+        "onReplaced", // Tab was replaced with another tab (rare, e.g., tab prerendering)
+        "onAttached", // Tab was attached to a window (e.g., dragged between windows)
+      ].forEach((ev) => {
+        this.on(ev, (data) => {
+          const { event, payload } = data;
+          this.broadcast({ event, payload });
+        });
+      });
+    }
   }
 
   async add(ws, req) {
@@ -81,6 +101,7 @@ export class WebSocketConnectionRegistry {
       if (browserInfoRawEncoded) {
         try {
           const browserInfoRaw = Buffer.from(browserInfoRawEncoded, "base64").toString("utf-8");
+
           ws.browserInfo = browserInfo = JSON.parse(browserInfoRaw);
         } catch (e) {
           console.warn("Failed to decode browser info from client:", e);
@@ -123,7 +144,6 @@ export class WebSocketConnectionRegistry {
       }
 
       if (parsed.event.startsWith("other_tabs:")) {
-
         const { event, payload, tab, delay } = parsed;
         // parsed = {
         //   type: "transport_from_content_js_to_background_js",
