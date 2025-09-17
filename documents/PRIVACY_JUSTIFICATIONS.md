@@ -2,7 +2,7 @@
 
 ## Single Purpose Description
 
-OS Browser Bridge is a specialized Chrome extension that creates a real-time bidirectional communication channel between Node.js server applications and web browser tabs. It functions as an event bridge, enabling server applications to send events to browser tabs and allowing browser tabs to send events back to server applications. This enables integration of server-side processes, OS-level events, and cross-tab communication that would otherwise be impossible with standard web APIs.
+OS Browser Bridge is a specialized Chrome extension that creates a real-time bidirectional communication channel between Node.js server (any server with websockets really) applications and web browser tabs. It functions as an event bridge, enabling server applications to send events to browser tabs and allowing browser tabs to send events back to server applications. This enables integration of server-side processes, OS-level events, and cross-tab communication that would otherwise be impossible with standard web APIs.
 
 ## Detailed Permissions Justifications
 
