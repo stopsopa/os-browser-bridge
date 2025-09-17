@@ -12,7 +12,10 @@ import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
 import serveIndex from "serve-index";
-import { WebSocketConnectionRegistry } from "./WebSocketConnectionRegistry.js";
+import {
+  WebSocketConnectionRegistry,
+  broadcast,
+} from "./WebSocketConnectionRegistry.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -80,9 +83,13 @@ if (socket) {
    * curl http://localhost:8080/allTabs | jq
    */
   app.get("/allTabs", async (req, res) => {
-    const data = await connectionRegistry.allTabs();
+    try {
+      const data = await connectionRegistry.allTabs();
 
-    res.json(data);
+      res.json(data);
+    } catch (e) {
+      res.status(500).json({ error: e.message || String(e) });
+    }
   });
 
   /**
@@ -156,7 +163,6 @@ if (socket) {
     // figure out to send to one tab or to all tabs or to list or tabs
     // maybe I could inject with the event information about available tabs ...
     // but actually no: sending event back and just forwarding browserId:tabId will do
-
   });
 
   [
@@ -263,9 +269,11 @@ app.use(
 // WebSocket setup and routes are now registered earlier, before static middleware
 
 server.listen(PORT, HOST, () => {
-  log(`
+  console.log(`
 Server listening on: 
     🌎 http://${HOST}:${PORT}
+
+    with chrome extension use ws://${HOST}:${PORT}
 
     launched ${socket ? "with WebSocket" : "without WebSocket"}
 

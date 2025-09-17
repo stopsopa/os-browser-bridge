@@ -3,5 +3,8 @@
   "scripts": {
     "test": "node --test extension/tools.test.js"
   },
-  "devDependencies": {}
+  "devDependencies": {},
+  "dependencies": {
+    "envprocessor": "^1.8.15"
+  }
 }

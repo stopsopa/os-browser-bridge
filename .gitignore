@@ -3,3 +3,4 @@ node_modules
 xx.cjs
 log.log
 *.zip
+server/public/index.html
