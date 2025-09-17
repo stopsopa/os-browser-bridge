@@ -14,7 +14,7 @@ Node.js Server (WebSocket) → Chrome Extension (Background Script) → Content 
 
 ## Quick Start
 
-### 1. Start the Server
+### 1. Start the Demo Server
 
 ```bash
 
@@ -92,6 +92,7 @@ We can also emit events from the browser tab in js which can be attached to on t
 ```
 ├── server/
 │   ├── index.js                     # Central server hub with WebSocket + static file server
+│   ├── simplest.js                  # Demo of simplest setup with express server
 │   ├── package.json                 # Node.js dependencies
 │   └── public/
 │       ├── index.html               # Direct WebSocket test page
@@ -123,6 +124,13 @@ We can also emit events from the browser tab in js which can be attached to on t
 - Check WebSocket connection in server background script console
 - Verify event listener is attached to `document` element
 
+# simplest setup with express server
+
+[server/simplest.js](server/simplest.js)
+
+A more advanced demo server utilizing additional internal features:
+[server/index.js](server/index.js)
+
 # Events
 
 Test particular event:
@@ -132,9 +140,7 @@ First of all to clear localstorage settings for the extension just got to chrome
 service worker' and then in console run:
 
 ```js
-
-chrome.storage.local.clear(() => console.log('Storage cleared!'));
-
+chrome.storage.local.clear(() => console.log("Storage cleared!"));
 ```
 
 ## events to subscribe to
@@ -283,7 +289,6 @@ prefix `other_tabs:` before event emited in browser will propagate the event to 
 and also to all tabs in all other opened browsers
 
 ```js
-
 // emit event (in browser tab context)
 document.documentElement.dispatchEvent(
   new CustomEvent("os_browser_bridge", {
@@ -303,7 +308,6 @@ document.addEventListener("other_tabs:broadcast", (event) => {
 
   prependToPre(`event: ${type}, detail: ${JSON.stringify(detail)}`);
 });
-
 ```
 
 # get all tabs (node.js)
