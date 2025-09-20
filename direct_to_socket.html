@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Event Listener Example (Direct WebSocket)</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      input {
+        width: 98%;
+        font-size: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <a href="../">UP</a>
+      <p class="error">
+        connecting directly from browser to server ws socket seems to break
+        broadcasting when targetting particular tabs. When browser ws connected,
+        broadcasting seems to send requests with 'include' still to all tabs.
+        Where it should send just to specified tab.
+      </p>
+      <p class="tip">
+        Testing Direct WebSocket connection browser &lt;-&gt; server
+      </p>
+
+      <a id="clone" target="_blank">Open cloned tabs for testing</a>
+      <input class="wide" id="curl1" />
+      <input class="wide" id="curl2" />
+      <input class="wide" id="curl3" />
+      <input class="wide" id="curl4" />
+      <button id="clear">Clear</button>
+      <pre id="logs"></pre>
+    </div>
+
+    <script src="preprocessed.js"></script>
+    <script type="module">
+      import {
+        mockEnv,
+        all,
+        has,
+        get,
+        getDefault,
+        getThrow,
+        getIntegerThrowInvalid,
+        getIntegerDefault,
+        getIntegerThrow,
+      } from "./env.js";
+
+      import { splitOnce, decodeJson, escapeForHtmlAttr } from "./tools.js";
+
+      import {
+        sendIdentifyTabEvent,
+        waitForConnectionStatus,
+      } from "./bridge.js";
+
+      const PORT = getIntegerThrow("PORT");
+      const HOST = getThrow("HOST");
+
+      document.querySelector("#clone").setAttribute("href", location.href);
+
+      const pre = document.querySelector("#logs");
+
+      function prependToPre(...args) {
+        const timeString = new Date().toISOString();
+        pre.innerText =
+          `time: ${timeString}, ${args.join(" ")}` + "\n" + pre.innerText;
+      }
+
+      function log(...args) {
+        console.log("direct_to_socket.html", ...args);
+      }
+
+      await waitForConnectionStatus();
+
+      const event = await sendIdentifyTabEvent();
+
+      const tabId = event?.detail?.tabId;
+
+      prependToPre("tabId:", tabId);
+
+      {
+        document.querySelector(
+          "#curl1"
+        ).value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa1111"}}' "http://${HOST}:${PORT}/just_broadcast?event=myevent" | jq`;
+
+        document.querySelector(
+          "#curl2"
+        ).value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa3333"}}' "http://${HOST}:${PORT}/just_broadcast?event=myevent&delay=1000" | jq`;
+
+        document.querySelector(
+          "#curl3"
+        ).value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa3333"}}' "http://${HOST}:${PORT}/just_broadcast?event=myevent&include=${tabId}" | jq`;
+
+        document.querySelector(
+          "#curl4"
+        ).value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa4444"}}' "http://${HOST}:${PORT}/just_broadcast?event=myevent&exclude=${tabId}" | jq`;
+
+        document.addEventListener("click", (event) => {
+          if (event.target.matches("[id^='curl']")) {
+            event.target.select();
+          }
+        });
+      }
+
+      const clear = document.querySelector("#clear");
+
+      // --- WebSocket with exponential-backoff reconnect ----------------------------------
+      let ws;
+      const WS_URL = `ws://${HOST}:${PORT}`;
+
+      // Exponential back-off parameters
+      const INITIAL_DELAY = 1000; // 1s
+      const MAX_DELAY = 30000; // 30s (same max used on the server when sending events)
+      let reconnectDelay = INITIAL_DELAY;
+
+      function connectSocket() {
+        prependToPre(
+          `status: attempting WebSocket connection (delay ${reconnectDelay}ms)`
+        );
+        ws = new WebSocket(WS_URL);
+
+        ws.onopen = () => {
+          prependToPre("status: WebSocket connected");
+          reconnectDelay = INITIAL_DELAY; // reset back-off on successful connection
+        };
+
+        ws.onmessage = (e) => {
+          try {
+            const data = String(e.data);
+
+            // Parse the message using splitOnce
+            const { event, tab, rawJson } = splitOnce(data);
+
+            let line;
+
+            // Try to parse the payload as JSON to check for new format
+            try {
+              const payload = decodeJson(rawJson);
+              if (
+                payload &&
+                typeof payload === "object" &&
+                payload.event &&
+                payload.payload
+              ) {
+                // This is the new format: { event, delay, payload }
+                line = `event: ${payload.event}, detail: ${JSON.stringify(
+                  payload
+                )}`;
+              } else {
+                // Use the parsed structure from splitOnce
+                line = `event: ${event}, tab: ${tab}, detail: ${rawJson}`;
+              }
+            } catch (parseError) {
+              // If JSON parsing fails, use the raw data
+              line = `event: ${event}, tab: ${tab}, detail: ${rawJson}`;
+            }
+
+            prependToPre(line);
+          } catch (e) {
+            prependToPre(`error: ${e.message}`);
+          }
+        };
+
+        ws.onclose = () => {
+          prependToPre("status: WebSocket disconnected");
+          scheduleReconnect();
+        };
+
+        ws.onerror = (err) => {
+          prependToPre(
+            `error: WebSocket error - ${err.message || "Unknown error"}`
+          );
+          // onerror does NOT necessarily close the socket, so we leave reconnect to onclose
+        };
+      }
+
+      function scheduleReconnect() {
+        // Increase delay with exponential back-off but cap at MAX_DELAY
+        reconnectDelay = Math.min(reconnectDelay * 2, MAX_DELAY);
+        setTimeout(connectSocket, reconnectDelay);
+      }
+
+      // Kick off first connection attempt
+      connectSocket();
+
+      // -----------------------------------------------------------------------------
+
+      clear.addEventListener("click", () => {
+        pre.innerText = "";
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Connection Status Demo - OS Browser Bridge</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      /* states: connection_failed, disconnected, connected, connecting */
+      .status {
+        background-color: gray;
+        border-radius: 100px;
+        display: inline-block;
+        width: 13px;
+        height: 13px;
+        margin-right: 10px;
+        vertical-align: middle;
+
+        &.connected {
+          background-color: green;
+        }
+        &.disconnected {
+          background-color: red;
+        }
+        &.connecting {
+          background-color: orange;
+        }
+        &.connection_failed {
+          background-color: darkred;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <a href="../">UP</a>
+      <p class="warning">
+        Obsolete, see&nbsp;<a href="connection_status_demo_improved.html">connection_status_demo_improved.html</a>
+      </p>
+      <p class="tip">
+        browser emits event, content.js emits event back <br />
+        then browser subscribes to event 'os_browser_bridge_connection_status'
+      </p>
+      <p class="info">
+        <span class="status"></span>Detecting information if OS Browser Bridge is connected to the server
+      </p>
+      <pre>
+        document.addEventListener("os_browser_bridge_connection_status", (event) => {
+            const { 
+                isConnected: boolean, 
+                details: object, 
+                timestamp: string 
+            } = event.detail;
+        });        
+      </pre>
+      <button id="clear">Clear</button>
+      <pre id="logs"></pre>
+    </div>
+
+    <script type="module">
+      function log(...args) {
+        console.log("connection_status_demo.html", ...args);
+      }
+      async function getWsStatus() {
+        // warning: use inside <script type="module">
+
+        let i = 0;
+        const resolvers = {};
+        document.addEventListener("os_browser_bridge_identify_tab", (event) => {
+          if (event?.detail?.id && resolvers[event?.detail?.id]) {
+            resolvers[event?.detail?.id]?.resolve(event.detail);
+            delete resolvers[event?.detail?.id];
+          }
+        });
+        async function sendIdentifyTabEvent() {
+          i += 1;
+          document.documentElement.dispatchEvent(
+            new CustomEvent("os_browser_bridge", {
+              detail: { event: "identify_tab", payload: { id: i } },
+            })
+          );
+          setTimeout(async () => {
+            resolvers[i]?.reject(new Error("Timeout"));
+          }, 100);
+          return new Promise((resolve, reject) => {
+            resolvers[i] = { resolve, reject };
+          });
+          return promise;
+        }
+        let data = null;
+        do {
+          try {
+            data = await sendIdentifyTabEvent();
+          } catch (e) {
+            log("error:", e);
+          }
+        } while (data === null);
+
+        // log("data: ", data);
+        return data;
+      }
+
+      function updateStatus(status) {
+        const statusElement = document.querySelector(".status");
+        statusElement.classList.remove("connected", "disconnected", "connecting", "connection_failed");
+        statusElement.classList.add(status);
+      }
+
+      let { connected, tabId } = await getWsStatus();
+
+      // set initial status after loading page
+      updateStatus(connected ? "connected" : "disconnected");
+
+      /// --- above is universal, below is custom to this page
+      /// --- above is universal, below is custom to this page
+      /// --- above is universal, below is custom to this page
+      /// --- above is universal, below is custom to this page
+      /// --- above is universal, below is custom to this page
+      const pre = document.querySelector("#logs");
+      const clear = document.querySelector("#clear");
+
+      function prependToPre(...args) {
+        const timeString = new Date().toISOString();
+        pre.innerText = `time: ${timeString}, ${args.join(" ")}` + "\n" + pre.innerText;
+      }
+
+      // Listen for connection status events
+      document.addEventListener("os_browser_bridge_connection_status", (event) => {
+        const {
+          type, // "os_browser_bridge_connection_status"
+          detail: {
+            isConnected, // boolean
+            details: {
+              state, // "connected"
+            },
+          },
+        } = event;
+
+        updateStatus(state);
+
+        prependToPre(`event.detail: ${JSON.stringify(event.detail || null)}`);
+      });
+
+      clear.addEventListener("click", () => {
+        pre.innerText = "";
+      });
+    </script>
+  </body>
+</html>

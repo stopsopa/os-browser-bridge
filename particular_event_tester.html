@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Regular Page - OS Browser Bridge Event Listener</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      .status {
+        width: 20px;
+      }
+      #separator {
+        border-right: 2px solid #ccc;
+        display: inline-block;
+        height: 20px;
+        vertical-align: middle;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <a href="../">UP</a> &nbsp; &nbsp;
+      <a id="clone" target="_blank">Open cloned tabs for testing</a>
+      <hr />
+      <div id="events">
+        <form id="eventForm" style="display: inline">
+          <input type="text" id="eventName" required />
+          <button type="submit">Add Event</button>
+        </form>
+        <span id="separator"></span>
+      </div>
+      <hr />
+      <p class="tip">
+        <span class="status"></span>
+        Provide the name of the event to test
+      </p>
+
+      <button id="clear">Clear</button>
+      <pre id="logs"></pre>
+    </div>
+
+    <script type="module">
+      import { sendIdentifyTabEvent, waitForConnectionStatus, unique } from "./bridge.js";
+
+      document.querySelector("#clone").setAttribute("href", location.href);
+
+      function updateStatus(status) {
+        const statusElement = document.querySelector(".status");
+        statusElement.classList.remove("connected", "disconnected", "connecting", "connection_failed");
+        statusElement.classList.add(status);
+      }
+
+      document.addEventListener("os_browser_bridge_connection_status", (event) => {
+        const {
+          type, // "os_browser_bridge_connection_status"
+          detail: {
+            isConnected, // boolean
+            details: {
+              state, // "connected"
+            },
+          },
+        } = event;
+
+        updateStatus(state);
+      });
+
+      const pre = document.querySelector("#logs");
+      function prependToPre(...args) {
+        const timeString = new Date().toISOString();
+        pre.innerText = `time: ${timeString}, ${args.join(" ")}` + "\n" + pre.innerText;
+      }
+      clear.addEventListener("click", () => {
+        pre.innerText = "";
+      });
+
+      const eventsParentElement = document.querySelector("#events");
+      const events = new Map();
+      function addEvent(eventName, skipUrlUpdate = false) {
+        // Don't add if already exists
+        if (events.has(eventName)) {
+          return;
+        }
+
+        const button = document.createElement("button");
+        button.innerText = `${eventName}`;
+        button.setAttribute("title", `unsubscribe from event ${eventName}`);
+        eventsParentElement.appendChild(button);
+
+        const buttonTest = document.createElement("button");
+        buttonTest.innerText = `✔`;
+        buttonTest.setAttribute("title", `test event ${eventName}`);
+        eventsParentElement.appendChild(buttonTest);
+        const testEvent = async () => {
+          const uniq = unique();
+          document.documentElement.dispatchEvent(
+            new CustomEvent("os_browser_bridge", {
+              detail: {
+                event: "test_event",
+                payload: { uniq, eventName },
+              },
+            })
+          );
+          prependToPre(`triggered: ${eventName}, unique: ${uniq}`);
+        };
+        buttonTest.addEventListener("click", testEvent);
+
+        const fn = (event) => {
+          const {
+            type, // 'myevent'
+            detail, // {def: 'test'}
+          } = event;
+
+          prependToPre(`event: ${type}, detail: ${JSON.stringify(detail)}`);
+        };
+        document.addEventListener(eventName, fn);
+        events.set(eventName, {
+          button,
+          eventName,
+          fn,
+          buttonTest,
+          testEvent,
+        });
+        button.addEventListener("click", () => removeEvent(eventName));
+
+        // Update URL unless explicitly told not to (e.g., during initialization)
+        if (!skipUrlUpdate) {
+          addNameToUrl(eventName);
+        }
+      }
+      function removeEvent(eventName) {
+        const event = events.get(eventName);
+        if (event) {
+          events.delete(eventName);
+
+          const { fn, button, buttonTest, testEvent } = event;
+          document.removeEventListener(eventName, fn);
+          button.remove();
+
+          buttonTest.removeEventListener("click", testEvent);
+          buttonTest.remove();
+          removeNameFromUrl(eventName);
+        }
+      }
+
+      document.querySelector("#eventForm").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const eventName = document.querySelector("#eventName").value.trim();
+        if (eventName && !events.has(eventName)) {
+          addEvent(eventName); // URL update is now handled inside addEvent()
+          document.querySelector("#eventName").value = "";
+        }
+      });
+
+      // URL Management Functions
+      function extractNamesFromUrl() {
+        const url = new URL(window.location.href);
+        const names = url.searchParams.get("names");
+        return names ? names.split(",").filter((n) => n.trim()) : [];
+      }
+
+      function addNameToUrl(name) {
+        const url = new URL(window.location.href);
+        const currentNames = extractNamesFromUrl();
+        if (!currentNames.includes(name)) {
+          currentNames.push(name);
+          url.searchParams.set("names", currentNames.join(","));
+          window.history.replaceState({}, "", url.toString());
+        }
+      }
+
+      function addNamesToUrl(names) {
+        const url = new URL(window.location.href);
+        const currentNames = extractNamesFromUrl();
+        const uniqueNames = [...new Set([...currentNames, ...names])];
+        url.searchParams.set("names", uniqueNames.join(","));
+        window.history.replaceState({}, "", url.toString());
+      }
+
+      function removeNameFromUrl(name) {
+        const url = new URL(window.location.href);
+        const currentNames = extractNamesFromUrl();
+        const filteredNames = currentNames.filter((n) => n !== name);
+        if (filteredNames.length > 0) {
+          url.searchParams.set("names", filteredNames.join(","));
+        } else {
+          url.searchParams.delete("names");
+        }
+        window.history.replaceState({}, "", url.toString());
+      }
+
+      function removeNamesFromUrl(names) {
+        const url = new URL(window.location.href);
+        const currentNames = extractNamesFromUrl();
+        const filteredNames = currentNames.filter((n) => !names.includes(n));
+        if (filteredNames.length > 0) {
+          url.searchParams.set("names", filteredNames.join(","));
+        } else {
+          url.searchParams.delete("names");
+        }
+        window.history.replaceState({}, "", url.toString());
+      }
+
+      // Initialize events from URL on page load
+      const initialNames = extractNamesFromUrl();
+      initialNames.forEach((name) => {
+        if (name) {
+          addEvent(name, true); // Skip URL update during initialization
+        }
+      });
+
+      // Export functions for console use (optional)
+      window.urlHelpers = {
+        extractNames: extractNamesFromUrl,
+        addName: addNameToUrl,
+        addNames: addNamesToUrl,
+        removeName: removeNameFromUrl,
+        removeNames: removeNamesFromUrl,
+        // Event management functions (these also update URL)
+        addEvent: addEvent,
+        removeEvent: removeEvent,
+        getEvents: () => Array.from(events.keys()),
+      };
+    </script>
+  </body>
+</html>

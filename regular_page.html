@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Regular Page - OS Browser Bridge Event Listener</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      .status {
+        width: 20px;
+      }
+      input {
+        width: 98%;
+        font-size: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <a href="../">UP</a> &nbsp; &nbsp;
+      <a id="clone" target="_blank">Open cloned tabs for testing</a>
+      <p class="tip">
+        <span class="status"></span>
+        This page is supposed to simulate a regular page emitting and consuming events from our plugin. By default it is
+        listening to "myevent" event and prints the result in &lt;pre&gt; tag. But also it is emitting "fornodejs"
+        event when button is clicked to the server.
+      </p>
+
+      <pre>
+document.documentElement.dispatchEvent(new CustomEvent("os_browser_bridge",{detail:{event:"fornodejs",payload:{message:"Hello from browser"}}}));
+      </pre>
+
+      <button id="clear">Clear</button>
+      <button id="send">Send Event to node.js - response from node.js</button>
+      <button id="identify">Identify this tab - response from background.js</button>
+      <pre id="logs"></pre>
+    </div>
+
+    <script type="module">
+      import { sendIdentifyTabEvent, waitForConnectionStatus } from "./bridge.js";
+
+      document.querySelector("#clone").setAttribute("href", location.href);
+
+      function updateStatus(status) {
+        const statusElement = document.querySelector(".status");
+        statusElement.classList.remove("connected", "disconnected", "connecting", "connection_failed");
+        statusElement.classList.add(status);
+      }
+
+      document.addEventListener("os_browser_bridge_connection_status", (event) => {
+        const {
+          type, // "os_browser_bridge_connection_status"
+          detail: {
+            isConnected, // boolean
+            details: {
+              state, // "connected"
+            },
+          },
+        } = event;
+
+        updateStatus(state);
+      });
+
+      const clear = document.querySelector("#clear");
+      const send = document.querySelector("#send");
+      const identify = document.querySelector("#identify");
+      const pre = document.querySelector("#logs");
+      function prependToPre(...args) {
+        const timeString = new Date().toISOString();
+        pre.innerText = `time: ${timeString}, ${args.join(" ")}` + "\n" + pre.innerText;
+      }
+      clear.addEventListener("click", () => {
+        pre.innerText = "";
+      });
+
+      document.addEventListener("myevent", (event) => {
+        const {
+          type, // 'myevent'
+          detail, // {def: 'test'}
+        } = event;
+
+        prependToPre(`event: ${type}, detail: ${JSON.stringify(detail)}`);
+      });
+
+      send.addEventListener("click", () => {
+        document.documentElement.dispatchEvent(
+          new CustomEvent("os_browser_bridge", {
+            detail: {
+              event: "fornodejs",
+              payload: { message: "Hello from browser" },
+            },
+          })
+        );
+      });
+
+      identify.addEventListener("click", async () => {
+        const event = await sendIdentifyTabEvent();
+
+        prependToPre(`event: ${event.type}, detail: ${JSON.stringify(event.detail)}`);
+      });
+    </script>
+  </body>
+</html>

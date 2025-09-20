@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Connection Status Demo - OS Browser Bridge</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <a href="../">UP</a>
+      <p class="tip"><span class="status"></span> browser subscribes to event 'os_browser_bridge_connection_status'</p>
+
+      <p class="info">
+        This is improved version of connection_status_demo.html. Here we can just subscribe to he event
+        'os_browser_bridge_connection_status' which from now on is guaranteed to be emitted immediately after page is
+        loaded
+      </p>
+      <p class="warning">
+        WARNING: If you planning to listen to os_browser_bridge_connection_status event then subscribe to it before
+        wating for waitForConnectionStatus() because initial event os_browser_bridge_connection_status will arrive
+        before waitForConnectionStatus()
+      </p>
+      <pre>
+        /* subscribe before waitForConnectionStatus() */
+        document.addEventListener("os_browser_bridge_connection_status", (event) => {
+          const {
+            type, // "os_browser_bridge_connection_status"
+            detail: {
+              isConnected, // boolean
+              details: {
+                state, // "connected"
+              },
+            },
+          } = event;
+        });        
+      </pre>
+      <button id="clear">Clear</button>
+      <pre id="logs"></pre>
+    </div>
+
+    <script type="module">
+      function log(...args) {
+        console.log("connection_status_demo.html", ...args);
+      }
+      // async function getWsStatus() {
+      //   // warning: use inside <script type="module">
+
+      //   let i = 0;
+      //   const resolvers = {};
+      //   document.addEventListener("os_browser_bridge_identify_tab", (event) => {
+      //     if (event?.detail?.id && resolvers[event?.detail?.id]) {
+      //       resolvers[event?.detail?.id]?.resolve(event.detail);
+      //       delete resolvers[event?.detail?.id];
+      //     }
+      //   });
+      //   async function sendIdentifyTabEvent() {
+      //     i += 1;
+      //     document.documentElement.dispatchEvent(
+      //       new CustomEvent("os_browser_bridge", {
+      //         detail: { event: "identify_tab", payload: { id: i } },
+      //       })
+      //     );
+      //     setTimeout(async () => {
+      //       resolvers[i]?.reject(new Error("Timeout"));
+      //     }, 100);
+      //     return new Promise((resolve, reject) => {
+      //       resolvers[i] = { resolve, reject };
+      //     });
+      //     return promise;
+      //   }
+      //   let data = null;
+      //   do {
+      //     try {
+      //       data = await sendIdentifyTabEvent();
+      //     } catch (e) {
+      //       log("error:", e);
+      //     }
+      //   } while (data === null);
+
+      //   // log("data: ", data);
+      //   return data;
+      // }
+
+      function updateStatus(status) {
+        const statusElement = document.querySelector(".status");
+        statusElement.classList.remove("connected", "disconnected", "connecting", "connection_failed");
+        statusElement.classList.add(status);
+      }
+
+      /**
+       * Thats what this "improved" version is all about
+       * now os_browser_bridge_connection_status is guaranteed to be emitted after page is loaded
+       *   "default document_idle, i.e. after DOMContentLoaded and after most inline scripts have finished), Chrome injects content.js."
+       */
+      // let { connected, tabId } = await getWsStatus();
+
+      // // set initial status after loading page
+      // updateStatus(connected ? "connected" : "disconnected");
+
+      // and then subscribe to any status changes
+
+      /// --- above is universal, below is custom to this page
+      /// --- above is universal, below is custom to this page
+      /// --- above is universal, below is custom to this page
+      /// --- above is universal, below is custom to this page
+      /// --- above is universal, below is custom to this page
+      const pre = document.querySelector("#logs");
+      const clear = document.querySelector("#clear");
+
+      function prependToPre(...args) {
+        const timeString = new Date().toISOString();
+        pre.innerText = `time: ${timeString}, ${args.join(" ")}` + "\n" + pre.innerText;
+      }
+
+      /**
+       * WARNING: If you planning to listen to
+       * document.addEventListener("os_browser_bridge_connection_status", (event) => {
+       *   then subscribe to it before wating for waitForConnectionStatus()
+       *   because initial event os_browser_bridge_connection_status will arrive before waitForConnectionStatus()
+       * }
+       */
+      document.addEventListener("os_browser_bridge_connection_status", (event) => {
+        const {
+          type, // "os_browser_bridge_connection_status"
+          detail: {
+            isConnected, // boolean
+            details: {
+              state, // "connected"
+            },
+          },
+        } = event;
+
+        const timeString = new Date().toLocaleTimeString();
+        const line = `time: ${timeString}, event.detail: ${JSON.stringify(event.detail || null)}`;
+
+        prependToPre(line);
+
+        updateStatus(state);
+      });
+
+      clear.addEventListener("click", () => {
+        pre.innerText = "";
+      });
+
+      // Initialize
+      prependToPre("message: Page loaded, waiting for connection status...");
+    </script>
+  </body>
+</html>
