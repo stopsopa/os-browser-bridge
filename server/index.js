@@ -83,9 +83,13 @@ if (socket) {
    * curl http://localhost:8080/allTabs | jq
    */
   app.get("/allTabs", async (req, res) => {
-    const data = await connectionRegistry.allTabs();
+    try {
+      const data = await connectionRegistry.allTabs();
 
-    res.json(data);
+      res.json(data);
+    } catch (e) {
+      res.status(500).json({ error: e.message || String(e) });
+    }
   });
 
   /**
@@ -268,6 +272,8 @@ server.listen(PORT, HOST, () => {
   console.log(`
 Server listening on: 
     🌎 http://${HOST}:${PORT}
+
+    with chrome extension use ws://${HOST}:${PORT}
 
     launched ${socket ? "with WebSocket" : "without WebSocket"}
 

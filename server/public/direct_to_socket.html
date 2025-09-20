@@ -16,11 +16,14 @@
     <div class="container">
       <a href="../">UP</a>
       <p class="error">
-        connecting directly from browser to server ws socket seems to break broadcasting when targetting particular
-        tabs. When browser ws connected, broadcasting seems to send requests with 'include' still to all tabs. Where it
-        should send just to specified tab.
+        connecting directly from browser to server ws socket seems to break
+        broadcasting when targetting particular tabs. When browser ws connected,
+        broadcasting seems to send requests with 'include' still to all tabs.
+        Where it should send just to specified tab.
       </p>
-      <p class="tip">Testing Direct WebSocket connection browser &lt;-&gt; server</p>
+      <p class="tip">
+        Testing Direct WebSocket connection browser &lt;-&gt; server
+      </p>
 
       <a id="clone" target="_blank">Open cloned tabs for testing</a>
       <input class="wide" id="curl1" />
@@ -31,10 +34,29 @@
       <pre id="logs"></pre>
     </div>
 
+    <script src="preprocessed.js"></script>
     <script type="module">
+      import {
+        mockEnv,
+        all,
+        has,
+        get,
+        getDefault,
+        getThrow,
+        getIntegerThrowInvalid,
+        getIntegerDefault,
+        getIntegerThrow,
+      } from "./env.js";
+
       import { splitOnce, decodeJson, escapeForHtmlAttr } from "./tools.js";
 
-      import { sendIdentifyTabEvent, waitForConnectionStatus } from "./bridge.js";
+      import {
+        sendIdentifyTabEvent,
+        waitForConnectionStatus,
+      } from "./bridge.js";
+
+      const PORT = getIntegerThrow("PORT");
+      const HOST = getThrow("HOST");
 
       document.querySelector("#clone").setAttribute("href", location.href);
 
@@ -42,7 +64,8 @@
 
       function prependToPre(...args) {
         const timeString = new Date().toISOString();
-        pre.innerText = `time: ${timeString}, ${args.join(" ")}` + "\n" + pre.innerText;
+        pre.innerText =
+          `time: ${timeString}, ${args.join(" ")}` + "\n" + pre.innerText;
       }
 
       function log(...args) {
@@ -60,19 +83,19 @@
       {
         document.querySelector(
           "#curl1"
-        ).value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa1111"}}' "http://localhost:8080/just_broadcast?event=myevent" | jq`;
+        ).value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa1111"}}' "http://${HOST}:${PORT}/just_broadcast?event=myevent" | jq`;
 
         document.querySelector(
           "#curl2"
-        ).value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa3333"}}' "http://localhost:8080/just_broadcast?event=myevent&delay=1000" | jq`;
+        ).value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa3333"}}' "http://${HOST}:${PORT}/just_broadcast?event=myevent&delay=1000" | jq`;
 
         document.querySelector(
           "#curl3"
-        ).value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa3333"}}' "http://localhost:8080/just_broadcast?event=myevent&include=${tabId}" | jq`;
+        ).value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa3333"}}' "http://${HOST}:${PORT}/just_broadcast?event=myevent&include=${tabId}" | jq`;
 
         document.querySelector(
           "#curl4"
-        ).value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa4444"}}' "http://localhost:8080/just_broadcast?event=myevent&exclude=${tabId}" | jq`;
+        ).value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa4444"}}' "http://${HOST}:${PORT}/just_broadcast?event=myevent&exclude=${tabId}" | jq`;
 
         document.addEventListener("click", (event) => {
           if (event.target.matches("[id^='curl']")) {
@@ -85,7 +108,7 @@
 
       // --- WebSocket with exponential-backoff reconnect ----------------------------------
       let ws;
-      const WS_URL = "ws://localhost:8080";
+      const WS_URL = `ws://${HOST}:${PORT}`;
 
       // Exponential back-off parameters
       const INITIAL_DELAY = 1000; // 1s
@@ -93,7 +116,9 @@
       let reconnectDelay = INITIAL_DELAY;
 
       function connectSocket() {
-        prependToPre(`status: attempting WebSocket connection (delay ${reconnectDelay}ms)`);
+        prependToPre(
+          `status: attempting WebSocket connection (delay ${reconnectDelay}ms)`
+        );
         ws = new WebSocket(WS_URL);
 
         ws.onopen = () => {
@@ -113,9 +138,16 @@
             // Try to parse the payload as JSON to check for new format
             try {
               const payload = decodeJson(rawJson);
-              if (payload && typeof payload === "object" && payload.event && payload.payload) {
+              if (
+                payload &&
+                typeof payload === "object" &&
+                payload.event &&
+                payload.payload
+              ) {
                 // This is the new format: { event, delay, payload }
-                line = `event: ${payload.event}, detail: ${JSON.stringify(payload)}`;
+                line = `event: ${payload.event}, detail: ${JSON.stringify(
+                  payload
+                )}`;
               } else {
                 // Use the parsed structure from splitOnce
                 line = `event: ${event}, tab: ${tab}, detail: ${rawJson}`;
@@ -137,7 +169,9 @@
         };
 
         ws.onerror = (err) => {
-          prependToPre(`error: WebSocket error - ${err.message || "Unknown error"}`);
+          prependToPre(
+            `error: WebSocket error - ${err.message || "Unknown error"}`
+          );
           // onerror does NOT necessarily close the socket, so we leave reconnect to onclose
         };
       }

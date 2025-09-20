@@ -11,7 +11,10 @@
         font-size: 10px;
       }
     </style>
-    <link rel="stylesheet" href="https://stopsopa.github.io/tabs/vanilla-tabs.css" />
+    <link
+      rel="stylesheet"
+      href="https://stopsopa.github.io/tabs/vanilla-tabs.css"
+    />
   </head>
   <body>
     <div class="container">
@@ -31,8 +34,8 @@
         <div data-tabs>
           <div>
             <p class="tip">
-              broadcast from server via curl (including/excluding individual tabs). In this case we are including or
-              excluding current tab
+              broadcast from server via curl (including/excluding individual
+              tabs). In this case we are including or excluding current tab
             </p>
 
             <input class="wide" id="curl1" />
@@ -45,17 +48,20 @@
               <span class="status"></span>
               Send event to other tabs <br />
               To all other tabs in the same browser <br />
-              or to all tabs across all browsers if extension is connected to the server
+              or to all tabs across all browsers if extension is connected to
+              the server
             </p>
             <p class="info">
-              When it comes to testing it is good idea to test sending events to other tabs when server is connected to
-              see if it is propagating to different browser tabs and also when server is not connected to see if it is
-              propagating to all tabs in the current browser
+              When it comes to testing it is good idea to test sending events to
+              other tabs when server is connected to see if it is propagating to
+              different browser tabs and also when server is not connected to
+              see if it is propagating to all tabs in the current browser
             </p>
             <p class="tip">
-              when it comes to testing when not connected use 'node --watch --env-file=.env server/index.js' server mode
-              to DON'T run socket this way you can still load http://localhost:8080/tabs_events.html but extensions will
-              be offline.
+              when it comes to testing when not connected use 'node --watch
+              --env-file=.env server/index.js' server mode to DON'T run socket
+              this way you can still load http://localhost:8080/tabs_events.html
+              but extensions will be offline.
             </p>
 
             <button id="broadcast">send other_tabs:broadcast event</button>
@@ -66,7 +72,10 @@
               >documentation page</a
             >
             <br />
-            <a href="https://github.com/stopsopa/os-browser-bridge?tab=readme-ov-file#from-server">server side</a>
+            <a
+              href="https://github.com/stopsopa/os-browser-bridge?tab=readme-ov-file#from-server"
+              >server side</a
+            >
             <pre>
 
 // emit event (in browser tab context)
@@ -98,6 +107,7 @@ document.addEventListener("other_tabs:broadcast", (event) => {
       <pre id="logs"></pre>
     </div>
 
+    <script src="preprocessed.js"></script>
     <script src="https://stopsopa.github.io/tabs/vanilla-tabs.js"></script>
     <script type="importmap">
       {
@@ -108,9 +118,28 @@ document.addEventListener("other_tabs:broadcast", (event) => {
       }
     </script>
     <script type="module">
+      import {
+        mockEnv,
+        all,
+        has,
+        get,
+        getDefault,
+        getThrow,
+        getIntegerThrowInvalid,
+        getIntegerDefault,
+        getIntegerThrow,
+      } from "./env.js";
+
       import { splitOnce, decodeJson, escapeForHtmlAttr } from "./tools.js";
 
-      import { sendIdentifyTabEvent, waitForConnectionStatus, unique } from "./bridge.js";
+      import {
+        sendIdentifyTabEvent,
+        waitForConnectionStatus,
+        unique,
+      } from "./bridge.js";
+
+      const PORT = getIntegerThrow("PORT");
+      const HOST = getThrow("HOST");
 
       document.querySelector("#clone").setAttribute("href", location.href);
 
@@ -121,14 +150,20 @@ document.addEventListener("other_tabs:broadcast", (event) => {
 
       function prependToPre(...args) {
         const timeString = new Date().toISOString();
-        pre.innerText = `time: ${timeString}, ${args.join(" ")}` + "\n" + pre.innerText;
+        pre.innerText =
+          `time: ${timeString}, ${args.join(" ")}` + "\n" + pre.innerText;
       }
 
       {
         // status dot
         function updateStatus(status) {
           const statusElement = document.querySelector(".status");
-          statusElement.classList.remove("connected", "disconnected", "connecting", "connection_failed");
+          statusElement.classList.remove(
+            "connected",
+            "disconnected",
+            "connecting",
+            "connection_failed"
+          );
           statusElement.classList.add(status);
         }
 
@@ -139,25 +174,28 @@ document.addEventListener("other_tabs:broadcast", (event) => {
          *   because initial event os_browser_bridge_connection_status will arrive before waitForConnectionStatus()
          * }
          */
-        document.addEventListener("os_browser_bridge_connection_status", (event) => {
-          const {
-            type, // "os_browser_bridge_connection_status"
-            detail: {
-              isConnected, // boolean
-              details: {
-                state, // "connected"
+        document.addEventListener(
+          "os_browser_bridge_connection_status",
+          (event) => {
+            const {
+              type, // "os_browser_bridge_connection_status"
+              detail: {
+                isConnected, // boolean
+                details: {
+                  state, // "connected"
+                },
               },
-            },
-          } = event;
+            } = event;
 
-          console.log("os_browser_bridge_connection_status", {
-            type,
-            isConnected,
-            state,
-          });
+            console.log("os_browser_bridge_connection_status", {
+              type,
+              isConnected,
+              state,
+            });
 
-          updateStatus(state);
-        });
+            updateStatus(state);
+          }
+        );
       }
 
       try {
@@ -174,16 +212,16 @@ document.addEventListener("other_tabs:broadcast", (event) => {
 
       {
         const curl1 = document.querySelector("#curl1");
-        curl1.value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa1111"}}' "http://localhost:8080/just_broadcast?event=myevent" | jq`;
+        curl1.value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa1111"}}' "http://${HOST}:${PORT}/just_broadcast?event=myevent" | jq`;
 
         const curl2 = document.querySelector("#curl2");
-        curl2.value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa2222"}}' "http://localhost:8080/just_broadcast?event=myevent&delay=1000" | jq`;
+        curl2.value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa2222"}}' "http://${HOST}:${PORT}/just_broadcast?event=myevent&delay=1000" | jq`;
 
         const curl3 = document.querySelector("#curl3");
-        curl3.value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa3333"}}' "http://localhost:8080/just_broadcast?event=myevent&include=${tabId}" | jq`;
+        curl3.value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa3333"}}' "http://${HOST}:${PORT}/just_broadcast?event=myevent&include=${tabId}" | jq`;
 
         const curl4 = document.querySelector("#curl4");
-        curl4.value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa4444"}}' "http://localhost:8080/just_broadcast?event=myevent&exclude=${tabId}" | jq`;
+        curl4.value = `curl -v -X POST -H "Content-Type: application/json" -d '{"payload":{"def":"aaa4444"}}' "http://${HOST}:${PORT}/just_broadcast?event=myevent&exclude=${tabId}" | jq`;
 
         document.addEventListener("click", (event) => {
           if (event.target.matches("[id^='curl']")) {
