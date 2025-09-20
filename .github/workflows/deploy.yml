@@ -5,10 +5,14 @@ on:
     branches:
       - main
 
-jobs:
-  build_and_deploy:
-    runs-on: ubuntu-latest
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
+jobs:
+  build:
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -16,15 +20,35 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "16"
+          node-version: 23.10.0
 
       - name: Generate index.html with gen-index.js
-        run: 
+        run: |
           node server/public/gen-index.js
           ls -la server/public/
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3.0.1
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./server/public
+          path: .
+
+
+  # Deployment job
+  github-pages:
+    # NOTE: In case of error:
+    # github-pages
+    # Branch "main" is not allowed to deploy to github-pages due to environment protection rules.
+    # https://github.com/orgs/community/discussions/39054#discussioncomment-6420042
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-22.04
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4.0.5
+        with:
+          error_count: 3
+          # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#example-of-onworkflow_callsecrets
+          # https://github.com/actions/deploy-pages#inputs-
