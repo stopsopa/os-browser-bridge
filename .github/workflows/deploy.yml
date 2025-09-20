@@ -19,7 +19,9 @@ jobs:
           node-version: "16"
 
       - name: Generate index.html with gen-index.js
-        run: node server/public/gen-index.js
+        run: 
+          node server/public/gen-index.js
+          ls -la server/public/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
