@@ -83,6 +83,8 @@ if (socket) {
    * curl http://localhost:8080/allTabs | jq
    */
   app.get("/allTabs", async (req, res) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+
     try {
       const data = await connectionRegistry.allTabs();
 
