@@ -271,11 +271,19 @@ app.use(
 // WebSocket setup and routes are now registered earlier, before static middleware
 
 server.listen(PORT, HOST, () => {
+  // print also pid of this process
+  // also don't just print the pid
+  // print the command to copy paste into the terminal to see details about this pid
   console.log(`
 Server listening on: 
     🌎 http://${HOST}:${PORT}
 
     with chrome extension use ws://${HOST}:${PORT}
+
+    to see details about this process, run:
+      ps -p ${process.pid} -o command=
+
+      ps -p ${process.pid} -f
 
     Node.js version: ${process.version}
 
