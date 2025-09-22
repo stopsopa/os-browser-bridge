@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" 
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.os-browser-bridge.node</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>        
+    <string>-c</string>
+    <string>/Users/szdz/.asdf/shims/node --watch --env-file=.env server/index.js</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>SOCKET</key>
+    <string>2</string>
+  </dict>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/szdz/Workspace/STOPSOPA__os-browser-bridge/STOPSOPA__os-browser-bridge</string>
+
+  <key>StandardOutPath</key>
+  <string>/Users/szdz/Workspace/STOPSOPA__os-browser-bridge/STOPSOPA__os-browser-bridge/logs/stdout.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/szdz/Workspace/STOPSOPA__os-browser-bridge/STOPSOPA__os-browser-bridge/logs/stderr.log</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+</dict>
+</plist>
