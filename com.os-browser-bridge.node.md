@@ -7,6 +7,13 @@ cp com.os-browser-bridge.node.plist ~/Library/LaunchAgents/com.os-browser-bridge
 rm -rf com.os-browser-bridge.node\[SYMLINK\].plist
 ln -s ~/Library/LaunchAgents/com.os-browser-bridge.node.plist com.os-browser-bridge.node\[SYMLINK\].plist
 
+# check if *.plist is valid
+plutil ~/Library/LaunchAgents/com.os-browser-bridge.node.plist
+plutil -lint ~/Library/LaunchAgents/com.os-browser-bridge.node.plist
+plutil -p ~/Library/LaunchAgents/com.os-browser-bridge.node.plist
+plutil -convert json -o - ~/Library/LaunchAgents/com.os-browser-bridge.node.plist | jq
+
+
 launchctl load ~/Library/LaunchAgents/com.os-browser-bridge.node.plist
 
 # to see details: 
