@@ -4,8 +4,8 @@
 ```bash
 
 cp com.os-browser-bridge.node.plist ~/Library/LaunchAgents/com.os-browser-bridge.node.plist
-rm -rf com.os-browser-bridge.node[SYMLINK].plist
-ln -s ~/Library/LaunchAgents/com.os-browser-bridge.node.plist com.os-browser-bridge.node[SYMLINK].plist
+rm -rf com.os-browser-bridge.node\[SYMLINK\].plist
+ln -s ~/Library/LaunchAgents/com.os-browser-bridge.node.plist com.os-browser-bridge.node\[SYMLINK\].plist
 
 launchctl load ~/Library/LaunchAgents/com.os-browser-bridge.node.plist
 
