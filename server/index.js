@@ -277,6 +277,8 @@ Server listening on:
 
     with chrome extension use ws://${HOST}:${PORT}
 
+    Node.js version: ${process.version}
+
     launched ${socket ? "with WebSocket" : "without WebSocket"}
 
 `);
