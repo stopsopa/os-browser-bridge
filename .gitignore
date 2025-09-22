@@ -4,3 +4,4 @@ xx.cjs
 log.log
 *.zip
 server/public/index.html
+/logs/
