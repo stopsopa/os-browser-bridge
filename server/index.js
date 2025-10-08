@@ -10,6 +10,7 @@ import http from "http";
 import path from "path";
 
 import wakeup from "./tools/detect_wakeup_macos_log.js";
+import mediaKeys from "./tools/detect_media_macos.js";
 
 import { fileURLToPath } from "url";
 
@@ -183,6 +184,11 @@ if (socket) {
   });
 
   wakeup({
+    connectionRegistry,
+    log,
+  });
+
+  mediaKeys({
     connectionRegistry,
     log,
   });
