@@ -150,7 +150,7 @@ if (socket) {
       payload: { message: `Hello from server ${uniq}` },
     });
 
-    res.json({ message: `Event sent ${eventName} ${uniq}` });
+    log(`Event sent ${eventName} ${uniq}`);
   });
 
   connectionRegistry.on("fornodejs", (data) => {
