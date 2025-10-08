@@ -5,11 +5,11 @@
  */
 
 import { WebSocketServer } from "ws";
-import { spawn } from "child_process";
-import readline from "readline";
 import express from "express";
 import http from "http";
 import path from "path";
+
+import wakeup from "./tools/detect_wakeup_macos_log.js";
 
 import { fileURLToPath } from "url";
 
@@ -182,54 +182,10 @@ if (socket) {
     });
   });
 
-  // Start macOS wake watcher v2 via bash script and broadcast as 'wokeup_v2'
-  {
-    // throw instead of early return when condition not met
-    if (process.platform !== "darwin") throw new Error("MacWakeWatcher: OS not supported");
-
-    const scriptPath = path.join(__dirname, "tools", "detect_wakeup_macos_log.sh");
-
-    let restarting = false;
-    function start() {
-      try {
-        log("launching", scriptPath);
-
-        const child = spawn("/bin/bash", [scriptPath], {
-          stdio: ["ignore", "pipe", "pipe"],
-        });
-
-        const rl = readline.createInterface({ input: child.stdout });
-        rl.on("line", (line) => {
-          try {
-            if (typeof line === "string" && line.includes("EvaluateClamshellSleepState")) {
-              connectionRegistry.broadcast({
-                event: "wokeup_v2",
-                payload: {
-                  // wokeUpAt: new Date().toISOString(),
-                  // source: "macos_log_script",
-                  // line,
-                },
-              });
-              log("MacWakeWatcher: wokeup_v2 event detected and forwarded");
-            }
-          } catch (e) {}
-        });
-
-        const restart = () => {
-          if (restarting) return;
-          restarting = true;
-          setTimeout(() => {
-            restarting = false;
-            start();
-          }, 1000);
-        };
-
-        child.on("error", restart);
-        child.on("close", restart);
-      } catch (_) {}
-    }
-    start();
-  }
+  wakeup({
+    connectionRegistry,
+    log,
+  });
 } // Close the if (socket) block
 
 // Configure static file serving options to disable caching
