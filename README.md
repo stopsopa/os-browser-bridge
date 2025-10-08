@@ -357,3 +357,7 @@ app.get("/allTabs", async (req, res) => {
 }  
 */
 ```
+
+# special events
+
+There is a bunch of special events added in the form of the kinda plugins [SPECIAL.md](SPECIAL.md)

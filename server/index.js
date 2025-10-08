@@ -10,25 +10,21 @@ import readline from "readline";
 import express from "express";
 import http from "http";
 import path from "path";
+
 import { fileURLToPath } from "url";
+
 import serveIndex from "serve-index";
-import {
-  WebSocketConnectionRegistry,
-  broadcast,
-} from "./WebSocketConnectionRegistry.js";
+
+import { WebSocketConnectionRegistry, broadcast } from "./WebSocketConnectionRegistry.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 if (!process.env.PORT) {
-  throw new Error(
-    "PORT environment variable is required. Please set PORT in your .env file or environment."
-  );
+  throw new Error("PORT environment variable is required. Please set PORT in your .env file or environment.");
 }
 if (!process.env.HOST) {
-  throw new Error(
-    "HOST environment variable is required. Please set HOST in your .env file or environment."
-  );
+  throw new Error("HOST environment variable is required. Please set HOST in your .env file or environment.");
 }
 
 const PORT = process.env.PORT;
@@ -41,16 +37,21 @@ function log(...args) {
 }
 
 const app = express();
+
 app.use(express.json());
+
 app.use(express.urlencoded({ extended: true }));
+
 const server = http.createServer(app);
 
 const web = path.join(__dirname, "public");
+
 const extensionDir = path.join(__dirname, "..", "extension");
 
 // Register API routes BEFORE static middleware
 if (socket) {
   let wss = new WebSocketServer({ server });
+
   const connectionRegistry = new WebSocketConnectionRegistry();
 
   /**
@@ -184,14 +185,9 @@ if (socket) {
   // Start macOS wake watcher v2 via bash script and broadcast as 'wokeup_v2'
   {
     // throw instead of early return when condition not met
-    if (process.platform !== "darwin")
-      throw new Error("MacWakeWatcher: OS not supported");
+    if (process.platform !== "darwin") throw new Error("MacWakeWatcher: OS not supported");
 
-    const scriptPath = path.join(
-      __dirname,
-      "tools",
-      "detect_wakeup_macos_log.sh"
-    );
+    const scriptPath = path.join(__dirname, "tools", "detect_wakeup_macos_log.sh");
 
     let restarting = false;
     function start() {
@@ -205,10 +201,7 @@ if (socket) {
         const rl = readline.createInterface({ input: child.stdout });
         rl.on("line", (line) => {
           try {
-            if (
-              typeof line === "string" &&
-              line.includes("EvaluateClamshellSleepState")
-            ) {
+            if (typeof line === "string" && line.includes("EvaluateClamshellSleepState")) {
               connectionRegistry.broadcast({
                 event: "wokeup_v2",
                 payload: {
@@ -247,10 +240,7 @@ const staticOptions = {
   lastModified: false, // Disable Last-Modified header
   setHeaders: (res, path, stat) => {
     // Set cache control headers to prevent any caching
-    res.set(
-      "Cache-Control",
-      "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
-    );
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
     res.set("Pragma", "no-cache");
     res.set("Expires", "0");
     res.set("Surrogate-Control", "no-store");
