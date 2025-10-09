@@ -3,6 +3,7 @@
 
 - [server/tools/detect_wakeup_macos_log.js](server/tools/detect_wakeup_macos_log.js)
 - [server/tools/detect_wakeup_macos_log.sh](server/tools/detect_wakeup_macos_log.sh)
+- [server/tools/detect_wakeup_macos_log_tampermonkey.js](server/tools/detect_wakeup_macos_log_tampermonkey.js)
 
 event in the browser. This one is example of using it with [https://mynoise.net](https://mynoise.net/NoiseMachines/campingRainNoiseGenerator.php?l=48565372597259725527&title=Rain%20on%20a%20Tent)
 
