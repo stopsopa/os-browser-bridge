@@ -29,6 +29,7 @@ document.addEventListener("wokeup_v2", (event) => {
 
 - [server/tools/detect_media_macos.js](server/tools/detect_media_macos.js)
 - [server/tools/detect_media_macos.sh](server/tools/detect_media_macos.sh)
+- [server/tools/detect_media_macos_tampermonkey.js](server/tools/detect_media_macos_tampermonkey.js)
 
 Detects press and release events for macOS media keys: Play/Pause, Next, Previous
 
