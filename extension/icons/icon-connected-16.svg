@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <circle cx="8" cy="8" r="7.04" fill="url(#grad)" />
+  <g stroke="white" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Bridge deck (main roadway) -->
+    <line x1="1.92" y1="10.56" x2="14.08" y2="10.56" stroke-width="0.752" />
+    <!-- Bridge deck support -->
+    <line x1="1.92" y1="11.04" x2="14.08" y2="11.04" stroke-width="0.368" />
+    
+    <!-- Left tower -->
+    <line x1="4" y1="11.04" x2="4" y2="3.68" stroke-width="0.88" />
+    <!-- Right tower -->
+    <line x1="12" y1="11.04" x2="12" y2="3.68" stroke-width="0.88" />
+    
+    <!-- Tower tops -->
+    <line x1="3.52" y1="3.68" x2="4.48" y2="3.68" stroke-width="0.496" />
+    <line x1="11.52" y1="3.68" x2="12.48" y2="3.68" stroke-width="0.496" />
+    
+    <!-- Main suspension cable -->
+    <path d="M 4 4.32 Q 8 7.68 12 4.32" stroke-width="0.368" />
+    
+    <!-- Vertical suspension cables -->
+    <line x1="5.28" y1="5.6" x2="5.28" y2="10.56" stroke-width="0.256" />
+    <line x1="6.56" y1="6.72" x2="6.56" y2="10.56" stroke-width="0.256" />
+    <line x1="8" y1="7.36" x2="8" y2="10.56" stroke-width="0.256" />
+    <line x1="9.44" y1="6.72" x2="9.44" y2="10.56" stroke-width="0.256" />
+    <line x1="10.72" y1="5.6" x2="10.72" y2="10.56" stroke-width="0.256" />
+    
+    <!-- Side anchor cables -->
+    <line x1="1.92" y1="10.56" x2="4" y2="4.32" stroke-width="0.256" />
+    <line x1="14.08" y1="10.56" x2="12" y2="4.32" stroke-width="0.256" />
+  </g>
+  
+  <circle cx="12.8" cy="12.8" r="1.92" fill="black" />
+  <circle cx="12.8" cy="12.8" r="1.44" fill="#4ade80" />
+  
+</svg>

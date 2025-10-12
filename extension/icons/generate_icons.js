@@ -4,13 +4,17 @@
  * Run with: node generate_icons.js
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Try to use canvas if available, otherwise provide instructions
 let Canvas, createCanvas;
 try {
-  const canvasModule = require('canvas');
+  const canvasModule = await import('canvas');
   Canvas = canvasModule.Canvas;
   createCanvas = canvasModule.createCanvas;
 } catch (e) {
@@ -49,64 +53,99 @@ function drawIcon(ctx, size, fillColor, strokeColor, statusDot) {
   }
   ctx.fill();
   
-  // Draw bridge icon (stylized connection)
+  // Draw bridge icon (suspension bridge)
   ctx.strokeStyle = 'white';
-  ctx.lineWidth = 8;
+  ctx.lineWidth = 6;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   
-  // Left tower
+  // Bridge deck (roadway)
   ctx.beginPath();
-  ctx.moveTo(30, 80);
-  ctx.lineTo(30, 40);
+  ctx.moveTo(15, 85);
+  ctx.lineTo(113, 85);
+  ctx.stroke();
+  
+  // Bridge deck supports (underneath)
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(15, 88);
+  ctx.lineTo(113, 88);
+  ctx.stroke();
+  
+  // Left tower
+  ctx.lineWidth = 7;
+  ctx.beginPath();
+  ctx.moveTo(32, 88);
+  ctx.lineTo(32, 30);
   ctx.stroke();
   
   // Right tower
   ctx.beginPath();
-  ctx.moveTo(98, 80);
-  ctx.lineTo(98, 40);
+  ctx.moveTo(96, 88);
+  ctx.lineTo(96, 30);
   ctx.stroke();
   
-  // Bridge deck
-  ctx.beginPath();
-  ctx.moveTo(20, 80);
-  ctx.lineTo(108, 80);
-  ctx.stroke();
-  
-  // Suspension cables (main)
-  ctx.beginPath();
-  ctx.moveTo(30, 40);
-  ctx.quadraticCurveTo(64, 55, 98, 40);
-  ctx.stroke();
-  
-  // Vertical cables
-  const cablePositions = [40, 50, 64, 78, 88];
+  // Tower tops
   ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(28, 30);
+  ctx.lineTo(36, 30);
+  ctx.stroke();
+  
+  ctx.beginPath();
+  ctx.moveTo(92, 30);
+  ctx.lineTo(100, 30);
+  ctx.stroke();
+  
+  // Main suspension cables
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(32, 35);
+  ctx.quadraticCurveTo(64, 62, 96, 35);
+  ctx.stroke();
+  
+  // Vertical suspension cables
+  ctx.lineWidth = 2;
+  const cablePositions = [42, 52, 64, 76, 86];
   cablePositions.forEach(x => {
     ctx.beginPath();
-    const y = 40 + Math.abs((x - 64) / 34) * 15; // Calculate cable curve
-    ctx.moveTo(x, y);
-    ctx.lineTo(x, 80);
+    // Calculate the curve position for each cable
+    const t = (x - 32) / (96 - 32); // normalize position between towers
+    const curveY = 35 + 27 * 4 * t * (1 - t); // quadratic curve formula
+    ctx.moveTo(x, curveY);
+    ctx.lineTo(x, 85);
     ctx.stroke();
   });
+  
+  // Side cables to anchor points
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(15, 85);
+  ctx.lineTo(32, 35);
+  ctx.stroke();
+  
+  ctx.beginPath();
+  ctx.moveTo(113, 85);
+  ctx.lineTo(96, 35);
+  ctx.stroke();
   
   ctx.restore();
   
   // Draw status indicator dot if specified
   if (statusDot) {
-    const dotSize = Math.max(size * 0.25, 8);
+    const dotSize = Math.max(size * 0.375, 12); // Increased from 0.25 to 0.375 (50% bigger)
     const dotX = size - dotSize * 0.7;
     const dotY = size - dotSize * 0.7;
     
-    // Draw white background for the dot
+    // Draw black border circle
     ctx.beginPath();
     ctx.arc(dotX, dotY, dotSize * 0.6, 0, Math.PI * 2);
-    ctx.fillStyle = 'white';
+    ctx.fillStyle = 'black';
     ctx.fill();
     
-    // Draw colored dot
+    // Draw colored dot inside
     ctx.beginPath();
-    ctx.arc(dotX, dotY, dotSize * 0.5, 0, Math.PI * 2);
+    ctx.arc(dotX, dotY, dotSize * 0.45, 0, Math.PI * 2);
     ctx.fillStyle = statusDot;
     ctx.fill();
   }
@@ -123,15 +162,38 @@ function generateSimpleSVG(size, fillColor, strokeColor, statusDot) {
     </linearGradient>
   </defs>
   <circle cx="${size/2}" cy="${size/2}" r="${size * 0.44}" fill="url(#grad)" />
-  <g stroke="white" fill="none" stroke-width="${size * 0.06}" stroke-linecap="round">
-    <line x1="${size * 0.23}" y1="${size * 0.62}" x2="${size * 0.23}" y2="${size * 0.31}" />
-    <line x1="${size * 0.77}" y1="${size * 0.62}" x2="${size * 0.77}" y2="${size * 0.31}" />
-    <line x1="${size * 0.16}" y1="${size * 0.62}" x2="${size * 0.84}" y2="${size * 0.62}" />
-    <path d="M ${size * 0.23} ${size * 0.31} Q ${size * 0.5} ${size * 0.43} ${size * 0.77} ${size * 0.31}" />
+  <g stroke="white" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Bridge deck (main roadway) -->
+    <line x1="${size * 0.12}" y1="${size * 0.66}" x2="${size * 0.88}" y2="${size * 0.66}" stroke-width="${size * 0.047}" />
+    <!-- Bridge deck support -->
+    <line x1="${size * 0.12}" y1="${size * 0.69}" x2="${size * 0.88}" y2="${size * 0.69}" stroke-width="${size * 0.023}" />
+    
+    <!-- Left tower -->
+    <line x1="${size * 0.25}" y1="${size * 0.69}" x2="${size * 0.25}" y2="${size * 0.23}" stroke-width="${size * 0.055}" />
+    <!-- Right tower -->
+    <line x1="${size * 0.75}" y1="${size * 0.69}" x2="${size * 0.75}" y2="${size * 0.23}" stroke-width="${size * 0.055}" />
+    
+    <!-- Tower tops -->
+    <line x1="${size * 0.22}" y1="${size * 0.23}" x2="${size * 0.28}" y2="${size * 0.23}" stroke-width="${size * 0.031}" />
+    <line x1="${size * 0.72}" y1="${size * 0.23}" x2="${size * 0.78}" y2="${size * 0.23}" stroke-width="${size * 0.031}" />
+    
+    <!-- Main suspension cable -->
+    <path d="M ${size * 0.25} ${size * 0.27} Q ${size * 0.5} ${size * 0.48} ${size * 0.75} ${size * 0.27}" stroke-width="${size * 0.023}" />
+    
+    <!-- Vertical suspension cables -->
+    <line x1="${size * 0.33}" y1="${size * 0.35}" x2="${size * 0.33}" y2="${size * 0.66}" stroke-width="${size * 0.016}" />
+    <line x1="${size * 0.41}" y1="${size * 0.42}" x2="${size * 0.41}" y2="${size * 0.66}" stroke-width="${size * 0.016}" />
+    <line x1="${size * 0.5}" y1="${size * 0.46}" x2="${size * 0.5}" y2="${size * 0.66}" stroke-width="${size * 0.016}" />
+    <line x1="${size * 0.59}" y1="${size * 0.42}" x2="${size * 0.59}" y2="${size * 0.66}" stroke-width="${size * 0.016}" />
+    <line x1="${size * 0.67}" y1="${size * 0.35}" x2="${size * 0.67}" y2="${size * 0.66}" stroke-width="${size * 0.016}" />
+    
+    <!-- Side anchor cables -->
+    <line x1="${size * 0.12}" y1="${size * 0.66}" x2="${size * 0.25}" y2="${size * 0.27}" stroke-width="${size * 0.016}" />
+    <line x1="${size * 0.88}" y1="${size * 0.66}" x2="${size * 0.75}" y2="${size * 0.27}" stroke-width="${size * 0.016}" />
   </g>
   ${statusDot ? `
-  <circle cx="${size * 0.8}" cy="${size * 0.8}" r="${size * 0.12}" fill="white" />
-  <circle cx="${size * 0.8}" cy="${size * 0.8}" r="${size * 0.1}" fill="${statusDot}" />
+  <circle cx="${size * 0.8}" cy="${size * 0.8}" r="${size * 0.18}" fill="black" />
+  <circle cx="${size * 0.8}" cy="${size * 0.8}" r="${size * 0.135}" fill="${statusDot}" />
   ` : ''}
 </svg>`;
   return svg;
