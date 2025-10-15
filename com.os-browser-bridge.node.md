@@ -20,8 +20,11 @@ plutil -lint ~/Library/LaunchAgents/com.os-browser-bridge.node.plist
 plutil -p ~/Library/LaunchAgents/com.os-browser-bridge.node.plist
 plutil -convert json -o - ~/Library/LaunchAgents/com.os-browser-bridge.node.plist | jq
 
-
+# start
 launchctl load ~/Library/LaunchAgents/com.os-browser-bridge.node.plist
+
+# to stop
+launchctl unload ~/Library/LaunchAgents/com.os-browser-bridge.node.plist
 
 # to see details: 
 launchctl print gui/$(id -u)/com.os-browser-bridge.node
@@ -29,9 +32,6 @@ launchctl print gui/$(id -u)/com.os-browser-bridge.node
 
 # see also
 launchctl list | grep com.os-browser-bridge.node
-
-# to stop (then use load to start)
-launchctl unload ~/Library/LaunchAgents/com.os-browser-bridge.node.plist
 
 # to restart in one go (more reliable than unload+load because it kills and then starts)
 launchctl kickstart -k gui/$(id -u)/com.os-browser-bridge.node
