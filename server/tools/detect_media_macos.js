@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename);
 
 /**
  * Start macOS media key watcher via Swift-based script
- * Emits events: mediaPlay, mediaNext, mediaPrevious
+ * Emits events: mediaPlay, mediaNext, mediaPrevious, mediaVolumeUp, mediaVolumeDown, mediaVolumeMute
  * Each event includes payload.action: "pressed" | "released"
  */
 export default function mediaKeys(options) {
@@ -46,7 +46,7 @@ export default function mediaKeys(options) {
                   const [eventName, action] = parts;
                   
                   // Validate eventName is exactly one of the expected media keys
-                  const validEvents = ["mediaPlay", "mediaNext", "mediaPrevious"];
+                  const validEvents = ["mediaPlay", "mediaNext", "mediaPrevious", "mediaVolumeUp", "mediaVolumeDown", "mediaVolumeMute"];
                   // Validate action is exactly "pressed" or "released"
                   const validActions = ["pressed", "released"];
                   

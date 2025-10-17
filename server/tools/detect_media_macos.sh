@@ -3,10 +3,10 @@
 set -euo pipefail
 
 # macOS media key detector using Swift IOKit
-# Detects press and release events for: play/pause, next, previous
+# Detects press and release events for: play/pause, next, previous, volume up/down, mute
 #
 # This script compiles and runs a Swift program that monitors media keys
-# Output format: "play pressed", "play released", "next pressed", etc.
+# Output format: "play pressed", "play released", "next pressed", "mediaVolumeUp pressed", etc.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SWIFT_SOURCE="$SCRIPT_DIR/detect_media_macos.swift"
@@ -77,6 +77,12 @@ class MediaKeyMonitor {
             keyName = "#mediaNext"
         case kHIDUsage_Csmr_ScanPreviousTrack, kHIDUsage_Csmr_Rewind:
             keyName = "#mediaPrevious"
+        case kHIDUsage_Csmr_VolumeIncrement:
+            keyName = "#mediaVolumeUp"
+        case kHIDUsage_Csmr_VolumeDecrement:
+            keyName = "#mediaVolumeDown"
+        case kHIDUsage_Csmr_Mute:
+            keyName = "#mediaVolumeMute"
         default:
             return
         }

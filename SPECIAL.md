@@ -32,7 +32,7 @@ document.addEventListener("wokeup_v2", (event) => {
 - [server/tools/detect_media_macos.sh](server/tools/detect_media_macos.sh)
 - [server/tools/detect_media_macos_tampermonkey.js](server/tools/detect_media_macos_tampermonkey.js)
 
-Detects press and release events for macOS media keys: Play/Pause, Next, Previous
+Detects press and release events for macOS media keys: Play/Pause, Next, Previous, Volume Up, Volume Down, Volume Mute
 
 **Requirements:**
 - macOS only
@@ -66,6 +66,33 @@ document.addEventListener("mediaPrevious", (event) => {
     
     if (event.detail.action === "pressed") {
         // Handle previous track press
+    }
+});
+
+// Volume Up key
+document.addEventListener("mediaVolumeUp", (event) => {
+    console.log('Volume Up key:', event.detail.action); // "pressed" or "released"
+    
+    if (event.detail.action === "pressed") {
+        // Handle volume up press
+    }
+});
+
+// Volume Down key
+document.addEventListener("mediaVolumeDown", (event) => {
+    console.log('Volume Down key:', event.detail.action); // "pressed" or "released"
+    
+    if (event.detail.action === "pressed") {
+        // Handle volume down press
+    }
+});
+
+// Volume Mute key
+document.addEventListener("mediaVolumeMute", (event) => {
+    console.log('Volume Mute key:', event.detail.action); // "pressed" or "released"
+    
+    if (event.detail.action === "pressed") {
+        // Handle volume mute press
     }
 });
 ```
