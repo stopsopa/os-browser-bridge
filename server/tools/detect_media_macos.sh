@@ -16,12 +16,58 @@ COMPILED_BINARY="$SCRIPT_DIR/.detect_media_macos_bin"
 cat > "$SWIFT_SOURCE" << 'EOF'
 import Cocoa
 import IOKit.hid
+import CoreAudio
+import AudioToolbox
 
 class MediaKeyMonitor {
     private var hidManager: IOHIDManager?
     
     init() {
         setupHIDManager()
+    }
+    
+    private func getSystemMuteState() -> Bool? {
+        var deviceID = AudioDeviceID(0)
+        var deviceIDSize = UInt32(MemoryLayout<AudioDeviceID>.size)
+        
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        
+        let status = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address,
+            0,
+            nil,
+            &deviceIDSize,
+            &deviceID
+        )
+        
+        guard status == noErr else { return nil }
+        
+        var muteAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyMute,
+            mScope: kAudioDevicePropertyScopeOutput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        
+        var muted = UInt32(0)
+        var mutedSize = UInt32(MemoryLayout<UInt32>.size)
+        
+        let muteStatus = AudioObjectGetPropertyData(
+            deviceID,
+            &muteAddress,
+            0,
+            nil,
+            &mutedSize,
+            &muted
+        )
+        
+        guard muteStatus == noErr else { return nil }
+        
+        return muted != 0
     }
     
     private func setupHIDManager() {
@@ -89,8 +135,22 @@ class MediaKeyMonitor {
         
         if let key = keyName {
             let event = intValue != 0 ? "pressed" : "released"
-            print("\(key) \(event)")
-            fflush(stdout)
+            
+            // For mute key events, include the mute state
+            if key == "#mediaVolumeMute" {
+                // Use delay for both events to ensure consistent state reading
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    if let muteState = self.getSystemMuteState() {
+                        print("\(key) \(event) muted:\(muteState)")
+                    } else {
+                        print("\(key) \(event) muted:null")
+                    }
+                    fflush(stdout)
+                }
+            } else {
+                print("\(key) \(event)")
+                fflush(stdout)
+            }
         }
     }
     

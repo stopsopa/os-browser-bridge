@@ -10,6 +10,8 @@ const __dirname = path.dirname(__filename);
  * Start macOS media key watcher via Swift-based script
  * Emits events: mediaPlay, mediaNext, mediaPrevious, mediaVolumeUp, mediaVolumeDown, mediaVolumeMute
  * Each event includes payload.action: "pressed" | "released"
+ * mediaVolumeMute events include payload.muted: boolean | null
+ * - Both "pressed" and "released" events show mute state AFTER the toggle (same value for both)
  */
 export default function mediaKeys(options) {
   const { connectionRegistry, log } = options;
@@ -32,7 +34,9 @@ export default function mediaKeys(options) {
         const rl = readline.createInterface({ input: child.stdout });
         rl.on("line", (line) => {
           try {
-            // Expected format: "#mediaPlay pressed", "#mediaPlay released", "#mediaNext pressed", etc.
+            // Expected format: 
+            // "#mediaPlay pressed", "#mediaPlay released", "#mediaNext pressed", etc.
+            // "#mediaVolumeMute pressed muted:true" (for mute events with state)
             if (typeof line === "string") {
               const trimmed = line.trim();
 
@@ -42,7 +46,7 @@ export default function mediaKeys(options) {
 
                 const parts = withoutHash.split(" ");
                 
-                if (parts.length === 2) {
+                if (parts.length >= 2) {
                   const [eventName, action] = parts;
                   
                   // Validate eventName is exactly one of the expected media keys
@@ -51,15 +55,40 @@ export default function mediaKeys(options) {
                   const validActions = ["pressed", "released"];
                   
                   if (validEvents.includes(eventName) && validActions.includes(action)) {
-                    connectionRegistry.broadcast({
-                      event: eventName,
-                      payload: {
-                        action,
-                        timestamp: new Date().toISOString(),
-                      },
-                    });
+                    // Check if this is a mute event with state information
+                    if (eventName === "mediaVolumeMute" && parts.length === 3 && parts[2].startsWith("muted:")) {
+                      const muteStateStr = parts[2].replace("muted:", "");
+                      let muteState = null;
+                      
+                      if (muteStateStr === "true") {
+                        muteState = true;
+                      } else if (muteStateStr === "false") {
+                        muteState = false;
+                      }
+                      // muteStateStr === "null" -> muteState remains null
+                      
+                      connectionRegistry.broadcast({
+                        event: eventName,
+                        payload: {
+                          action,
+                          timestamp: new Date().toISOString(),
+                          muted: muteState,
+                        },
+                      });
 
-                    log(`MacMediaKeyWatcher: ${eventName} ${action}`);
+                      log(`MacMediaKeyWatcher: ${eventName} ${action} (muted: ${muteState})`);
+                    } else {
+                      // Standard handling for all other events
+                      connectionRegistry.broadcast({
+                        event: eventName,
+                        payload: {
+                          action,
+                          timestamp: new Date().toISOString(),
+                        },
+                      });
+
+                      log(`MacMediaKeyWatcher: ${eventName} ${action}`);
+                    }
                   }
                 }
               }

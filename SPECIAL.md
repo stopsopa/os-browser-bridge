@@ -36,8 +36,12 @@ Detects press and release events for macOS media keys: Play/Pause, Next, Previou
 
 **Requirements:**
 - macOS only
-- Swift compiler (Xcode Command Line Tools)
+- Swift compiler (Xcode Command Line Tools)  
 - Input Monitoring permission (macOS will prompt on first run)
+
+**What it provides:**
+
+The scripts detect and broadcast media key events via WebSocket. For volume mute events, both "pressed" and "released" events show the current system state **after** the mute action has been processed. Both events will have the same mute state value.
 
 **Events in the browser:**
 
@@ -89,18 +93,32 @@ document.addEventListener("mediaVolumeDown", (event) => {
 
 // Volume Mute key
 document.addEventListener("mediaVolumeMute", (event) => {
-    console.log('Volume Mute key:', event.detail.action); // "pressed" or "released"
+    // Both "pressed" and "released" events show the state AFTER the mute action
+    console.log('Current mute state:', event.detail.muted); // true (muted) or false (unmuted)
+    console.log('Action:', event.detail.action); // "pressed" or "released"
     
-    if (event.detail.action === "pressed") {
-        // Handle volume mute press
+    if (event.detail.muted === true) {
+        console.log('System is muted');
+    } else if (event.detail.muted === false) {
+        console.log('System is unmuted');
     }
 });
 ```
 
 **event.detail structure:**
 ```js
+// For mediaPlay, mediaNext, mediaPrevious, mediaVolumeUp, mediaVolumeDown:
 {
     action: "pressed" | "released",
     timestamp: "2025-10-08T23:50:00.000Z"
 }
+
+// For mediaVolumeMute events:
+{
+    action: "pressed" | "released",
+    timestamp: "2025-10-08T23:50:00.000Z",
+    muted: true | false | null  // Both pressed and released show state AFTER the mute action
+}
 ```
+
+**Note:** For `mediaVolumeMute`, both "pressed" and "released" events will have the same `muted` value, representing the current system state after the mute toggle has been processed.
