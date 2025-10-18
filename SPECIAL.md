@@ -122,3 +122,71 @@ document.addEventListener("mediaVolumeMute", (event) => {
 ```
 
 **Note:** For `mediaVolumeMute`, both "pressed" and "released" events will have the same `muted` value, representing the current system state after the mute toggle has been processed.
+
+# detect modifier keys
+
+- [server/tools/detect_modifiers_macos.js](server/tools/detect_modifiers_macos.js)
+- [server/tools/detect_modifiers_macos.sh](server/tools/detect_modifiers_macos.sh)
+- [server/tools/detect_modifiers_macos.swift](server/tools/detect_modifiers_macos.swift)
+
+Detects press and release events for macOS keyboard modifier keys: Shift, Command, Option, Control, Fn, Caps Lock
+
+**Requirements:**
+- macOS only
+- Swift compiler (Xcode Command Line Tools)
+- Accessibility permission (macOS will prompt on first run)
+
+**What it provides:**
+
+The scripts detect and broadcast modifier key state changes via WebSocket. These events are useful for creating keyboard shortcuts, custom hotkey handlers, or UI indicators that respond to modifier key presses.
+
+**Events in the browser:**
+
+```js
+// Shift key
+document.addEventListener("keyboardShift", (event) => {
+    console.log('Shift key:', event.detail.action); // "pressed" or "released"
+});
+
+// Command key
+document.addEventListener("keyboardCommand", (event) => {
+    console.log('Command key:', event.detail.action); // "pressed" or "released"
+});
+
+// Option/Alt key
+document.addEventListener("keyboardOption", (event) => {
+    console.log('Option key:', event.detail.action); // "pressed" or "released"
+});
+
+// Control key
+document.addEventListener("keyboardControl", (event) => {
+    console.log('Control key:', event.detail.action); // "pressed" or "released"
+});
+
+// Function key
+document.addEventListener("keyboardFn", (event) => {
+    console.log('Fn key:', event.detail.action); // "pressed" or "released"
+});
+
+// Caps Lock key
+document.addEventListener("keyboardCapsLock", (event) => {
+    console.log('Caps Lock:', event.detail.action); // "pressed" or "released"
+});
+```
+
+**event.detail structure:**
+```js
+{
+    action: "pressed" | "released",
+    timestamp: "2025-10-18T12:34:56.789Z"
+}
+```
+
+**Use cases:**
+- Create custom keyboard shortcuts across all browser tabs
+- Show visual indicators when modifier keys are held down
+- Implement accessibility features that respond to modifier key states
+- Build debugging tools that track modifier key usage
+- Create custom hotkey combinations for web applications
+
+**Note:** The plugin detects modifier key state changes system-wide using CGEventTap, which requires Accessibility permissions. Left and right variants of modifier keys (e.g., left Shift vs right Shift) are unified into single events.

@@ -11,6 +11,7 @@ import path from "path";
 
 import wakeup from "./tools/detect_wakeup_macos_log.js";
 import mediaKeys from "./tools/detect_media_macos.js";
+import modifierKeys from "./tools/detect_modifiers_macos.js";
 
 import { fileURLToPath } from "url";
 
@@ -189,6 +190,11 @@ if (socket) {
   });
 
   mediaKeys({
+    connectionRegistry,
+    log,
+  });
+
+  modifierKeys({
     connectionRegistry,
     log,
   });
