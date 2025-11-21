@@ -101,7 +101,8 @@ We can also emit events from the browser tab in js which can be attached to on t
 │       ├── ajax_to_server.html      # AJAX → server demo
 │       ├── connection_status_demo.html # Connection-status live view
 │       ├── regular_page.html        # Demo what's possible from regular user page
-│       └── styles.css                # Shared page styles
+│       ├── styles.css               # Shared page styles
+│       └── *                        # few more
 ├── extension/
 │   ├── manifest.json                # Extension configuration
 │   ├── background.js                # Background script (WebSocket client)
