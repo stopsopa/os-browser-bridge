@@ -64,7 +64,7 @@ Also since all instances of this extension in no matter how many instances of ch
 
 In this case server might serve (and in fact does that) as a central hub for communication between many tabs in many browsers.
 
-Server might also do whatever you wish and server as an extension of native capabilites of the browser.
+Server might also do whatever you wish and serve as an extension of native capabilites of the browser.
 For example:
 
 - it might broadcast OS events which are not normally "visible" in the browser context. Like: if OS just woke up from being suspended or if OS is going to sleep
