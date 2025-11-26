@@ -171,7 +171,7 @@ document.addEventListener("os_browser_bridge_connection_status", (event) => {
     },
   } = event;
 
-  if (event?.detail?.details?.isConnected) {
+  if (event?.detail?.isConnected) {
   } else {
   }
 });
