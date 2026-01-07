@@ -10,7 +10,7 @@
   <array>
     <string>/bin/bash</string>        
     <string>-c</string>
-    <string>/Users/szdz/.asdf/shims/node --watch --env-file=.env server/index.js</string>
+    <string>/Users/szdz/.asdf/shims/node --watch --env-file=.env server/index.js --flag=osbridgeserver</string>
   </array>
 
   <key>EnvironmentVariables</key>

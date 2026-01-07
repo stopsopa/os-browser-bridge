@@ -1,7 +1,7 @@
 /**
  * Two modes available:
- * SOCKET=true node --watch --env-file=.env server/index.js
- * node --watch --env-file=.env server/index.js
+ * SOCKET=true node --watch --env-file=.env server/index.js --flag=osbridgeserver
+ * node --watch --env-file=.env server/index.js --flag=osbridgeserver
  */
 
 import { WebSocketServer } from "ws";

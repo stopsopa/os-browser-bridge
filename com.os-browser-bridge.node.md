@@ -26,7 +26,10 @@ launchctl load ~/Library/LaunchAgents/com.os-browser-bridge.node.plist
 # to stop
 launchctl unload ~/Library/LaunchAgents/com.os-browser-bridge.node.plist
 
-# to see details: 
+# test if running and if it works:
+ps aux | grep osbridgeserver | grep -v grep
+
+# to see details:
 launchctl print gui/$(id -u)/com.os-browser-bridge.node
   # pay attention to 'active count = 0|1' this seems to indicate if service is running
 

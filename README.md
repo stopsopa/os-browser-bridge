@@ -23,7 +23,7 @@ Node.js Server (WebSocket) → Chrome Extension (Background Script) → Content 
 clone the repo
 cp .env.example .env
 (cd server && yarn install)
-SOCKET=1 node --watch --env-file=.env server/index.js
+SOCKET=1 node --watch --env-file=.env server/index.js --flag=osbridgeserver
 
 ```
 
