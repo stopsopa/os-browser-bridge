@@ -10,13 +10,15 @@
   <array>
     <string>/bin/bash</string>        
     <string>-c</string>
-    <string>/Users/szdz/.asdf/shims/node --watch --env-file=.env server/index.js --flag=osbridgeserver</string>
+    <string>/Users/szdz/.asdf/installs/nodejs/24.12.0/bin/node --watch --env-file=.env server/index.js --flag=osbridgeserver</string>
   </array>
 
   <key>EnvironmentVariables</key>
   <dict>
     <key>SOCKET</key>
     <string>2</string>
+    <key>PATH</key>
+    <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
   </dict>
 
   <key>WorkingDirectory</key>
