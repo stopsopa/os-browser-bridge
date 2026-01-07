@@ -184,7 +184,14 @@ document.addEventListener("os_browser_bridge_connection_status", (event) => {
 These are events fired by background.js script, pushed to the server and server is broadcasting them to all tabs across all connected browsers.
 
 ```js
-["onCreated", "onRemoved", "onUpdated", "onActivated", "onReplaced", "onAttached"].forEach((en) => {
+[
+  "onCreated",
+  "onRemoved",
+  "onUpdated",
+  "onActivated",
+  "onReplaced",
+  "onAttached",
+].forEach((en) => {
   document.addEventListener(en, (event) => {
     const {
       type, // 'myevent'
@@ -244,7 +251,11 @@ get tab id:
   }
 </script>
 <script type="module">
-  import { sendIdentifyTabEvent, waitForConnectionStatus, unique } from "./bridge.js";
+  import {
+    sendIdentifyTabEvent,
+    waitForConnectionStatus,
+    unique,
+  } from "./bridge.js";
 
   const event = await sendIdentifyTabEvent();
 

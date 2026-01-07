@@ -1,4 +1,3 @@
-
 # Installation
 
 ```bash
@@ -10,7 +9,7 @@ rm -rf com.os-browser-bridge.node\[SYMLINK\].plist && \
 ln -s ~/Library/LaunchAgents/com.os-browser-bridge.node.plist com.os-browser-bridge.node\[SYMLINK\].plist && \
 cat ~/Library/LaunchAgents/com.os-browser-bridge.node.plist
 
-# WARNING: at this point make sure WorkingDirectory, StandardOutPath & StandardErrorPath 
+# WARNING: at this point make sure WorkingDirectory, StandardOutPath & StandardErrorPath
 # are correct in com.os-browser-bridge.node\[SYMLINK\].plist
 # WARNING: ALSO CHECK ProgramArguments - path to node binary
 
