@@ -27,6 +27,7 @@ launchctl unload ~/Library/LaunchAgents/com.os-browser-bridge.node.plist
 
 # test if running and if it works:
 ps aux | grep osbridgeserver | grep -v grep
+env $(cat .env | xargs) sh -c 'curl "http://${HOST}:${PORT}/allTabs" | jq'
 
 # to see details:
 launchctl print gui/$(id -u)/com.os-browser-bridge.node
