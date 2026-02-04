@@ -236,6 +236,10 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
       };
 
       switch (true) {
+        case event === "close_this_tab": {
+          chrome.runtime.sendMessage(message);
+          break;
+        }
         case event === "identify_tab": {
           // for identify_tab we will handle response from background
           // and forward to browser the server the response

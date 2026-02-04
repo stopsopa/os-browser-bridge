@@ -216,7 +216,7 @@ document.documentElement.dispatchEvent(
       event: "fornodejs",
       payload: { message: "Hello from browser" },
     },
-  })
+  }),
 );
 ```
 
@@ -265,6 +265,20 @@ get tab id:
 </script>
 ```
 
+### close_this_tab event
+
+When triggered from the browser tab it will close that tab - unconditionally
+
+```js
+document.documentElement.dispatchEvent(
+  new CustomEvent("os_browser_bridge", {
+    detail: {
+      event: "close_this_tab",
+    },
+  }),
+);
+```
+
 ## broadcasting
 
 ### from server
@@ -310,7 +324,7 @@ document.documentElement.dispatchEvent(
       event: "other_tabs:broadcast",
       payload: { message: "Hello other tabs", unique: unq },
     },
-  })
+  }),
 );
 
 // and listen: (in the other tab context)

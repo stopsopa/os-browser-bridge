@@ -224,6 +224,10 @@ async function loadSettings() {
         // log("incomming from content.js", message);
 
         switch (true) {
+          case message?.event === "close_this_tab": {
+            chrome.tabs.remove(tab.id);
+            return;
+          }
           case message?.event === "identify_tab": {
             const reply = {
               event: "os_browser_bridge_identify_tab",
