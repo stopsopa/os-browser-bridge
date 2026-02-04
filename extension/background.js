@@ -1,4 +1,9 @@
-import { splitOnce, normalizeListToArray, stringToIncludeExclude, enrichTab } from "./tools.js";
+import {
+  splitOnce,
+  normalizeListToArray,
+  stringToIncludeExclude,
+  enrichTab,
+} from "./tools.js";
 
 let connected = false;
 
@@ -42,29 +47,29 @@ let browserName = "Unknown",
 function updateIcon(state) {
   const iconPaths = {
     disabled: {
-      "16": "icons/icon-gray-16.png",
-      "32": "icons/icon-gray-32.png",
-      "48": "icons/icon-gray-48.png",
-      "128": "icons/icon-gray-128.png"
+      16: "icons/icon-gray-16.png",
+      32: "icons/icon-gray-32.png",
+      48: "icons/icon-gray-48.png",
+      128: "icons/icon-gray-128.png",
     },
     connected: {
-      "16": "icons/icon-connected-16.png",
-      "32": "icons/icon-connected-32.png",
-      "48": "icons/icon-connected-48.png",
-      "128": "icons/icon-connected-128.png"
+      16: "icons/icon-connected-16.png",
+      32: "icons/icon-connected-32.png",
+      48: "icons/icon-connected-48.png",
+      128: "icons/icon-connected-128.png",
     },
     disconnected: {
-      "16": "icons/icon-disconnected-16.png",
-      "32": "icons/icon-disconnected-32.png",
-      "48": "icons/icon-disconnected-48.png",
-      "128": "icons/icon-disconnected-128.png"
+      16: "icons/icon-disconnected-16.png",
+      32: "icons/icon-disconnected-32.png",
+      48: "icons/icon-disconnected-48.png",
+      128: "icons/icon-disconnected-128.png",
     },
     connecting: {
-      "16": "icons/icon-connecting-16.png",
-      "32": "icons/icon-connecting-32.png",
-      "48": "icons/icon-connecting-48.png",
-      "128": "icons/icon-connecting-128.png"
-    }
+      16: "icons/icon-connecting-16.png",
+      32: "icons/icon-connecting-32.png",
+      48: "icons/icon-connecting-48.png",
+      128: "icons/icon-connecting-128.png",
+    },
   };
 
   const icons = iconPaths[state] || iconPaths.disabled;
@@ -74,14 +79,18 @@ function updateIcon(state) {
 // Load settings from storage
 async function loadSettings() {
   try {
-    const settings = await chrome.storage.local.get(['serverUrl', 'connectionEnabled']);
+    const settings = await chrome.storage.local.get([
+      "serverUrl",
+      "connectionEnabled",
+    ]);
     WS_SERVER_URL = settings.serverUrl || "";
     // Only enable connection if we have a URL and it's explicitly enabled
-    connectionEnabled = !!settings.serverUrl && (settings.connectionEnabled === true);
-    log('Settings loaded:', { WS_SERVER_URL, connectionEnabled });
+    connectionEnabled =
+      !!settings.serverUrl && settings.connectionEnabled === true;
+    log("Settings loaded:", { WS_SERVER_URL, connectionEnabled });
     return { WS_SERVER_URL, connectionEnabled };
   } catch (err) {
-    error('Error loading settings:', err);
+    error("Error loading settings:", err);
     return { WS_SERVER_URL, connectionEnabled };
   }
 }
@@ -108,9 +117,9 @@ async function loadSettings() {
 
   // Load settings before connecting
   await loadSettings();
-  
+
   // Set initial icon state based on connection enabled setting
-  updateIcon(connectionEnabled ? 'disconnected' : 'disabled');
+  updateIcon(connectionEnabled ? "disconnected" : "disabled");
 
   const events2 = {
     ping: (message, sender, sendResponse) => {
@@ -121,10 +130,15 @@ async function loadSettings() {
       sendResponse({
         connectionEnabled,
         isConnected: connected,
-        connectionState: ws ? (ws.readyState === WebSocket.CONNECTING ? 'connecting' : 
-                                ws.readyState === WebSocket.OPEN ? 'connected' : 'disconnected') : 'disconnected',
+        connectionState: ws
+          ? ws.readyState === WebSocket.CONNECTING
+            ? "connecting"
+            : ws.readyState === WebSocket.OPEN
+              ? "connected"
+              : "disconnected"
+          : "disconnected",
         serverUrl: WS_SERVER_URL,
-        reconnectAttempts
+        reconnectAttempts,
       });
       return false; // Synchronous response, no need to return true
     },
@@ -135,41 +149,46 @@ async function loadSettings() {
         try {
           const oldEnabled = connectionEnabled;
           const oldUrl = WS_SERVER_URL;
-          
+
           // Update settings
           WS_SERVER_URL = message.serverUrl || WS_SERVER_URL;
           connectionEnabled = message.connectionEnabled;
-          
+
           // Save settings to storage
           await chrome.storage.local.set({
             serverUrl: WS_SERVER_URL,
-            connectionEnabled: connectionEnabled
+            connectionEnabled: connectionEnabled,
           });
-          
+
           // If connection settings changed
           if (oldEnabled !== connectionEnabled || oldUrl !== WS_SERVER_URL) {
             if (!connectionEnabled) {
               // Disconnect if disabled
               disconnectWebSocket();
-              updateIcon('disabled');
+              updateIcon("disabled");
             } else {
               // Reconnect with new settings
               disconnectWebSocket();
               connectWebSocket();
             }
           }
-          
+
           // Send current status back
           sendResponse({
             connectionEnabled,
             isConnected: connected,
-            connectionState: ws ? (ws.readyState === WebSocket.CONNECTING ? 'connecting' : 
-                                    ws.readyState === WebSocket.OPEN ? 'connected' : 'disconnected') : 'disconnected',
+            connectionState: ws
+              ? ws.readyState === WebSocket.CONNECTING
+                ? "connecting"
+                : ws.readyState === WebSocket.OPEN
+                  ? "connected"
+                  : "disconnected"
+              : "disconnected",
             serverUrl: WS_SERVER_URL,
-            reconnectAttempts
+            reconnectAttempts,
           });
         } catch (err) {
-          error('Error updating settings:', err);
+          error("Error updating settings:", err);
           sendResponse({ error: err.message });
         }
       })();
@@ -192,7 +211,11 @@ async function loadSettings() {
         error("Failed to provide connection status:", e);
       }
     },
-    transport_from_content_js_to_background_js: (message, sender, sendResponse) => {
+    transport_from_content_js_to_background_js: (
+      message,
+      sender,
+      sendResponse,
+    ) => {
       try {
         const tab = sender?.tab || "";
 
@@ -272,7 +295,7 @@ async function loadSettings() {
   if (connectionEnabled) {
     connectWebSocket();
   } else {
-    updateIcon('disabled');
+    updateIcon("disabled");
   }
 })();
 
@@ -281,14 +304,20 @@ function scheduleReconnect() {
     // Don't reconnect if connection is disabled
     return;
   }
-  
+
   if (reconnectTimer != null) {
     // a reconnection attempt is already scheduled
     return;
   }
 
   // Immediate retry on the first disconnect, exponential back-off afterwards
-  const delay = reconnectAttempts === 0 ? 0 : Math.min(1000 * Math.pow(2, reconnectAttempts - 1), MAX_RECONNECT_DELAY);
+  const delay =
+    reconnectAttempts === 0
+      ? 0
+      : Math.min(
+          1000 * Math.pow(2, reconnectAttempts - 1),
+          MAX_RECONNECT_DELAY,
+        );
   reconnectAttempts++;
 
   reconnectTimer = setTimeout(() => {
@@ -306,7 +335,10 @@ function cleanupWebSocket() {
   ws.onclose = null;
   ws.onerror = null;
 
-  if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+  if (
+    ws.readyState === WebSocket.OPEN ||
+    ws.readyState === WebSocket.CONNECTING
+  ) {
     try {
       ws.close();
     } catch (_) {
@@ -326,9 +358,9 @@ function disconnectWebSocket() {
   cleanupWebSocket();
   connected = false;
   reconnectAttempts = 0;
-  broadcastConnectionStatus(false, { state: 'disconnected' });
+  broadcastConnectionStatus(false, { state: "disconnected" });
   // Update icon based on whether connection is enabled or not
-  updateIcon(connectionEnabled ? 'disconnected' : 'disabled');
+  updateIcon(connectionEnabled ? "disconnected" : "disabled");
 }
 
 async function broadcastToTabs(payload, includeTabs, excludeTabs) {
@@ -359,13 +391,19 @@ async function broadcastToTabs(payload, includeTabs, excludeTabs) {
 
         switch (true) {
           case includeTabs.length > 0: {
-            if (includeTabs.includes(tabId) || includeTabs.includes(tabIdShort)) {
+            if (
+              includeTabs.includes(tabId) ||
+              includeTabs.includes(tabIdShort)
+            ) {
               await emitForContentJs(tab.id, message);
             }
             break;
           }
           case excludeTabs.length > 0: {
-            if (!excludeTabs.includes(tabId) && !excludeTabs.includes(tabIdShort)) {
+            if (
+              !excludeTabs.includes(tabId) &&
+              !excludeTabs.includes(tabIdShort)
+            ) {
               await emitForContentJs(tab.id, message);
             }
             break;
@@ -376,9 +414,15 @@ async function broadcastToTabs(payload, includeTabs, excludeTabs) {
           }
         }
       } catch (e) {
-        if (e.message.includes("Could not establish connection. Receiving end does not exist.")) {
+        if (
+          e.message.includes(
+            "Could not establish connection. Receiving end does not exist.",
+          )
+        ) {
           // this will trigger for example for page chrome://extensions/ where content.js is not active
-          console.warn(`Content script not active in tab ${tab.id} (${tab.url || "unknown url"}). Skipping message.`);
+          console.warn(
+            `Content script not active in tab ${tab.id} (${tab.url || "unknown url"}). Skipping message.`,
+          );
         } else {
           error(`Error sending message to tab ${tab.id}:`, e);
         }
@@ -403,11 +447,15 @@ async function broadcastConnectionStatus(isConnected, details = {}) {
           tabId: `browserId_${browserId}_tabId_${tab.id}`,
         });
       } catch (e) {
-        if (e.message.includes("Could not establish connection. Receiving end does not exist.")) {
+        if (
+          e.message.includes(
+            "Could not establish connection. Receiving end does not exist.",
+          )
+        ) {
           console.warn(
             `Content script not active in tab ${tab.id} (${
               tab.url || "unknown url"
-            }). Skipping connection status message.`
+            }). Skipping connection status message.`,
           );
         } else {
           error(`Error sending connection status to tab ${tab.id}:`, e);
@@ -428,24 +476,32 @@ function sendToNodeFactory(ws) {
 async function connectWebSocket() {
   // Don't connect if disabled or no URL configured
   if (!connectionEnabled || !WS_SERVER_URL) {
-    updateIcon('disabled');
+    updateIcon("disabled");
     return;
   }
-  
+
   // Always clean up any previous socket before starting a new one
   cleanupWebSocket();
 
   // If a connection is already open or in progress, don't create another
-  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+  if (
+    ws &&
+    (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)
+  ) {
     return;
   }
 
   try {
     // Emit connecting status and update icon
-    broadcastConnectionStatus(false, { state: "connecting", reconnectAttempts });
-    updateIcon('connecting');
+    broadcastConnectionStatus(false, {
+      state: "connecting",
+      reconnectAttempts,
+    });
+    updateIcon("connecting");
 
-    const encodedBrowserInfo = base64EncodeUtf8(JSON.stringify(browserInfo || null));
+    const encodedBrowserInfo = base64EncodeUtf8(
+      JSON.stringify(browserInfo || null),
+    );
     ws = new WebSocket(`${WS_SERVER_URL}?browser=${encodedBrowserInfo}`);
 
     const sendToNode = sendToNodeFactory(ws);
@@ -453,16 +509,21 @@ async function connectWebSocket() {
     ws.addEventListener("open", () => {
       reconnectAttempts = 0; // Reset reconnect attempts on successful connection
       // Emit connected status and update icon
-      broadcastConnectionStatus(true, { state: "connected", reconnectAttempts: 0 });
-      updateIcon('connected');
+      broadcastConnectionStatus(true, {
+        state: "connected",
+        reconnectAttempts: 0,
+      });
+      updateIcon("connected");
       // Notify popup if it's open
-      chrome.runtime.sendMessage({ 
-        type: 'status_update',
-        connectionEnabled,
-        isConnected: true,
-        connectionState: 'connected',
-        serverUrl: WS_SERVER_URL
-      }).catch(() => {}); // Ignore errors if popup is not open
+      chrome.runtime
+        .sendMessage({
+          type: "status_update",
+          connectionEnabled,
+          isConnected: true,
+          connectionState: "connected",
+          serverUrl: WS_SERVER_URL,
+        })
+        .catch(() => {}); // Ignore errors if popup is not open
     });
 
     // after some thoughts it seems that this method is only useful for allTabs special event
@@ -577,9 +638,18 @@ async function connectWebSocket() {
 
     // List of tab-related Chrome events we want to monitor
     // const tabEvents = ["onCreated", "onRemoved", "onUpdated", "onActivated", "onReplaced", "onAttached"];
-    const tabEvents = ["onCreated", "onRemoved", "onUpdated", "onActivated", "onReplaced", "onAttached"];
+    const tabEvents = [
+      "onCreated",
+      "onRemoved",
+      "onUpdated",
+      "onActivated",
+      "onReplaced",
+      "onAttached",
+    ];
 
-    tabEvents.forEach((tabEvent) => chrome.tabs[tabEvent].addListener(sendSingleTabUpdate(tabEvent)));
+    tabEvents.forEach((tabEvent) =>
+      chrome.tabs[tabEvent].addListener(sendSingleTabUpdate(tabEvent)),
+    );
 
     ///////////////////////////////
     //  End tab change bindings  //
@@ -593,15 +663,17 @@ async function connectWebSocket() {
         code: event.code,
         reason: event.reason,
       });
-      updateIcon(connectionEnabled ? 'disconnected' : 'disabled');
+      updateIcon(connectionEnabled ? "disconnected" : "disabled");
       // Notify popup if it's open
-      chrome.runtime.sendMessage({ 
-        type: 'status_update',
-        connectionEnabled,
-        isConnected: false,
-        connectionState: 'disconnected',
-        serverUrl: WS_SERVER_URL
-      }).catch(() => {}); // Ignore errors if popup is not open
+      chrome.runtime
+        .sendMessage({
+          type: "status_update",
+          connectionEnabled,
+          isConnected: false,
+          connectionState: "disconnected",
+          serverUrl: WS_SERVER_URL,
+        })
+        .catch(() => {}); // Ignore errors if popup is not open
       scheduleReconnect();
     });
 
@@ -609,7 +681,11 @@ async function connectWebSocket() {
       // ping: (message, sender, sendResponse) => {
       //   sendResponse({ type: "pong" });
       // },
-      transport_from_content_js_to_background_js: (message, sender, sendResponse) => {
+      transport_from_content_js_to_background_js: (
+        message,
+        sender,
+        sendResponse,
+      ) => {
         try {
           if (ws && ws.readyState === WebSocket.OPEN) {
             const tab = sender?.tab || "";
@@ -652,7 +728,9 @@ async function connectWebSocket() {
               }
             }
           } else {
-            console.warn("WebSocket not connected, cannot forward event to server");
+            console.warn(
+              "WebSocket not connected, cannot forward event to server",
+            );
           }
         } catch (e) {
           error("Failed to forward event to node server:", e);
@@ -682,7 +760,7 @@ async function connectWebSocket() {
       reconnectAttempts,
       error: e.message || "Failed to create WebSocket",
     });
-    updateIcon(connectionEnabled ? 'disconnected' : 'disabled');
+    updateIcon(connectionEnabled ? "disconnected" : "disabled");
     scheduleReconnect();
   }
 }
@@ -712,7 +790,10 @@ async function injectContentScriptIntoAllTabs() {
             e?.message?.includes("The extensions gallery cannot be scripted")
           )
         ) {
-          console.warn(`Failed to inject content script into tab ${tab.id}:`, e);
+          console.warn(
+            `Failed to inject content script into tab ${tab.id}:`,
+            e,
+          );
         }
       }
     }
@@ -826,8 +907,12 @@ async function detectBrowserName() {
     // Method 2: Use User-Agent Client Hints API if available
     if (navigator.userAgentData && navigator.userAgentData.brands) {
       try {
-        const brands = await navigator.userAgentData.getHighEntropyValues(["brands"]);
-        const brandNames = brands.brands.map((brand) => brand.brand.toLowerCase());
+        const brands = await navigator.userAgentData.getHighEntropyValues([
+          "brands",
+        ]);
+        const brandNames = brands.brands.map((brand) =>
+          brand.brand.toLowerCase(),
+        );
 
         if (brandNames.some((name) => name.includes("brave"))) {
           return "Brave";
@@ -854,7 +939,10 @@ async function detectBrowserName() {
       return "Opera";
     } else if (userAgent.includes("Firefox/")) {
       return "Firefox";
-    } else if (userAgent.includes("Safari/") && !userAgent.includes("Chrome/")) {
+    } else if (
+      userAgent.includes("Safari/") &&
+      !userAgent.includes("Chrome/")
+    ) {
       return "Safari";
     } else if (userAgent.includes("Chrome/")) {
       // This is our best guess for Chrome vs Chromium from user agent
@@ -907,7 +995,9 @@ async function generateUniqueId() {
     const data = encoder.encode(raw);
     const digest = await crypto.subtle.digest("SHA-256", data);
     const hashArray = Array.from(new Uint8Array(digest));
-    const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+    const hashHex = hashArray
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
     return hashHex.substring(0, 8);
   } catch (e) {
     error("Error generating unique browser id:", e);

@@ -11,12 +11,16 @@ function emitForBrowser(...args) {
   document.dispatchEvent(...args);
 }
 function emitForBackground(...args) {
-  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+  if (
+    typeof chrome !== "undefined" &&
+    chrome.runtime &&
+    chrome.runtime.sendMessage
+  ) {
     return chrome.runtime.sendMessage(...args);
   } else {
     // Don't throw an error, just return a rejected promise
     // This allows callers to handle it gracefully
-    return Promise.reject(new Error('Chrome runtime not available'));
+    return Promise.reject(new Error("Chrome runtime not available"));
   }
 }
 
@@ -36,28 +40,40 @@ function log() {
   }
 }
 
-log("debug: ", debug, "condition", !window.__osBrowserBridgeContentScriptInjected);
+log(
+  "debug: ",
+  debug,
+  "condition",
+  !window.__osBrowserBridgeContentScriptInjected,
+);
 if (!window.__osBrowserBridgeContentScriptInjected) {
   window.__osBrowserBridgeContentScriptInjected = true;
 
   // Immediately request current connection status so the page can get initial status
   (async () => {
     // Check if chrome runtime is available
-    if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
+    if (
+      typeof chrome === "undefined" ||
+      !chrome.runtime ||
+      !chrome.runtime.sendMessage
+    ) {
       // Silently skip if chrome runtime is not available
       return;
     }
-    
+
     try {
       const reply = await new Promise((resolve) => {
-        chrome.runtime.sendMessage({ type: "get_connection_status" }, (response) => {
-          if (chrome.runtime.lastError) {
-            // Silently ignore and resolve with null
-            resolve(null);
-          } else {
-            resolve(response);
-          }
-        });
+        chrome.runtime.sendMessage(
+          { type: "get_connection_status" },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              // Silently ignore and resolve with null
+              resolve(null);
+            } else {
+              resolve(response);
+            }
+          },
+        );
       });
 
       if (reply && reply?.type === "os_browser_bridge_connection_status") {
@@ -71,7 +87,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
             },
             bubbles: true,
             composed: true,
-          })
+          }),
         );
       }
     } catch (e) {
@@ -80,75 +96,84 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
     }
   })();
 
-  chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
-    // debugger;
-    if (message.type === "os_browser_bridge_event_background_script_to_content_script") {
-      try {
-        const tabId = message.tabId;
+  chrome.runtime.onMessage.addListener(
+    async (message, sender, sendResponse) => {
+      // debugger;
+      if (
+        message.type ===
+        "os_browser_bridge_event_background_script_to_content_script"
+      ) {
+        try {
+          const tabId = message.tabId;
 
-        // log('tabId', tabId);
+          // log('tabId', tabId);
 
-        let { event, detail, delay } = message?.payload || {};
+          let { event, detail, delay } = message?.payload || {};
 
-        if (typeof delay !== "undefined") {
-          delay = parseInt(delay, 10);
+          if (typeof delay !== "undefined") {
+            delay = parseInt(delay, 10);
 
-          if (!/^\d+$/.test(delay)) {
-            return error("Delay is not a valid number:", delay);
+            if (!/^\d+$/.test(delay)) {
+              return error("Delay is not a valid number:", delay);
+            }
           }
-        }
 
-        if (typeof event !== "string" || !event.trim()) {
-          return;
-        }
+          if (typeof event !== "string" || !event.trim()) {
+            return;
+          }
 
-        if (delay) {
-          await wait(delay);
-        }
+          if (delay) {
+            await wait(delay);
+          }
 
-        const customEventInit = {
-          detail,
-          bubbles: true, // ←--- enable bubbling
-          composed: true, // optional: crosses shadow-DOM boundaries
-        };
-
-        log(`event >${event}< payload:`, customEventInit);
-
-        emitForBrowser(new CustomEvent(event, customEventInit));
-      } catch (e) {
-        error("Error parsing message payload:", e);
-      }
-    } else if (message.type === "os_browser_bridge_connection_status") {
-      // Handle connection status events
-      try {
-        const { isConnected, details, timestamp } = message;
-
-        // Dispatch a custom event for connection status
-        emitForBrowser(
-          new CustomEvent("os_browser_bridge_connection_status", {
-            detail: {
-              isConnected,
-              details,
-              timestamp,
-            },
+          const customEventInit = {
+            detail,
             bubbles: true, // ←--- enable bubbling
             composed: true, // optional: crosses shadow-DOM boundaries
-          })
-        );
-      } catch (e) {
-        error("Error handling connection status message:", e);
+          };
+
+          log(`event >${event}< payload:`, customEventInit);
+
+          emitForBrowser(new CustomEvent(event, customEventInit));
+        } catch (e) {
+          error("Error parsing message payload:", e);
+        }
+      } else if (message.type === "os_browser_bridge_connection_status") {
+        // Handle connection status events
+        try {
+          const { isConnected, details, timestamp } = message;
+
+          // Dispatch a custom event for connection status
+          emitForBrowser(
+            new CustomEvent("os_browser_bridge_connection_status", {
+              detail: {
+                isConnected,
+                details,
+                timestamp,
+              },
+              bubbles: true, // ←--- enable bubbling
+              composed: true, // optional: crosses shadow-DOM boundaries
+            }),
+          );
+        } catch (e) {
+          error("Error handling connection status message:", e);
+        }
       }
-    }
-  });
+    },
+  );
 
   // Keep the background script alive by sending periodic pings
   setInterval(async () => {
     // Only attempt ping if chrome runtime is fully available
-    if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
+    if (
+      typeof chrome === "undefined" ||
+      !chrome.runtime ||
+      !chrome.runtime.sendMessage
+    ) {
       // Silently skip if chrome runtime is not available
       return;
     }
-    
+
     try {
       // Use native chrome.runtime.sendMessage directly to avoid throwing in emitForBackground
       await new Promise((resolve, reject) => {
@@ -156,11 +181,13 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
           // Check for errors
           if (chrome.runtime.lastError) {
             // Silently ignore common/expected errors
-            const errorMessage = chrome.runtime.lastError.message || '';
-            if (errorMessage.includes('Extension context invalidated') ||
-                errorMessage.includes('Cannot read properties') ||
-                errorMessage.includes('Receiving end does not exist') ||
-                errorMessage.includes('message port closed')) {
+            const errorMessage = chrome.runtime.lastError.message || "";
+            if (
+              errorMessage.includes("Extension context invalidated") ||
+              errorMessage.includes("Cannot read properties") ||
+              errorMessage.includes("Receiving end does not exist") ||
+              errorMessage.includes("message port closed")
+            ) {
               resolve(null); // Silently resolve
               return;
             }
@@ -172,12 +199,14 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
       });
     } catch (e) {
       // Only log unexpected errors, silently ignore expected ones
-      const errorMsg = e?.message || e?.toString() || '';
-      if (!errorMsg.includes('Extension context') && 
-          !errorMsg.includes('Cannot read properties') &&
-          !errorMsg.includes('Chrome runtime') &&
-          !errorMsg.includes('Receiving end') &&
-          !errorMsg.includes('message port')) {
+      const errorMsg = e?.message || e?.toString() || "";
+      if (
+        !errorMsg.includes("Extension context") &&
+        !errorMsg.includes("Cannot read properties") &&
+        !errorMsg.includes("Chrome runtime") &&
+        !errorMsg.includes("Receiving end") &&
+        !errorMsg.includes("message port")
+      ) {
         error("Unexpected error during ping:", e);
       }
     }
@@ -188,11 +217,15 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
   //////////////////////////////////////////////////////////////
   document.documentElement.addEventListener("os_browser_bridge", (e) => {
     // Check if chrome runtime is available before processing
-    if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
+    if (
+      typeof chrome === "undefined" ||
+      !chrome.runtime ||
+      !chrome.runtime.sendMessage
+    ) {
       // Silently ignore if chrome runtime is not available
       return;
     }
-    
+
     try {
       const { event, payload } = e.detail; // fine
 
@@ -212,7 +245,7 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
               // Silently ignore errors
               return;
             }
-            
+
             if (reply) {
               const customEventInit = {
                 detail: reply.detail,
@@ -239,10 +272,12 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
       }
     } catch (e) {
       // Only log if it's not a common/expected error
-      const errorMsg = e?.message || e?.toString() || '';
-      if (!errorMsg.includes('Extension context') && 
-          !errorMsg.includes('Cannot read properties') &&
-          !errorMsg.includes('Chrome runtime')) {
+      const errorMsg = e?.message || e?.toString() || "";
+      if (
+        !errorMsg.includes("Extension context") &&
+        !errorMsg.includes("Cannot read properties") &&
+        !errorMsg.includes("Chrome runtime")
+      ) {
         error("Failed to forward 'os_browser_bridge' event to background:", e);
       }
     }
