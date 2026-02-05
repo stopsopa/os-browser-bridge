@@ -841,12 +841,12 @@ chrome.runtime.onInstalled.addListener(() => {
   } catch (_) {}
 });
 
-chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === "keepAlive") {
-    // A trivial task to keep the worker awake
-    console.log(".");
-  }
-});
+// chrome.alarms.onAlarm.addListener((alarm) => {
+//   if (alarm.name === "keepAlive") {
+//     // A trivial task to keep the worker awake
+//     console.log(".");
+//   }
+// });
 
 /**
  * Browser Information
