@@ -782,8 +782,13 @@ async function injectContentScriptIntoAllTabs() {
     for (const tab of tabs) {
       try {
         await chrome.scripting.executeScript({
-          target: { tabId: tab.id /* top-frame only to avoid duplicates */ },
+          target: { tabId: tab.id },
           files: ["content.js"],
+        });
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ["main-world-bridge.js"],
+          world: "MAIN",
         });
       } catch (e) {
         // It's normal to get errors for restricted URLs (e.g. chrome://) or

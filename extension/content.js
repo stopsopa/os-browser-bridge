@@ -96,6 +96,90 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
     }
   })();
 
+  // /**
+  //  * Hardware Media Key Handling Detection & Neutralization
+  //  *
+  //  * This section detects if the Chrome flag chrome://flags/#hardware-media-key-handling is ENABLED.
+  //  * It also selectively neutralizes 'nexttrack' and 'previoustrack' to avoid double-triggering.
+  //  * But after some tweaks I've realized taht we can suppress just events nexttrack and previoustrack using main-world-bridge.js
+  //  * and that is really all we need to stop nexttrack and previoustrack to skip to next and previous track on YouTube.
+  //  * so no need for this event here to signal to user to turn off flag chrome://flags/#hardware-media-key-handling
+  //  */
+  // (function setupHardwareMediaKeyLogic() {
+  //   if (
+  //     typeof window === "undefined" ||
+  //     window.__osBrowserBridgeDetectionInitialized
+  //   )
+  //     return;
+
+  //   // 1. Guards: Avoid injection in about:blank, sandboxed frames, or restricted contexts.
+  //   if (window.self !== window.top) return;
+  //   const isWeb =
+  //     window.location.protocol === "http:" ||
+  //     window.location.protocol === "https:";
+  //   if (!isWeb || window.origin === "null") return;
+
+  //   window.__osBrowserBridgeDetectionInitialized = true;
+
+  //   let lastBridgeMediaEventTime = 0;
+  //   let lastBridgeMediaEventName = "";
+  //   let lastDetectionEventTime = 0;
+
+  //   // 2. Listen for bridge media events to record their timing
+  //   if (
+  //     typeof chrome !== "undefined" &&
+  //     chrome.runtime &&
+  //     chrome.runtime.onMessage
+  //   ) {
+  //     chrome.runtime.onMessage.addListener((message) => {
+  //       if (
+  //         message.type ===
+  //         "os_browser_bridge_event_background_script_to_content_script"
+  //       ) {
+  //         const { event } = message?.payload || {};
+  //         if (
+  //           typeof event === "string" &&
+  //           (event.startsWith("media") || event.startsWith("#media"))
+  //         ) {
+  //           lastBridgeMediaEventTime = Date.now();
+  //           lastBridgeMediaEventName = event;
+  //         }
+  //       }
+  //     });
+  //   }
+
+  //   // 3. Listen for the native "echo" from the injected page-world script
+  //   window.addEventListener(
+  //     "os_browser_bridge_native_mediasession_fired",
+  //     (e) => {
+  //       const now = Date.now();
+  //       // If a bridge event and a native event happen within 1 second of each other,
+  //       // the Chrome flag is definitely ON.
+  //       if (now - lastBridgeMediaEventTime < 1000) {
+  //         if (now - lastDetectionEventTime > 5000) {
+  //           lastDetectionEventTime = now;
+  //           const detail = {
+  //             action: e.detail.action,
+  //             bridgeEvent: lastBridgeMediaEventName,
+  //             timestamp: now,
+  //           };
+  //           console.log("Detection: #hardware-media-key-handling is ENABLED");
+  //           document.dispatchEvent(
+  //             new CustomEvent(
+  //               "os_browser_bridge_hardware_media_key_handling_enabled",
+  //               {
+  //                 detail,
+  //                 bubbles: true,
+  //                 composed: true,
+  //               },
+  //             ),
+  //           );
+  //         }
+  //       }
+  //     },
+  //   );
+  // })();
+
   chrome.runtime.onMessage.addListener(
     async (message, sender, sendResponse) => {
       // debugger;
