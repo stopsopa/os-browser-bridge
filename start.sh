@@ -21,7 +21,7 @@ if ATTEMPTS=1 /bin/bash status.sh >/dev/null 2>&1; then
     echo "${0} osbridgeserver: Server os-bridge-server is already running"
 else
     echo "${0} osbridgeserver: Starting os-bridge-server server..."
-    SOCKET=1 node --watch --env-file=.env server/index.js --flag=osbridgeserver > logs/stdout.log 2>&1 & disown
+    SOCKET=1 node --env-file=.env server/index.js --flag=osbridgeserver > logs/stdout.log 2>&1 & disown
 fi
 
 /bin/bash status.sh
