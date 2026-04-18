@@ -17,11 +17,13 @@
 # so my idea is to attempt to run it every time we run iTerm ~/.any_shell_common.sh 
 # and in consecutive time when running iTerm detect our node app and skip if running
 
+# to find node direct path use:
+# asdf where nodejs
 if ATTEMPTS=1 /bin/bash status.sh >/dev/null 2>&1; then
     echo "${0} osbridgeserver: Server os-bridge-server is already running"
 else
     echo "${0} osbridgeserver: Starting os-bridge-server server..."
-    SOCKET=1 node --env-file=.env server/index.js --flag=osbridgeserver > logs/stdout.log 2>&1 & disown
+    SOCKET=1 /Users/szdz/.asdf/installs/nodejs/24.12.0/bin/node --env-file=.env server/index.js --flag=osbridgeserver > logs/stdout.log 2>&1 & disown
 fi
 
 /bin/bash status.sh
