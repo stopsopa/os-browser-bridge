@@ -182,7 +182,6 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
 
   chrome.runtime.onMessage.addListener(
     async (message, sender, sendResponse) => {
-      // debugger;
       if (
         message.type ===
         "os_browser_bridge_event_background_script_to_content_script"

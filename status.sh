@@ -23,7 +23,16 @@ for ((i=1; i<=ATTEMPTS; i++)); do
     echo "${0} osbridgeserver: attempt $i..."
     check
     if [ $? -eq 0 ]; then
-        echo "${0} osbridgeserver: server is running"
+
+cat <<EEE
+
+${0} osbridgeserver: server is running
+
+see logs:
+  logs/stdout.log
+
+EEE
+
         exit 0
     fi
     

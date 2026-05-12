@@ -27,3 +27,4 @@ else
 fi
 
 /bin/bash status.sh
+

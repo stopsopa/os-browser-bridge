@@ -244,7 +244,6 @@ async function loadSettings() {
             return;
           }
           case message?.event?.startsWith("other_tabs:"): {
-            // debugger; // no connection
             if (connected) {
               const _debugger = "true";
             } else {
@@ -370,7 +369,6 @@ function disconnectWebSocket() {
 async function broadcastToTabs(payload, includeTabs, excludeTabs) {
   // https://developer.chrome.com/docs/extensions/reference/api/tabs
   try {
-    debugger;
     includeTabs = normalizeListToArray(includeTabs);
 
     excludeTabs = normalizeListToArray(excludeTabs);
@@ -473,7 +471,9 @@ async function broadcastConnectionStatus(isConnected, details = {}) {
 
 function sendToNodeFactory(ws) {
   return function sendToNode(data) {
-    ws.send(JSON.stringify(data));
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(data));
+    }
   };
 }
 

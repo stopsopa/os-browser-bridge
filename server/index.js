@@ -17,16 +17,23 @@ import { fileURLToPath } from "url";
 
 import serveIndex from "serve-index";
 
-import { WebSocketConnectionRegistry, broadcast } from "./WebSocketConnectionRegistry.js";
+import {
+  WebSocketConnectionRegistry,
+  broadcast,
+} from "./WebSocketConnectionRegistry.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 if (!process.env.PORT) {
-  throw new Error("PORT environment variable is required. Please set PORT in your .env file or environment.");
+  throw new Error(
+    "PORT environment variable is required. Please set PORT in your .env file or environment.",
+  );
 }
 if (!process.env.HOST) {
-  throw new Error("HOST environment variable is required. Please set HOST in your .env file or environment.");
+  throw new Error(
+    "HOST environment variable is required. Please set HOST in your .env file or environment.",
+  );
 }
 
 const PORT = process.env.PORT;
@@ -65,7 +72,7 @@ if (socket) {
     log(
       `${now()} Client connected with ID: ${browserInfo?.name}_${
         browserInfo?.browserId
-      }, Total connections: ${connectionRegistry.size()}`
+      }, Total connections: ${connectionRegistry.size()}`,
     );
 
     ws.on("close", () => {
@@ -74,7 +81,7 @@ if (socket) {
       log(
         `${now()} Client disconnected: ${browserInfo?.name}_${
           browserInfo?.browserId
-        }, Total connections: ${connectionRegistry.size()}`
+        }, Total connections: ${connectionRegistry.size()}`,
       );
     });
   });
@@ -129,8 +136,8 @@ if (socket) {
           delay,
         },
         null,
-        2
-      )
+        2,
+      ),
     );
 
     connectionRegistry.broadcast({ event, payload, include, exclude, delay });
@@ -156,7 +163,6 @@ if (socket) {
 
   connectionRegistry.on("fornodejs", (data) => {
     // WARNING: leave this debug here for demo purposes
-    debugger;
 
     const {
       event, // 'fornodejs'
@@ -208,7 +214,10 @@ const staticOptions = {
   lastModified: false, // Disable Last-Modified header
   setHeaders: (res, path, stat) => {
     // Set cache control headers to prevent any caching
-    res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+    res.set(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+    );
     res.set("Pragma", "no-cache");
     res.set("Expires", "0");
     res.set("Surrogate-Control", "no-store");
@@ -223,7 +232,7 @@ app.use(
     icons: true,
     view: "details",
     hidden: false, // Display hidden (dot) files. Defaults to false.
-  })
+  }),
 );
 
 // WebSocket setup and routes are now registered earlier, before static middleware
