@@ -43,7 +43,7 @@ Server runs on `http://localhost:8080`
    - `index.html` - Direct WebSocket connection test
    - `regular_page.html` - Extension event listener test
 
-## How It Works
+## How does it work
 
 ### Server (`server/index.js`)
 
