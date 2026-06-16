@@ -2,7 +2,7 @@
 
 # OS Browser Bridge - Server to Browser Extension Event System
 
-This project creates a bridge between a Node.js server and browser tabs through a Chrome extension, allowing server events to be received by any web page.
+This project creates a bridge between a Node.js server and browser tabs through a Chrome extension, allowing server events to be received by any web page and other way around.
 
 ## Architecture Overview
 
