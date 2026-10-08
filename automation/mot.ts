@@ -14,8 +14,9 @@ import {
   waitForOperator,
   tabReady,
 } from "./lib/tools.ts";
+import { requireEnv } from "./lib/env.ts";
 
-const toReadyTimeout = 60_000;
+const toReadyTimeout = 2 * 60_000;
 
 const tabId: string | undefined = process.argv[2];
 if (!tabId) {
@@ -23,21 +24,8 @@ if (!tabId) {
   process.exit(1);
 }
 
-const licensePlate = process.env.MOT_LICENSE_PLATE?.trim();
-if (!licensePlate) {
-  console.error(
-    "Error: MOT_LICENSE_PLATE environment variable is required and cannot be empty.",
-  );
-  process.exit(1);
-}
-
-const vinLastDigits = process.env.MOT_VIN_LAST_4_DIGITS?.trim();
-if (!vinLastDigits) {
-  console.error(
-    "Error: MOT_VIN_LAST_4_DIGITS environment variable is required and cannot be empty.",
-  );
-  process.exit(1);
-}
+const licensePlate = requireEnv("MOT_LICENSE_PLATE");
+const vinLastDigits = requireEnv("MOT_VIN_LAST_4_DIGITS");
 
 const waitFor = createWaitForFn({ intervalMs: 1000, timeoutMs: 10_000 });
 
@@ -167,10 +155,14 @@ try {
     });
 
     await execute(incognitoTab, () => {
-      // @ts-ignore
-      document
+      const el = document
         ?.querySelector('[id="homeNormalJourney"]')
-        ?.nextElementSibling?.click();
+        ?.nextElementSibling;
+      if (el instanceof HTMLElement) {
+        el.click();
+      } else {
+        throw new Error("Element [id=homeNormalJourney] nextElementSibling not found");
+      }
     });
 
     await tabReady(incognitoTab, toReadyTimeout);
@@ -186,7 +178,6 @@ try {
     await execute(
       incognitoTab,
       (plate: string) => {
-        // @ts-ignore
         var list = [...document.querySelectorAll('[maxlength="12"]')];
 
         var found = list.find((e) => {
@@ -195,9 +186,9 @@ try {
 
         console.log("found", found);
 
-        // debugger;
-        // @ts-ignore
-        found.value = plate;
+        if (found instanceof HTMLInputElement) {
+          found.value = plate;
+        }
       },
       licensePlate,
     );
@@ -205,64 +196,98 @@ try {
     await execute(
       incognitoTab,
       (vin: string) => {
-        // @ts-ignore
         var list = [...document.querySelectorAll('[maxlength="4"]')];
 
         var found = list.find((e) => {
           return getComputedStyle(e).position !== "fixed";
         });
 
-        // @ts-ignore
-        found.value = vin;
+        if (found instanceof HTMLInputElement) {
+          found.value = vin;
+        }
       },
       vinLastDigits,
     );
 
     await execute(incognitoTab, () => {
-      // @ts-ignore
-      document.querySelector('[type="submit"]').click();
+      const el = document.querySelector('[type="submit"]');
+      if (el instanceof HTMLElement) {
+        el.click();
+      } else {
+        throw new Error("Element [type=submit] not found");
+      }
     });
 
     await tabReady(incognitoTab, toReadyTimeout);
 
     await waitForSelector(incognitoTab, '[type="checkbox"]');
     await execute(incognitoTab, () => {
-      document.querySelector('[type="checkbox"]').click();
+      const el = document.querySelector('[type="checkbox"]');
+      if (el instanceof HTMLElement) {
+        el.click();
+      } else {
+        throw new Error("Element [type=checkbox] not found");
+      }
     });
 
     // yep all fine checkbox and now submit (next button)
     await execute(incognitoTab, () => {
-      document.querySelector('[type="submit"]').click();
+      const el = document.querySelector('[type="submit"]');
+      if (el instanceof HTMLElement) {
+        el.click();
+      } else {
+        throw new Error("Element [type=submit] not found");
+      }
     });
 
     await tabReady(incognitoTab, toReadyTimeout);
 
     await waitForSelector(incognitoTab, '[id="isDifficultiesNo"]');
     await execute(incognitoTab, () => {
-      document.querySelector('[id="isDifficultiesNo"]').click();
+      const el = document.querySelector('[id="isDifficultiesNo"]');
+      if (el instanceof HTMLElement) {
+        el.click();
+      } else {
+        throw new Error("Element [id=isDifficultiesNo] not found");
+      }
     });
 
     await waitForSelector(incognitoTab, '[id="isDisabledBadgeHolderNo"]');
     await execute(incognitoTab, () => {
-      document.querySelector('[id="isDisabledBadgeHolderNo"]').click();
+      const el = document.querySelector('[id="isDisabledBadgeHolderNo"]');
+      if (el instanceof HTMLElement) {
+        el.click();
+      } else {
+        throw new Error("Element [id=isDisabledBadgeHolderNo] not found");
+      }
     });
 
     await execute(incognitoTab, () => {
-      document.querySelector('[type="submit"]').click();
+      const el = document.querySelector('[type="submit"]');
+      if (el instanceof HTMLElement) {
+        el.click();
+      } else {
+        throw new Error("Element [type=submit] not found");
+      }
     });
 
     await tabReady(incognitoTab, toReadyTimeout);
 
     await waitForSelector(incognitoTab, '[data-toggle="dropdown"]');
     await execute(incognitoTab, () => {
-      document.querySelector('[data-toggle="dropdown"]').click();
+      const el = document.querySelector('[data-toggle="dropdown"]');
+      if (el instanceof HTMLElement) {
+        el.click();
+      } else {
+        throw new Error("Element [data-toggle=dropdown] not found");
+      }
     });
 
     const list = await waitFor(incognitoTab, () => {
       const list = [...document.querySelectorAll('[class="optgroup-1"]')];
 
       if (list?.length > 8) {
-        return list.map((e) => e.innerText);
+        return list.map((e) => (e instanceof HTMLElement ? e.innerText : ""));
       }
     });
 
