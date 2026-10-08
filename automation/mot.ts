@@ -118,7 +118,7 @@ try {
 
     await delay(2000);
 
-    console.log(`      ${incognitoTab}`);
+    // console.log(`      ${incognitoTab}`);
 
     // await waitForOperator();
 
@@ -135,7 +135,7 @@ try {
       return t;
     });
 
-    console.log("pageInfo in incognito tab:", pageInfo);
+    // console.log("pageInfo in incognito tab:", pageInfo);
 
     await tabReady(incognitoTab, toReadyTimeout);
 
@@ -292,12 +292,12 @@ try {
     });
 
     console.log("list", list);
-    console.log("loop reched the end... waiting for next cycle");
+    // console.log("loop reched the end... waiting for next cycle");
   }
 
   while (true) {
     try {
-      console.log(`calling check()`);
+      // console.log(`calling check()`);
 
       await check();
     } catch (e) {
