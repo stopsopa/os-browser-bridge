@@ -12,6 +12,7 @@ import path from "path";
 import wakeup from "./tools/detect_wakeup_macos_log.js";
 import mediaKeys from "./tools/detect_media_macos.js";
 import modifierKeys from "./tools/detect_modifiers_macos.js";
+import evalTool from "./tools/eval.js";
 
 import { fileURLToPath } from "url";
 
@@ -72,7 +73,7 @@ if (socket) {
     log(
       `${now()} Client connected with ID: ${browserInfo?.name}_${
         browserInfo?.browserId
-      }, Total connections: ${connectionRegistry.size()}`,
+      } (v${browserInfo?.version || "unknown"}), Total connections: ${connectionRegistry.size()}`,
     );
 
     ws.on("close", () => {
@@ -201,6 +202,12 @@ if (socket) {
   });
 
   modifierKeys({
+    connectionRegistry,
+    log,
+  });
+
+  evalTool({
+    app,
     connectionRegistry,
     log,
   });

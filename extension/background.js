@@ -7,11 +7,9 @@ import {
 
 let connected = false;
 
-let debug = false;
+let debug = true;
 function error() {
-  if (debug) {
-    console.error("background.js", ...arguments);
-  }
+  console.error("background.js", ...arguments);
 }
 
 /**
@@ -227,6 +225,41 @@ async function loadSettings() {
           case message?.event === "close_this_tab": {
             chrome.tabs.remove(tab.id);
             return;
+          }
+          case message?.event === "create_new_private_tab": {
+            (async () => {
+              try {
+                const url = message?.payload?.url;
+                const createData = { incognito: true };
+                if (url) {
+                  createData.url = url;
+                }
+                const newWin = await chrome.windows.create(createData);
+                const newTab = newWin?.tabs?.[0] || (await chrome.tabs.query({ windowId: newWin.id }))[0];
+                const newTabId = `browserId_${browserId}_tabId_${newTab.id}`;
+                newTab.tab = newTabId;
+                sendResponse({
+                  event: "os_browser_bridge_create_new_private_tab",
+                  detail: {
+                    tabId: newTabId,
+                    numericTabId: newTab.id,
+                    tab: newTab,
+                    windowId: newWin.id,
+                    ...message?.payload,
+                  },
+                });
+              } catch (e) {
+                error("Failed to create new private tab:", e);
+                sendResponse({
+                  event: "os_browser_bridge_create_new_private_tab",
+                  detail: {
+                    error: e?.message || String(e),
+                    ...message?.payload,
+                  },
+                });
+              }
+            })();
+            return true;
           }
           case message?.event === "identify_tab": {
             const reply = {
@@ -472,7 +505,10 @@ async function broadcastConnectionStatus(isConnected, details = {}) {
 function sendToNodeFactory(ws) {
   return function sendToNode(data) {
     if (ws && ws.readyState === WebSocket.OPEN) {
+      console.log("[OS-Bridge] sendToNode ->", data);
       ws.send(JSON.stringify(data));
+    } else {
+      console.warn("[OS-Bridge] sendToNode failed: ws not open, readyState:", ws?.readyState);
     }
   };
 }
@@ -530,6 +566,61 @@ async function connectWebSocket() {
         .catch(() => {}); // Ignore errors if popup is not open
     });
 
+    function evaluateViaDebugger(tabId, code) {
+      // Wrap expression so the result is always JSON-serialized as a string.
+      // This guarantees complex objects (including those returned from async
+      // functions) survive the CDP returnByValue boundary intact.
+      const wrapped = `(async () => JSON.stringify(await (async () => { return (${code}); })()))()`;
+
+      return new Promise((resolve, reject) => {
+        const target = { tabId };
+        chrome.debugger.attach(target, "1.3", () => {
+          const attachErr = chrome.runtime.lastError;
+          if (attachErr) {
+            return reject(new Error(attachErr.message));
+          }
+
+          chrome.debugger.sendCommand(
+            target,
+            "Runtime.evaluate",
+            {
+              expression: wrapped,
+              returnByValue: true,
+              awaitPromise: true,
+            },
+            (evalResponse) => {
+              const sendErr = chrome.runtime.lastError;
+              chrome.debugger.detach(target, () => {});
+
+              if (sendErr) {
+                return reject(new Error(sendErr.message));
+              }
+
+              if (evalResponse?.exceptionDetails) {
+                const ex = evalResponse.exceptionDetails;
+                const desc =
+                  ex.exception?.description ||
+                  ex.text ||
+                  "Unknown evaluation error";
+                const lineInfo = ex.lineNumber !== undefined ? ` at line ${ex.lineNumber}:${ex.columnNumber}` : "";
+                const fullMsg = `CDP evaluation failed: ${desc}${lineInfo}`;
+                error("[OS-Bridge] evaluateViaDebugger exceptionDetails:", ex);
+                return reject(new Error(fullMsg));
+              }
+
+              // result.value is a JSON string — parse it back to the real value
+              const raw = evalResponse?.result?.value;
+              try {
+                resolve(raw !== undefined ? JSON.parse(raw) : undefined);
+              } catch (_) {
+                resolve(raw); // fallback: return as-is if not valid JSON
+              }
+            },
+          );
+        });
+      });
+    }
+
     // after some thoughts it seems that this method is only useful for allTabs special event
     // because there is no other scenario where after event from node
     // it makes sens to respond immediately back to node.js
@@ -541,6 +632,70 @@ async function connectWebSocket() {
           event: "allTabs",
           payload: { browserInfo, tabs },
         };
+      },
+      eval: async (detail, { tab, include }) => {
+        const { reqId, code, tabId: rawTabId } = detail || {};
+        const targetTab = rawTabId || tab || include?.[0];
+        let numericTabId = Number(targetTab);
+        if (isNaN(numericTabId) && typeof targetTab === "string") {
+          const match = targetTab.match(/tabId_(\d+)/);
+          if (match) {
+            numericTabId = Number(match[1]);
+          }
+        }
+
+        if (!numericTabId || isNaN(numericTabId)) {
+          return {
+            event: "eval_result",
+            payload: {
+              reqId,
+              tabId: targetTab,
+              success: false,
+              error: `Invalid tab ID: ${targetTab}`,
+            },
+          };
+        }
+
+        try {
+          await chrome.tabs.get(numericTabId);
+        } catch (err) {
+          return {
+            event: "eval_result",
+            payload: {
+              reqId,
+              tabId: targetTab,
+              success: false,
+              error: `Tab ${numericTabId} not found: ${err?.message || String(err)}`,
+            },
+          };
+        }
+
+        try {
+          console.log(
+            `[OS-Bridge] Executing eval via debugger in tab ${numericTabId}:`,
+            code,
+          );
+          const result = await evaluateViaDebugger(numericTabId, code);
+          return {
+            event: "eval_result",
+            payload: {
+              reqId,
+              tabId: targetTab,
+              success: true,
+              result,
+            },
+          };
+        } catch (err) {
+          return {
+            event: "eval_result",
+            payload: {
+              reqId,
+              tabId: targetTab,
+              success: false,
+              error: err?.message || String(err),
+            },
+          };
+        }
       },
     };
 
@@ -562,11 +717,27 @@ async function connectWebSocket() {
       // If the server requests the list of all tab IDs, respond with them instead of / in addition to broadcasting.
       if (events[event]) {
         try {
-          const data = await events[event]();
+          console.log("[OS-Bridge] Handling event:", event, decodedFromJson?.detail);
+          const data = await events[event](decodedFromJson?.detail, {
+            tab,
+            include,
+            exclude,
+          });
 
-          sendToNode(data || null);
+          if (data) {
+            sendToNode(data);
+          }
         } catch (e) {
-          error("Failed to gather tab ids to send back to server", e);
+          console.error("[OS-Bridge] Error executing event", event, e);
+          sendToNode({
+            event: "eval_result",
+            payload: {
+              reqId: decodedFromJson?.detail?.reqId,
+              tabId: tab,
+              success: false,
+              error: e?.message || String(e),
+            },
+          });
         }
         // Do **not** broadcast this special control message to content scripts.
         return;
@@ -699,6 +870,10 @@ async function connectWebSocket() {
             // log("incomming from content.js", message);
 
             switch (true) {
+              case message?.event === "close_this_tab": {
+                chrome.tabs.remove(tab.id);
+                return;
+              }
               case message?.event === "identify_tab": {
                 // handle that not in the scope of the ws socket, this one can be handled independently
 

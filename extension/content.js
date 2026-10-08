@@ -345,6 +345,28 @@ if (!window.__osBrowserBridgeContentScriptInjected) {
           });
           break;
         }
+        case event === "create_new_private_tab": {
+          // Forward to background which will open an incognito tab,
+          // then re-emit the reply as a custom event so the page-side
+          // Promise (inside execute()) can resolve with the new tab id.
+          chrome.runtime.sendMessage(message, (reply) => {
+            if (chrome.runtime.lastError) {
+              // Silently ignore errors
+              return;
+            }
+
+            if (reply) {
+              const customEventInit = {
+                detail: reply.detail,
+                bubbles: true,
+                composed: true,
+              };
+
+              emitForBrowser(new CustomEvent(reply.event, customEventInit));
+            }
+          });
+          break;
+        }
         case event.startsWith("other_tabs:"):
         default: {
           // Fire-and-forget – no callback
