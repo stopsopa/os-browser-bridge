@@ -65,8 +65,23 @@ process.on("unhandledRejection", (reason) => {
   shutdown();
 });
 
+let checkCounter = 0;
+
+function formatCurrentTime() {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const year = now.getFullYear();
+  const month = pad(now.getMonth() + 1);
+  const day = pad(now.getDate());
+  const hours = pad(now.getHours());
+  const minutes = pad(now.getMinutes());
+  const seconds = pad(now.getSeconds());
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
 try {
   async function check() {
+    checkCounter++;
     const targetUrl = "https://dva-bookings.nidirect.gov.uk/";
 
     await execute(tabId, () => {
@@ -291,7 +306,7 @@ try {
       }
     });
 
-    console.log("list", list);
+    console.log(`[${formatCurrentTime()}] [check #${checkCounter}] list`, list);
     // console.log("loop reched the end... waiting for next cycle");
   }
 
