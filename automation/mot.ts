@@ -16,7 +16,9 @@ import {
 } from "./lib/tools.ts";
 import { requireEnv } from "./lib/env.ts";
 
-const toReadyTimeout = 2 * 60_000;
+const toReadyTimeout = 20_000;
+
+const mainLoopDelay = 60_000;
 
 const tabId: string | undefined = process.argv[2];
 if (!tabId) {
@@ -170,13 +172,15 @@ try {
     });
 
     await execute(incognitoTab, () => {
-      const el = document
-        ?.querySelector('[id="homeNormalJourney"]')
-        ?.nextElementSibling;
+      const el = document?.querySelector(
+        '[id="homeNormalJourney"]',
+      )?.nextElementSibling;
       if (el instanceof HTMLElement) {
         el.click();
       } else {
-        throw new Error("Element [id=homeNormalJourney] nextElementSibling not found");
+        throw new Error(
+          "Element [id=homeNormalJourney] nextElementSibling not found",
+        );
       }
     });
 
@@ -320,14 +324,12 @@ try {
 
       throw e;
     } finally {
-      const time = 60_000; // wait 1 min
-
-      console.log(`finally block, wait for ${time}ms`);
-
-      await closeIncognitoTab();
-
-      await delay(time);
+      console.log(`finally block, wait for ${mainLoopDelay}ms`);
     }
+
+    await closeIncognitoTab();
+
+    await delay(mainLoopDelay);
   }
 } catch (err: unknown) {
   const message = err instanceof Error ? err.message : String(err);
