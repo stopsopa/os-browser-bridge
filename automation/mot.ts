@@ -319,17 +319,13 @@ try {
       // console.log(`calling check()`);
 
       await check();
-    } catch (e) {
-      console.log(`catch block: ${e}`, "stack", e.stack);
-
-      throw e;
+    } catch (e: any) {
+      console.log(`catch block: ${e}`, "stack", e?.stack);
     } finally {
-      console.log(`finally block, wait for ${mainLoopDelay}ms`);
+      // console.log(`finally block, wait for ${mainLoopDelay}ms`);
+      await closeIncognitoTab();
+      await delay(mainLoopDelay);
     }
-
-    await closeIncognitoTab();
-
-    await delay(mainLoopDelay);
   }
 } catch (err: unknown) {
   const message = err instanceof Error ? err.message : String(err);

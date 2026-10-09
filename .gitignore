@@ -5,3 +5,4 @@ log.log
 *.zip
 server/public/index.html
 com.os-browser-bridge.node\[SYMLINK\].plist
+/var/
