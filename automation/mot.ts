@@ -1,5 +1,7 @@
 /**
- * First run node id.ts
+ * First run 
+ * 
+ * node id.ts
  *   and find desired tab id
  *
  * Then
@@ -20,7 +22,7 @@ import { sendTelegramMessage } from "./lib/telegram.ts";
 
 const toReadyTimeout = 20_000;
 
-const mainLoopDelay = 60_000;
+const mainLoopDelay = 5 * 60_000;
 
 const tabId: string | undefined = process.argv[2];
 if (!tabId) {
@@ -82,6 +84,9 @@ function formatCurrentTime() {
   const seconds = pad(now.getSeconds());
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
+
+// Holds the last message sent via Telegram to avoid sending duplicates.
+let lastSentMessage: string | null = null;
 
 try {
   async function check() {
@@ -313,6 +318,33 @@ try {
     });
 
     console.log(`[${formatCurrentTime()}] [check #${checkCounter}] list`, list);
+
+    const available = availableMot(list);
+
+    if (available) {
+      /*
+       * Build the message with:
+       *   - matched locations (bold)
+       *   - the full raw array dump
+       * Only send if message differs from the last one sent.
+       */
+      const rawDump = list.map((e) => `\\- ${e}`).join("\n");
+
+      const message = [
+        `*MOT slots available\\!*`,
+        "",
+        available.map((e) => `\\- *${e}*`).join("\n"),
+        "",
+        "*Full list:*",
+        rawDump,
+      ].join("\n");
+
+      if (message !== lastSentMessage) {
+        lastSentMessage = message;
+        await sendTelegramMessage(message);
+      }
+    }
+
     // console.log("loop reched the end... waiting for next cycle");
   }
 
