@@ -333,6 +333,8 @@ try {
       const message = [
         `*MOT slots available\\!*`,
         "",
+        `Plate: \`${licensePlate}\` VIN last 4: \`${vinLastDigits}\``,
+        "",
         available.map((e) => `\\- *${e}*`).join("\n"),
         "",
         "*Full list:*",
