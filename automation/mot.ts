@@ -15,6 +15,8 @@ import {
   tabReady,
 } from "./lib/tools.ts";
 import { requireEnv } from "./lib/env.ts";
+import availableMot from "./lib/checkMotArray.ts";
+import { sendTelegramMessage } from "./lib/telegram.ts";
 
 const toReadyTimeout = 20_000;
 

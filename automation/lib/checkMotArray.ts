@@ -18,14 +18,8 @@
 // ]
 
 const subsetImInterestedWith = [
-  "BELFAST",
-  "ENNISKILLEN",
-  "CRAIGAVON",
-  "LARNE",
-  "MALLUSK",
-  "NEWRY",
-  "NEWTOWNARDS",
-  "OMAGH",
+  "BALLYMENA",
+  "COOKSTOWN",
 ];
 
 export default function availableMot(array: string[]): string[] | undefined {
