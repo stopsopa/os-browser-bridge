@@ -106,6 +106,64 @@ if (socket) {
   });
 
   /**
+   * Close a specific browser tab by its tab ID.
+   * The background.js already handles the "close_tab" event via chrome.tabs.remove().
+   *
+   * curl -v -X POST "http://localhost:8080/close_tab/browserId_72785c1f_tabId_707556239" | jq
+   */
+  app.post("/close_tab/:tabId", async (req, res) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+
+    const tabId = req.params.tabId;
+
+    if (!tabId) {
+      return res.status(400).json({ success: false, error: "Missing required parameter: tabId" });
+    }
+
+    const reqId = `close_tab_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const timeoutMs = 5000;
+
+    let timer = null;
+    let unsub = null;
+
+    const cleanup = () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      if (unsub) {
+        unsub();
+        unsub = null;
+      }
+    };
+
+    const result = await new Promise((resolve) => {
+      unsub = connectionRegistry.on("close_tab_result", (data) => {
+        if (data?.payload?.reqId === reqId) {
+          cleanup();
+          resolve(data.payload);
+        }
+      });
+
+      timer = setTimeout(() => {
+        cleanup();
+        resolve({ success: false, error: `close_tab timed out after ${timeoutMs}ms` });
+      }, timeoutMs);
+
+      connectionRegistry.broadcast({
+        event: "close_tab",
+        payload: { reqId, tabId },
+      });
+    });
+
+    if (result.success) {
+      res.json({ success: true, tabId });
+    } else {
+      res.status(500).json({ success: false, error: result.error, tabId });
+    }
+  });
+
+  /**
    * Sends to all tabs, doesn't collect response
    * (you can specify tab id to send to specific tab)
    *

@@ -11,6 +11,7 @@
 import {
   delay,
   execute,
+  closeTab,
   createWaitForFn,
   createWaitForSelector,
   waitForOperator,
@@ -376,16 +377,8 @@ async function closeIncognitoTab() {
 
       incognitoTab = null;
 
-      // we can close this tab
-      await execute(tmp, () => {
-        document.documentElement.dispatchEvent(
-          new CustomEvent("os_browser_bridge", {
-            detail: {
-              event: "close_this_tab",
-            },
-          }),
-        );
-      });
+      // close the tab directly via server endpoint (no browser-context round-trip needed)
+      await closeTab(tmp);
     }
   } catch (e) {}
 }

@@ -625,6 +625,50 @@ async function connectWebSocket() {
     // because there is no other scenario where after event from node
     // it makes sens to respond immediately back to node.js
     const events = {
+      close_tab: async (detail, { tab, include }) => {
+        const targetTab = detail?.tabId || tab || include?.[0];
+        let numericTabId = Number(targetTab);
+        if (isNaN(numericTabId) && typeof targetTab === "string") {
+          const match = targetTab.match(/tabId_(\d+)/);
+          if (match) {
+            numericTabId = Number(match[1]);
+          }
+        }
+
+        if (!numericTabId || isNaN(numericTabId)) {
+          return {
+            event: "close_tab_result",
+            payload: {
+              reqId: detail?.reqId,
+              tabId: targetTab,
+              success: false,
+              error: `Invalid tab ID: ${targetTab}`,
+            },
+          };
+        }
+
+        try {
+          await chrome.tabs.remove(numericTabId);
+          return {
+            event: "close_tab_result",
+            payload: {
+              reqId: detail?.reqId,
+              tabId: targetTab,
+              success: true,
+            },
+          };
+        } catch (err) {
+          return {
+            event: "close_tab_result",
+            payload: {
+              reqId: detail?.reqId,
+              tabId: targetTab,
+              success: false,
+              error: err?.message || String(err),
+            },
+          };
+        }
+      },
       allTabs: async () => {
         const tabs = await chrome.tabs.query({});
 

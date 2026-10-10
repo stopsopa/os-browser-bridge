@@ -127,6 +127,45 @@ export async function execute(
 }
 
 /**
+ * Closes a browser tab by its tab ID via the server's /close_tab endpoint.
+ * This avoids the browser-context workaround of dispatching a custom event
+ * and instead calls the server directly, which forwards close_tab to background.js.
+ *
+ * Usage:
+ *   await closeTab("browserId_72785c1f_tabId_707556239");
+ */
+export async function closeTab(tabId: string): Promise<void> {
+  const { PORT, connectHost } = getEnv();
+
+  const url = `http://${connectHost}:${PORT}/close_tab/${encodeURIComponent(tabId)}`;
+
+  let response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+    });
+  } catch (networkError: any) {
+    const cause = networkError?.cause ? ` (cause: ${networkError.cause?.message || networkError.cause})` : "";
+    throw new Error(
+      `Failed to reach server at ${url}: ${networkError?.message || networkError}${cause}`,
+    );
+  }
+
+  let data: { success: boolean; error?: string };
+  try {
+    data = await response.json();
+  } catch (parseError: any) {
+    throw new Error(
+      `Failed to parse response from ${url} (status: ${response.status} ${response.statusText}): ${parseError?.message}`,
+    );
+  }
+
+  if (!response.ok || !data.success) {
+    throw new Error(`closeTab error (status ${response.status}): ${data.error ?? JSON.stringify(data)}`);
+  }
+}
+
+/**
  * Factory that creates a waitFor function pre-configured with a polling
  * interval and a hard timeout.
  *
