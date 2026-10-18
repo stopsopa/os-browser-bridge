@@ -224,14 +224,18 @@ export class WebSocketConnectionRegistry {
       const wrappers = new Map();
       let timer = null;
 
-      const cleanup = () => {
-        clearTimeout(timer);
+      const removeListeners = () => {
         this.connections.forEach((ws) => {
           const fn = wrappers.get(ws);
           if (fn) {
             ws.off("message", fn);
           }
         });
+      };
+
+      const cleanup = () => {
+        clearTimeout(timer);
+        removeListeners();
         reject(new Error(`${event}() timeout`));
       };
 
@@ -260,6 +264,9 @@ export class WebSocketConnectionRegistry {
           collected.push(parsed.payload);
 
           if (wsIncomming.size === 0) {
+            clearTimeout(timer);
+            removeListeners();
+
             let tmp = collected;
 
             if (typeof processFn === "function") {
@@ -267,9 +274,6 @@ export class WebSocketConnectionRegistry {
             }
 
             resolve(tmp);
-
-            // reject() called internally but that is ok because resolve was called first just above
-            cleanup();
           }
         } else {
           const otherEvent = parsed.event;
