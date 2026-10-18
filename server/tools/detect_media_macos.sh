@@ -12,6 +12,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SWIFT_SOURCE="$SCRIPT_DIR/detect_media_macos.swift"
 COMPILED_BINARY="$SCRIPT_DIR/.detect_media_macos_bin"
 
+# Check if we're on macOS
+if [[ "$(uname -s)" != "Darwin" ]]; then
+    echo "Error: This script requires macOS (Darwin)" >&2
+    exit 1
+fi
+
+# Check if Swift compiler is available
+if ! command -v swiftc >/dev/null 2>&1; then
+    echo "Error: Swift compiler (swiftc) not found. Please install Xcode Command Line Tools." >&2
+    exit 1
+fi
+
 # Swift source code for media key detection
 cat > "$SWIFT_SOURCE" << 'EOF'
 import Cocoa
@@ -179,16 +191,20 @@ let monitor = MediaKeyMonitor()
 monitor.run()
 EOF
 
-    # Compile the Swift program if not already compiled or if source changed
-    if [ ! -f "$COMPILED_BINARY" ] || [ "$SWIFT_SOURCE" -nt "$COMPILED_BINARY" ]; then
-        echo "Compiling Swift media key detector..." >&2
-        if ! swiftc -O "$SWIFT_SOURCE" -o "$COMPILED_BINARY" 2>&1; then
-            echo "Error: Failed to compile Swift program" >&2
-            exit 1
-        fi
-        echo "Compilation successful" >&2
+# Compile the Swift program if not already compiled or if source changed
+if [ ! -f "$COMPILED_BINARY" ] || [ "$SWIFT_SOURCE" -nt "$COMPILED_BINARY" ]; then
+    echo "Compiling Swift media key detector..." >&2
+    COMPILE_OUTPUT=$(swiftc -O "$SWIFT_SOURCE" -o "$COMPILED_BINARY" 2>&1) && COMPILE_STATUS=$? || COMPILE_STATUS=$?
+    if [ "$COMPILE_STATUS" -ne 0 ]; then
+        cat <<EOF >&2
+Error: Failed to compile Swift program:
+$COMPILE_OUTPUT
+EOF
+        exit 1
     fi
-    
-    # Run the compiled binary
-    exec "$COMPILED_BINARY"
+    echo "Compilation successful" >&2
+fi
+
+# Run the compiled binary
+exec "$COMPILED_BINARY"
 

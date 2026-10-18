@@ -101,9 +101,7 @@ export default function mediaKeys(options) {
         // Log stderr for debugging (compilation messages, errors, etc.)
         const stderrRl = readline.createInterface({ input: child.stderr });
         stderrRl.on("line", (line) => {
-          if (line.includes("Error") || line.includes("Warning")) {
-            log(`MacMediaKeyWatcher stderr: ${line}`);
-          }
+          log(`MacMediaKeyWatcher stderr: ${line}`);
         });
 
         const restart = () => {
