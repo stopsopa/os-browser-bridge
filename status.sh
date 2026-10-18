@@ -7,9 +7,11 @@
 #   will test by default 5 times
 # ATTEMPTS=1 /bin/bash status.sh
 
+eval "$(/bin/bash bash/exportsource.sh .env)"
+
 function check {
     if ps aux | grep osbridgeserver | grep -v grep > /dev/null && \
-       env $(cat .env | xargs) sh -c 'curl -s "http://${HOST}:${PORT}/allTabs" | jq .' > /dev/null 2>&1; then
+       curl -s "http://${HOST}:${PORT}/allTabs" | jq . > /dev/null 2>&1; then
         return 0
     fi
     return 1
