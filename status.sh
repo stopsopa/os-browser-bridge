@@ -9,7 +9,22 @@
 
 eval "$(/bin/bash bash/exportsource.sh .env)"
 
+FIRST=false
+
 function check {
+
+    if [ "${FIRST}" = "false" ]; then
+        FIRST=true
+        cat <<EEE
+
+curl -s "http://${HOST}:${PORT}/allTabs" | jq .
+or even better
+curl -S "http://${HOST}:${PORT}/allTabs" | jq .
+
+EEE
+
+    fi
+
     if ps aux | grep osbridgeserver | grep -v grep > /dev/null && \
        curl -s "http://${HOST}:${PORT}/allTabs" | jq . > /dev/null 2>&1; then
         return 0
