@@ -254,7 +254,8 @@ export class WebSocketConnectionRegistry {
         let parsed;
 
         try {
-          parsed = JSON.parse(data);
+          const raw = typeof data === "string" ? data : data.toString("utf8");
+          parsed = JSON.parse(raw);
         } catch (_) {
           return; // ignore non-json control messages
         }
