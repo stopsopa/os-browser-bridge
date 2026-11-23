@@ -16,19 +16,19 @@ Summary:
 | SC-7 | * security / privacy | extension | every website receives every bus event, including all tab URLs |
 | SC-8 | * privacy | tampermonkey.js | every text selection on every site is sent to every tab |
 | SC-9 | * reliability | background.js | keep-alive alarm does nothing |
-| SC-10 | reliability | content.js / background.js | re-injection on every service worker start; dead tabs after reload (**verify**) |
-| SC-11 | bug | background.js | `error` shadowed in `catch`, plus smaller defects |
-| SC-12 | correctness | protocol | event names are not validated |
-| SC-13 | reliability | registry | `allTabs()` fails completely when one client does not answer |
-| SC-14 | side effect | main-world-bridge.js | next/previous media keys disabled on every site, always |
-| SC-15 | portability | server modules | server cannot start on non-macOS |
-| SC-16 | bug (**verify**) | wakeup module | JS filter and shell filter disagree |
-| SC-17 | design | identity | `browserId` changes on browser update |
-| SC-18 | bug | bridge.js | helpers hang or time out when they should not |
-| SC-19 | cleanup | registry API | `on()` map keyed by callback; no wildcard |
-| SC-20 | reliability | test pages | pages load code from github.io, duplicate files, stale docs |
-| SC-21 | UI | popup + pages | gcp-css, `data-testid` |
-| SC-22 | ops | scripts | two launch mechanisms, hardcoded paths, health check |
+| SC-10 | * reliability | content.js / background.js | re-injection on every service worker start; dead tabs after reload (**verify**) |
+| SC-11 | * bug | background.js | `error` shadowed in `catch`, plus smaller defects |
+| SC-12 | * correctness | protocol | event names are not validated |
+| SC-13 | * reliability | registry | `allTabs()` fails completely when one client does not answer |
+| SC-14 | * side effect | main-world-bridge.js | next/previous media keys disabled on every site, always |
+| SC-15 | * portability | server modules | server cannot start on non-macOS |
+| SC-16 | * bug (**verify**) | wakeup module | JS filter and shell filter disagree |
+| SC-17 | * design | identity | `browserId` changes on browser update |
+| SC-18 | * bug | bridge.js | helpers hang or time out when they should not |
+| SC-19 | * cleanup | registry API | `on()` map keyed by callback; no wildcard |
+| SC-20 | * reliability | test pages | pages load code from github.io, duplicate files, stale docs |
+| SC-21 | * UI | popup + pages | gcp-css, `data-testid` |
+| SC-22 | * ops | scripts | two launch mechanisms, hardcoded paths, health check |
 
 ---
 
