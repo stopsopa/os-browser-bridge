@@ -23,6 +23,8 @@ import {
   broadcast,
 } from "./WebSocketConnectionRegistry.js";
 
+import { isValidEventName } from "../extension/tools.js";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -183,6 +185,18 @@ if (socket) {
       ...req.query,
       ...req.body,
     };
+
+    if (!isValidEventName(event)) {
+      return res.status(400).json({
+        error: `invalid event name >${event}<, it has to be non empty string without whitespaces and without '::'`,
+      });
+    }
+
+    if (include && exclude) {
+      return res.status(400).json({
+        error: "include and exclude cannot be used together",
+      });
+    }
 
     log(
       JSON.stringify(

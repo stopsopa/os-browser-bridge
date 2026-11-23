@@ -5,7 +5,7 @@ export interface BroadCastInterface  {
     payload: any;
     include?: string | string[];
     exclude?: string | string[];
-    delay?: 0;
+    delay?: number;
 }
 export type BroadCastFn = (options: BroadCastInterface) => void;
 
@@ -16,7 +16,7 @@ export interface BroadCastWsInterface {
     payload: any;
     include?: string | string[];
     exclude?: string | string[];
-    delay?: 0;
+    delay?: number;
 }
 
 export type BroadCastWsFn = (options: BroadCastWsInterface) => void;

@@ -79,3 +79,67 @@ Backward compatibility: nothing changes for callers. Single ids, short numeric i
 ### Not addressed
 
 SC-5, SC-7 and SC-8: see [SUGGESTED_CHANGES_not_addressed.md](SUGGESTED_CHANGES_not_addressed.md).
+
+## 2026-11-23 — SC-9, SC-12, SC-17, SC-18, SC-21 (css only)
+
+Checked with `node --check` on the changed files and `node --test extension/tools.test.js` (10 tests pass). Not tested in a browser yet.
+
+### SC-9 keep-alive — `extension/background.js`, `server/WebSocketConnectionRegistry.js`
+
+The keep-alive alarm had no listener, so it did nothing; the worker stayed alive only through the 25 s ping from tabs running `content.js`.
+
+- **Heartbeat over the socket**: while connected, `background.js` sends `{"event":"os_browser_bridge_ping"}` every 20 s. In Chrome 116+ WebSocket traffic resets the service worker idle timer, so the worker and the connection stay up also when no tab has `content.js`.
+- The registry ignores that event (constant `HEARTBEAT_EVENT` on both sides); it is not passed to `on()` handlers and not logged.
+- **Alarm fixed**: period 0.5 min (Chrome's minimum; 0.4 was below it), created on every worker start as well as in `onInstalled`, and it now has a top-level `onAlarm` listener. The listener connects when the connection is enabled, no socket is open or connecting, and no reconnect is scheduled.
+- The 25 s ping in `content.js` is unchanged.
+
+### SC-12 event names are validated — `extension/tools.js`, `extension/background.js`, `server/WebSocketConnectionRegistry.js`, `server/index.js`
+
+The wire format is `event::tabFilter::json`, so an event name containing `::` (or ending with `:`) was split in the wrong place.
+
+- New `isValidEventName(name)` in `tools.js`: string of 1 to 200 characters, no whitespace, single colons allowed only between other characters. `myevent`, `other_tabs:broadcast`, `a:b:c`, `#media-x.y` pass; `a::b`, `a:`, `:a`, `my event`, empty and non-strings fail.
+- `background.js`: an event from a page with an invalid name is dropped with a console warning.
+- Registry: `broadcast()` throws a clear error for an invalid name; an invalid name received from a browser is dropped and logged.
+- `POST /just_broadcast`: 400 with a message for an invalid or missing `event` (before: sent `undefined::::{...}`), and 400 when both `include` and `exclude` are given (before: 500).
+- Small related fixes: registry parses the socket message through `toString("utf8")`; `delay` typed as `number` (was `0`); `include` / `exclude` typed as `string[]` in `tools.types.ts`.
+- 2 new unit tests.
+
+The rule is deliberately looser than the regex first proposed in SUGGESTED_CHANGES.md, to not break existing event names: any character except whitespace is allowed.
+
+Difference to be aware of: event names with spaces, with `::`, or starting / ending with `:` are now rejected. Names with `::` never worked; names with spaces did work before.
+
+### SC-17 stable `browserId` — `extension/background.js`
+
+`browserId` was a hash of browser name + user agent + platform, so it changed with every browser update and was equal for two browsers reporting the same user agent.
+
+- `generateUniqueId()` now returns a random 8 hex character id generated once and stored in `chrome.storage.local` under `browserId`.
+
+Differences to be aware of:
+
+- **Every browser gets a new id once**, on the first start with this version. Anything that stored old long tab ids or a `browserId` has to be updated.
+- `chrome.storage.local.clear()` (the README suggests it for resetting settings) and reinstalling the extension now also reset the id.
+
+### SC-18 `server/public/bridge.js`
+
+- `sendIdentifyTabEvent(timeout = 2000)` rejects after the timeout instead of hanging forever when the extension does not answer.
+- `waitForConnectionStatus()` also asks the extension for the current state (through `identify_tab`, whose reply carries `connected`) and resolves at once when already connected. Before, it only saw future status events and timed out when the initial event had fired before the call.
+- Success path no longer calls `reject()` after `resolve()`.
+
+Note: most test pages load `bridge.js` from `stopsopa.github.io` through an import map, so they get this version only after it is deployed (see SC-20).
+
+### SC-21 gcp-css pulled into the project — `extension/gcp-css.css` (new)
+
+Copy of `gcp-css.css` from the gcp-css skill, with a header comment (where it is imported, how to use it here, how to find usages). The global skill and the project skill files are identical, so this is the current version.
+It is **not linked anywhere yet**: popup and test pages are not restyled, `data-testid` attributes are not added. That part of SC-21 is still open.
+
+### How to test
+
+1. Reload the extension, close every http(s) tab except `chrome://extensions`, wait 5 minutes: the server log shows no disconnect / connect lines.
+2. `curl -X POST "http://localhost:4364/just_broadcast?event=a::b"` returns 400; `event=myevent` works as before.
+3. `/allTabs`: tab keys use the new `browserId`; restart the browser: same id.
+4. Page with the extension disabled: `sendIdentifyTabEvent()` rejects after 2 s.
+
+### Not addressed
+
+SC-14, SC-15, SC-20, SC-22 added to [SUGGESTED_CHANGES_not_addressed.md](SUGGESTED_CHANGES_not_addressed.md).
+SC-10, SC-11, SC-13, SC-16, SC-19: discussed only, no change yet.

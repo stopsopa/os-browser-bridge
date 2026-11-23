@@ -223,3 +223,28 @@ export function escapeForHtmlAttr(str) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 }
+
+/**
+ * Checks if given name can be used as the name of the event travelling through the bridge.
+ *
+ * Message from the server to the extension has format "event::tabFilter::json"
+ * so event name must not contain "::" (and must not end with ":") or message would be split in wrong place.
+ *
+ * Rules:
+ *  - string, 1 to 200 characters
+ *  - no whitespaces
+ *  - single colons are allowed, but only between other characters (not at the beginning, not at the end, not "::")
+ *
+ * isValidEventName("myevent")                -> true
+ * isValidEventName("other_tabs:broadcast")   -> true
+ * isValidEventName("a:b:c"), ("#media-x.y")  -> true
+ * isValidEventName("a::b")                   -> false
+ * isValidEventName("a:"), (":a")             -> false
+ * isValidEventName("my event"), (""), (undefined), (123) -> false
+ *
+ * @param {any} name
+ * @returns {boolean}
+ */
+export function isValidEventName(name) {
+  return typeof name === "string" && name.length <= 200 && /^[^\s:]+(:[^\s:]+)*$/.test(name);
+}

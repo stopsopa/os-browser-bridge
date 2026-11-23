@@ -1,6 +1,6 @@
 export interface StringToIncludeExcludeInterface {
-  include: string;
-  exclude: string;
+  include: string[];
+  exclude: string[];
 }
 
 /**

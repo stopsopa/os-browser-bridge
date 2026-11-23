@@ -3,6 +3,7 @@ import {
   normalizeListToArray,
   stringToIncludeExclude,
   enrichTab,
+  isValidEventName,
 } from "./tools.js";
 
 let connected = false;
@@ -258,6 +259,12 @@ const messageHandlers = {
       const tabId = `browserId_${browserId}_tabId_${tab?.id}`;
 
       // log("incomming from content.js", message);
+
+      // event name becomes part of the "event::tabFilter::json" message, wrong name would break it
+      if (!isValidEventName(message?.event)) {
+        console.warn("[OS-Bridge] invalid event name, event dropped:", message?.event);
+        return;
+      }
 
       switch (true) {
         case message?.event === "close_this_tab": {
@@ -1075,9 +1082,55 @@ injectContentScriptIntoAllTabs();
 // Keep service worker alive: create repeating alarm and respond to it
 chrome.runtime.onInstalled.addListener(() => {
   try {
-    chrome.alarms.create("keepAlive", { periodInMinutes: 0.4 }); // 24s
+    chrome.alarms.create("keepAlive", { periodInMinutes: 0.5 }); // 30s - Chrome doesn't allow less
   } catch (_) {}
 });
+
+/**
+ * Heartbeat: small message sent to the server through the socket every 20 sec.
+ *
+ * Chrome (116+) suspends idle service worker after ~30 sec, which also kills the socket,
+ * but every message sent or received through WebSocket resets that idle timer.
+ * So as long as we are connected this alone keeps the worker (and the connection) alive,
+ * also when there is no tab with content.js sending its "ping" (see setInterval in content.js).
+ *
+ * Server ignores this event (see HEARTBEAT_EVENT in server/WebSocketConnectionRegistry.js).
+ * Not using sendToNode() to not flood the console with logs.
+ */
+const HEARTBEAT_EVENT = "os_browser_bridge_ping";
+
+setInterval(() => {
+  if (isSocketOpen()) {
+    try {
+      ws.send(JSON.stringify({ event: HEARTBEAT_EVENT }));
+    } catch (e) {
+      error("heartbeat failed:", e);
+    }
+  }
+}, 20000);
+
+/**
+ * Safety net for the case when worker was suspended anyway (e.g. while not connected - then there is no heartbeat):
+ * alarm wakes the worker up, top level of this script runs again (initDone) and connects if enabled.
+ * If worker was alive all the time but socket is gone and no reconnect is scheduled, we connect from here.
+ */
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name === "keepAlive") {
+    await initDone;
+
+    const socketAlive =
+      Boolean(ws) &&
+      (ws.readyState === WebSocket.OPEN ||
+        ws.readyState === WebSocket.CONNECTING);
+
+    if (connectionEnabled && !socketAlive && reconnectTimer == null) {
+      connectWebSocket();
+    }
+  }
+});
+
+// alarm created in onInstalled survives browser restarts, but make sure it exists (and has current period)
+chrome.alarms.create("keepAlive", { periodInMinutes: 0.5 });
 
 // chrome.alarms.onAlarm.addListener((alarm) => {
 //   if (alarm.name === "keepAlive") {
@@ -1204,46 +1257,39 @@ async function detectBrowserName() {
 }
 
 /**
- * Generate deterministic unique identifier for the current browser installation.
- * The identifier is derived from a combination of:
- *   • detected browser name (Chrome / Brave / Edge …)
- *   • full user-agent string (contains build channel / version)
- *   • platform information returned by chrome.runtime.getPlatformInfo()
+ * Returns unique identifier of this browser installation (profile): 8 hex characters.
  *
- * The concatenated string is hashed with SHA-256 so no potentially sensitive
- * information is exposed. As long as the above inputs stay the same the hash
- * – and therefore the id – is stable between extension restarts. Using the
- * user-agent means that two different browsers on the same computer (e.g.
- * Chrome Stable vs. Chrome Canary, or Chrome vs. Brave) will yield different
- * ids. If the browser is updated and the user-agent changes, the id will also
- * change, which is usually desirable because the underlying binary _did_
- * change.
+ * It is random value generated once and stored in chrome.storage.local under key "browserId",
+ * so it stays the same between extension restarts, browser restarts and browser updates.
+ * Each browser (and each profile of the same browser) gets its own id.
  *
- * Returned value: 64-character hex encoded SHA-256 hash.
+ * WARNING: chrome.storage.local.clear() (or reinstalling the extension) removes it
+ * and next start will generate new one - then tab ids "browserId_<id>_tabId_<n>" change too.
+ *
+ * History: previously id was first 8 characters of SHA-256 hash of
+ *   browser name + user-agent + platform information
+ * but that was changing with every browser update (user-agent contains version)
+ * and was the same for two browsers reporting the same user-agent.
  */
 async function generateUniqueId() {
+  const generate = () => crypto.randomUUID().replace(/-/g, "").substring(0, 8);
+
   try {
-    const platformInfo = await chrome.runtime.getPlatformInfo();
+    const stored = await chrome.storage.local.get(["browserId"]);
 
-    const raw = [
-      await detectBrowserName(),
-      navigator.userAgent,
-      platformInfo.os,
-      platformInfo.arch,
-      platformInfo.nacl_arch,
-    ].join("||");
+    if (typeof stored?.browserId === "string" && stored.browserId) {
+      return stored.browserId;
+    }
 
-    const encoder = new TextEncoder();
-    const data = encoder.encode(raw);
-    const digest = await crypto.subtle.digest("SHA-256", data);
-    const hashArray = Array.from(new Uint8Array(digest));
-    const hashHex = hashArray
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-    return hashHex.substring(0, 8);
+    const id = generate();
+
+    await chrome.storage.local.set({ browserId: id });
+
+    return id;
   } catch (e) {
-    error("Error generating unique browser id:", e);
-    return "unknown";
+    // storage not available - still return usable id, it will just not survive restart of the worker
+    error("Error reading/storing unique browser id:", e);
+    return generate();
   }
 }
 

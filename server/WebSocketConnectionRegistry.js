@@ -1,6 +1,12 @@
 import { WebSocket } from "ws";
 
-import { normalizeListToCommaSeparatedString, processTabs } from "../extension/tools.js";
+import { normalizeListToCommaSeparatedString, processTabs, isValidEventName } from "../extension/tools.js";
+
+/**
+ * Extension sends this event every 20 sec only to keep its service worker and the socket alive
+ * (see HEARTBEAT_EVENT in extension/background.js). Nothing to do with it here - it is ignored.
+ */
+const HEARTBEAT_EVENT = "os_browser_bridge_ping";
 
 const debug = true;
 function log(...args) {
@@ -22,6 +28,13 @@ function error(...args) {
  */
 export function broadcast(options) {
   let { ws, event, payload, include, exclude, delay = 0 } = options;
+
+  // event name is part of the message format "event::tabFilter::json" - wrong one would break it
+  if (!isValidEventName(event)) {
+    throw new Error(
+      `WebSocketConnectionRegistry.js error: invalid event name >${event}<, it has to be non empty string without whitespaces and without '::'`,
+    );
+  }
 
   if (ws.readyState === WebSocket.OPEN) {
     include = normalizeListToCommaSeparatedString(include);
@@ -134,12 +147,21 @@ export class WebSocketConnectionRegistry {
 
       let parsed = null;
       try {
-        parsed = JSON.parse(data);
+        parsed = JSON.parse(data.toString("utf8"));
       } catch (_) {
         return; // ignore non-json control messages
       }
 
       if (!parsed?.event) {
+        return;
+      }
+
+      if (parsed.event === HEARTBEAT_EVENT) {
+        return;
+      }
+
+      if (!isValidEventName(parsed.event)) {
+        error("invalid event name received from the browser, event dropped:", parsed.event);
         return;
       }
 
@@ -278,7 +300,9 @@ export class WebSocketConnectionRegistry {
           }
         } else {
           const otherEvent = parsed.event;
-          log("other event: ", otherEvent);
+          if (otherEvent !== HEARTBEAT_EVENT) {
+            log("other event: ", otherEvent);
+          }
         }
       };
 

@@ -3,6 +3,7 @@ import {
   normalizeListToArray,
   normalizeListToCommaSeparatedString,
   stringToIncludeExclude,
+  isValidEventName,
 } from "./tools.js";
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -77,4 +78,18 @@ test("stringToIncludeExclude should decode tab filter", () => {
   assert.deepStrictEqual(stringToIncludeExclude("a,b"), { include: ["a", "b"], exclude: [] });
   assert.deepStrictEqual(stringToIncludeExclude("!a"), { include: [], exclude: ["a"] });
   assert.deepStrictEqual(stringToIncludeExclude("!a,b"), { include: [], exclude: ["a", "b"] });
+});
+
+// Event names
+
+test("isValidEventName should accept regular names and names with single colons", () => {
+  ["myevent", "other_tabs:broadcast", "a:b:c", "#media-x.y", "onUpdated", "wokeup_v2"].forEach((name) => {
+    assert.equal(isValidEventName(name), true, name);
+  });
+});
+
+test("isValidEventName should reject names which would break event::tabFilter::json format", () => {
+  ["a::b", "a:", ":a", "::", "my event", " a", "", "x".repeat(201), undefined, null, 123, {}].forEach((name) => {
+    assert.equal(isValidEventName(name), false, String(name));
+  });
 });
