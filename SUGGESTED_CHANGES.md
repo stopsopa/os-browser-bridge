@@ -15,7 +15,7 @@ Summary:
 | SC-6 | * bug | server | tab lifecycle events are broadcast twice |
 | SC-7 | * security / privacy | extension | every website receives every bus event, including all tab URLs |
 | SC-8 | * privacy | tampermonkey.js | every text selection on every site is sent to every tab |
-| SC-9 | reliability | background.js | keep-alive alarm does nothing |
+| SC-9 | * reliability | background.js | keep-alive alarm does nothing |
 | SC-10 | reliability | content.js / background.js | re-injection on every service worker start; dead tabs after reload (**verify**) |
 | SC-11 | bug | background.js | `error` shadowed in `catch`, plus smaller defects |
 | SC-12 | correctness | protocol | event names are not validated |
