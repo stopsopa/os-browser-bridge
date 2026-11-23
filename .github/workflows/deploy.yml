@@ -25,6 +25,9 @@ jobs:
       - name: Generate index.html with gen-index.js
         run: |
           node server/public/gen-index.js
+          # test pages link "gcp-css.css" - locally server serves it from extension/ directory (static fallback),
+          # GitHub Pages has no such fallback so put a copy next to the pages
+          cp extension/gcp-css.css server/public/gcp-css.css
           ls -la server/public/
 
       - name: Upload artifact

@@ -3,10 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
+    <title>Close me - close_this_tab event</title>
+    <!-- gcp-css.css lives in extension/ directory, server serves it from there (see express.static in server/index.js) -->
+    <link rel="stylesheet" href="gcp-css.css" />
   </head>
   <body>
-    <button id="close">close me</button>
+    <button id="close" type="button" class="gcp-css" data-testid="btn-close-me">close me</button>
 
     <script>
       document.getElementById("close").addEventListener("click", () => {

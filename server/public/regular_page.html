@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Regular Page - OS Browser Bridge Event Listener</title>
     <link rel="stylesheet" href="styles.css" />
+    <!-- gcp-css.css lives in extension/ directory, server serves it from there (see express.static in server/index.js) -->
+    <link rel="stylesheet" href="gcp-css.css" />
     <style>
       .status {
         width: 20px;
@@ -17,8 +19,8 @@
   </head>
   <body>
     <div class="container">
-      <a href="./">UP</a> &nbsp; &nbsp;
-      <a id="clone" target="_blank">Open cloned tabs for testing</a>
+      <a href="./" data-testid="link-up">UP</a> &nbsp; &nbsp;
+      <a id="clone" target="_blank" data-testid="link-clone">Open cloned tabs for testing</a>
       <p class="tip">
         <span class="status"></span>
         This page is supposed to simulate a regular page emitting and consuming events from our plugin. By default it is
@@ -30,9 +32,9 @@
 document.documentElement.dispatchEvent(new CustomEvent("os_browser_bridge",{detail:{event:"fornodejs",payload:{message:"Hello from browser"}}}));
       </pre>
 
-      <button id="clear">Clear</button>
-      <button id="send">Send Event to node.js - response from node.js</button>
-      <button id="identify">Identify this tab - response from background.js</button>
+      <button id="clear" type="button" class="gcp-css secondary" data-testid="btn-clear">Clear</button>
+      <button id="send" type="button" class="gcp-css" data-testid="btn-send">Send Event to node.js - response from node.js</button>
+      <button id="identify" type="button" class="gcp-css" data-testid="btn-identify">Identify this tab - response from background.js</button>
       <pre id="logs"></pre>
     </div>
 

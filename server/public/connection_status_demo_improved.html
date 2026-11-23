@@ -3,12 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Connection Status Demo - OS Browser Bridge</title>
+    <title>Connection Status Demo (improved) - OS Browser Bridge</title>
     <link rel="stylesheet" href="styles.css" />
+    <!-- gcp-css.css lives in extension/ directory, server serves it from there (see express.static in server/index.js) -->
+    <link rel="stylesheet" href="gcp-css.css" />
   </head>
   <body>
     <div class="container">
-      <a href="./">UP</a>
+      <a href="./" data-testid="link-up">UP</a>
       <p class="tip"><span class="status"></span> browser subscribes to event 'os_browser_bridge_connection_status'</p>
 
       <p class="info">
@@ -35,7 +37,7 @@
           } = event;
         });        
       </pre>
-      <button id="clear">Clear</button>
+      <button id="clear" type="button" class="gcp-css secondary" data-testid="btn-clear">Clear</button>
       <pre id="logs"></pre>
     </div>
 

@@ -317,33 +317,52 @@ export class WebSocketConnectionRegistry {
    * All wrapped in promise
    *
    * WARNING: keep in mind that this event is designed to only reach background.js - no further
+   *
+   * - when nobody is connected it resolves immediately (with processFn([]))
+   * - when some browsers don't reply within timeoutMs it resolves with replies from those which did,
+   *   missing browsers are only logged. So one sleeping browser doesn't spoil the result for the others.
+   * - request carries payload.reqId and the reply has to carry the same one, so two calls running
+   *   at the same time don't take each other's replies.
+   *   Reply without reqId at all is accepted too (older version of the extension).
    */
   #broadcastFromServerToBackgroundAndGatherResponsesFromExtensionsInOneResponse(event, payload, options = {}) {
     const { timeoutMs = 1500, processFn = null } = options;
+
+    const reqId = `${event}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
     return new Promise((resolve, reject) => {
       const wrappers = new Map();
       let timer = null;
 
-      const removeListeners = () => {
-        this.connections.forEach((ws) => {
-          const fn = wrappers.get(ws);
-          if (fn) {
-            ws.off("message", fn);
-          }
-        });
-      };
-
-      const cleanup = () => {
-        clearTimeout(timer);
-        removeListeners();
-        reject(new Error(`${event}() timeout`));
-      };
-
       let collected = [];
 
       // clonse set this.connections
       const wsIncomming = new Set(this.connections);
+
+      const finish = () => {
+        clearTimeout(timer);
+
+        wrappers.forEach((fn, ws) => {
+          ws.off("message", fn);
+        });
+
+        try {
+          let tmp = collected;
+
+          if (typeof processFn === "function") {
+            tmp = processFn(tmp);
+          }
+
+          resolve(tmp);
+        } catch (e) {
+          reject(e);
+        }
+      };
+
+      // nobody connected - nothing to wait for
+      if (wsIncomming.size === 0) {
+        return finish();
+      }
 
       const onMessage = (ws /*** work then here */, data, isBinary) => {
         if (isBinary) return;
@@ -361,31 +380,32 @@ export class WebSocketConnectionRegistry {
           return; // ignore non-json control messages
         }
 
-        if (parsed.event === event) {
+        if (parsed?.event === event) {
+          const replyReqId = parsed?.payload?.reqId;
+
+          // reply for some other call of this method
+          if (typeof replyReqId !== "undefined" && replyReqId !== reqId) {
+            return;
+          }
+
           wsIncomming.delete(ws);
           collected.push(parsed.payload);
 
           if (wsIncomming.size === 0) {
-            clearTimeout(timer);
-            removeListeners();
-
-            let tmp = collected;
-
-            if (typeof processFn === "function") {
-              tmp = processFn(tmp);
-            }
-
-            resolve(tmp);
-          }
-        } else {
-          const otherEvent = parsed.event;
-          if (otherEvent !== HEARTBEAT_EVENT) {
-            log("other event: ", otherEvent);
+            finish();
           }
         }
       };
 
-      timer = setTimeout(cleanup, timeoutMs);
+      timer = setTimeout(() => {
+        const missing = [...wsIncomming].map((ws) => `${ws.browserInfo?.name}_${ws.browserInfo?.browserId}`);
+
+        error(
+          `${event}() no reply within ${timeoutMs}ms from: ${missing.join(", ")} - returning replies from the others (${collected.length})`,
+        );
+
+        finish();
+      }, timeoutMs);
 
       this.connections.forEach((ws) => {
         const callback = (data, isBinary) => {
@@ -397,7 +417,7 @@ export class WebSocketConnectionRegistry {
 
       this.broadcast({
         event,
-        payload,
+        payload: { ...payload, reqId },
       });
     });
   }

@@ -3,12 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Event Listener Example (Direct WebSocket)</title>
+    <title>Broadcast from server &amp; other_tabs event</title>
     <link rel="stylesheet" href="styles.css" />
+    <!-- gcp-css.css lives in extension/ directory, server serves it from there (see express.static in server/index.js) -->
+    <link rel="stylesheet" href="gcp-css.css" />
     <style>
-      input {
-        width: 98%;
-        font-size: 10px;
+      /* curl commands are long - smaller font than gcp-css default, click on the field selects whole command */
+      .curl-list {
+        --gcp-css-font-size: 12px;
+        margin-top: 16px;
+
+        input {
+          font-family: monaco, Consolas, "Lucida Console", monospace;
+        }
       }
     </style>
     <link
@@ -18,18 +25,18 @@
   </head>
   <body>
     <div class="container">
-      <a href="./">UP</a>
+      <a href="./" data-testid="link-up">UP</a>
 
       <span class="status"></span>
-      <a id="clone" target="_blank">Open cloned tabs for testing</a>
+      <a id="clone" target="_blank" data-testid="link-clone">Open cloned tabs for testing</a>
       <br />
       <br />
 
       <div data-vanilla-tabs>
         <div data-buttons>
-          <a href="javascript:;" class="active">curl</a>
-          <span>event</span>
-          <span>event - code example</span>
+          <a href="javascript:;" class="active" data-testid="tab-curl">curl</a>
+          <span data-testid="tab-event">event</span>
+          <span data-testid="tab-event-code-example">event - code example</span>
         </div>
         <div data-tabs>
           <div>
@@ -38,10 +45,24 @@
               tabs). In this case we are including or excluding current tab
             </p>
 
-            <input class="wide" id="curl1" />
-            <input class="wide" id="curl2" />
-            <input class="wide" id="curl3" />
-            <input class="wide" id="curl4" />
+            <div class="gcp-css curl-list">
+              <div class="input-wrapper">
+                <input type="text" id="curl1" placeholder=" " readonly data-testid="input-curl-all" />
+                <label for="curl1">broadcast to all tabs</label>
+              </div>
+              <div class="input-wrapper">
+                <input type="text" id="curl2" placeholder=" " readonly data-testid="input-curl-delay" />
+                <label for="curl2">broadcast to all tabs with delay 1000ms</label>
+              </div>
+              <div class="input-wrapper">
+                <input type="text" id="curl3" placeholder=" " readonly data-testid="input-curl-include" />
+                <label for="curl3">only to this tab (include)</label>
+              </div>
+              <div class="input-wrapper">
+                <input type="text" id="curl4" placeholder=" " readonly data-testid="input-curl-exclude" />
+                <label for="curl4">to all tabs except this one (exclude)</label>
+              </div>
+            </div>
           </div>
           <div>
             <p class="tip">
@@ -64,16 +85,18 @@
               but extensions will be offline.
             </p>
 
-            <button id="broadcast">send other_tabs:broadcast event</button>
+            <button id="broadcast" type="button" class="gcp-css" data-testid="btn-broadcast">send other_tabs:broadcast event</button>
           </div>
           <div>
             <a
               href="https://github.com/stopsopa/os-browser-bridge?tab=readme-ov-file#from-browser-tab-to-other-tabs-in-all-browsers-except-this-tab"
+              data-testid="link-documentation"
               >documentation page</a
             >
             <br />
             <a
               href="https://github.com/stopsopa/os-browser-bridge?tab=readme-ov-file#from-server"
+              data-testid="link-documentation-server-side"
               >server side</a
             >
             <pre>
@@ -103,7 +126,7 @@ document.addEventListener("other_tabs:broadcast", (event) => {
         </div>
       </div>
       <br />
-      <button id="clear">Clear</button>
+      <button id="clear" type="button" class="gcp-css secondary" data-testid="btn-clear">Clear</button>
       <pre id="logs"></pre>
     </div>
 

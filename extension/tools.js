@@ -124,12 +124,20 @@ export function processTabs(raw) {
   return tabs;
 }
 
+/**
+ * Returns copy of the tab object with information about its browser added (given tab object is not modified):
+ *   name      - name of the browser, e.g. "Brave"
+ *   browserId - e.g. "dd596c87"
+ *   tab       - long tab id, e.g. "browserId_dd596c87_tabId_1628889998"
+ */
 export function enrichTab(tab, browserInfo) {
-  tab.name = browserInfo?.name;
-  tab.__ = "__";
-  tab.browserId = browserInfo?.browserId;
-  tab.tab = `browserId_${browserInfo?.browserId}_tabId_${tab.id}`;
-  return tab;
+  return {
+    ...tab,
+    name: browserInfo?.name,
+    __: "__",
+    browserId: browserInfo?.browserId,
+    tab: `browserId_${browserInfo?.browserId}_tabId_${tab.id}`,
+  };
 }
 
 /**

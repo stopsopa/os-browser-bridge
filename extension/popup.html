@@ -4,276 +4,133 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OS Browser Bridge Settings</title>
+  <!-- form controls, buttons and links are styled by gcp-css (see comment at the top of gcp-css.css) -->
+  <link rel="stylesheet" href="gcp-css.css">
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
+    /* only things which gcp-css doesn't cover: page box, title, status dot and status line */
     body {
       width: 350px;
-      min-height: 200px;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      padding: 20px;
-    }
-
-    .container {
-      background: rgba(255, 255, 255, 0.98);
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      background: #ffffff;
+      color: #3c4043;
     }
 
     h1 {
       font-size: 18px;
-      color: #333;
-      margin-bottom: 20px;
+      font-weight: 500;
+      margin: 0 0 24px;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
     }
 
+    /* color of the dot is also the color of its pulse (currentColor) */
     .status-indicator {
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      background-color: #ddd;
+      color: #bdc1c6;
+      background-color: currentColor;
       animation: pulse 2s infinite;
-    }
 
-    .status-indicator.connected {
-      background-color: #4ade80;
-    }
+      &.connected {
+        color: #1e8e3e;
+      }
 
-    .status-indicator.connecting {
-      background-color: #fbbf24;
-    }
+      &.connecting {
+        color: #f9ab00;
+      }
 
-    .status-indicator.disconnected {
-      background-color: #ef4444;
+      &.disconnected {
+        color: #d93025;
+      }
     }
 
     @keyframes pulse {
       0% {
-        box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
+        box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 70%, transparent);
       }
       70% {
-        box-shadow: 0 0 0 10px rgba(74, 222, 128, 0);
+        box-shadow: 0 0 0 10px transparent;
       }
       100% {
-        box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
+        box-shadow: 0 0 0 0 transparent;
       }
-    }
-
-    .form-group {
-      margin-bottom: 20px;
-    }
-
-    label {
-      display: block;
-      font-size: 13px;
-      font-weight: 500;
-      color: #666;
-      margin-bottom: 6px;
-    }
-
-    input[type="text"] {
-      width: 100%;
-      padding: 8px 12px;
-      border: 1px solid #e0e0e0;
-      border-radius: 6px;
-      font-size: 14px;
-      transition: all 0.3s ease;
-      background: white;
-    }
-
-    input[type="text"]:focus {
-      outline: none;
-      border-color: #667eea;
-      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-    }
-
-    input[type="text"]:disabled {
-      background: #f5f5f5;
-      cursor: not-allowed;
-      opacity: 0.7;
-    }
-
-    .toggle-group {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 15px;
-    }
-
-    .toggle-label {
-      font-size: 14px;
-      font-weight: 500;
-      color: #333;
-    }
-
-    .toggle-switch {
-      position: relative;
-      width: 48px;
-      height: 24px;
-    }
-
-    .toggle-switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: #ccc;
-      transition: 0.4s;
-      border-radius: 24px;
-    }
-
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 16px;
-      width: 16px;
-      left: 4px;
-      bottom: 4px;
-      background-color: white;
-      transition: 0.4s;
-      border-radius: 50%;
-    }
-
-    input:checked + .slider {
-      background-color: #667eea;
-    }
-
-    input:checked + .slider:before {
-      transform: translateX(24px);
-    }
-    
-    input:disabled + .slider {
-      background-color: #e0e0e0;
-      cursor: not-allowed;
-      opacity: 0.6;
-    }
-    
-    input:disabled + .slider:before {
-      background-color: #f5f5f5;
-    }
-
-    .button-group {
-      display: flex;
-      gap: 10px;
-    }
-
-    button {
-      flex: 1;
-      padding: 10px 16px;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    .btn-save {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-    }
-
-    .btn-save:hover:not(:disabled) {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-    }
-
-    .btn-save:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
     }
 
     .status-text {
       font-size: 12px;
-      color: #666;
-      margin-top: 10px;
+      margin: 16px 0;
       padding: 8px;
-      background: #f8f9fa;
+      background: #f1f3f4;
       border-radius: 4px;
       text-align: center;
+      word-break: break-all;
+
+      &.connected {
+        background: #e6f4ea;
+        color: #137333;
+      }
+
+      &.connecting {
+        background: #fef7e0;
+        color: #b06000;
+      }
+
+      &.disconnected {
+        background: #fce8e6;
+        color: #c5221f;
+      }
     }
 
-    .status-text.connected {
-      background: #dcfce7;
-      color: #14532d;
-    }
-
-    .status-text.connecting {
-      background: #fef3c7;
-      color: #78350f;
-    }
-
-    .status-text.disconnected {
-      background: #fee2e2;
-      color: #7f1d1d;
-    }
-
-    .error-message {
-      color: #ef4444;
-      font-size: 12px;
-      margin-top: 5px;
-      display: none;
-    }
-
-    .error-message.show {
-      display: block;
+    .footer {
+      margin: 0;
+      text-align: center;
     }
   </style>
 </head>
 <body>
-  <div class="container">
+  <form class="gcp-css" id="settingsForm" novalidate data-testid="form-settings">
     <h1>
-      <span class="status-indicator" id="statusIndicator"></span>
+      <span class="status-indicator" id="statusIndicator" data-testid="status-indicator"></span>
       OS Browser Bridge
     </h1>
 
-    <div class="form-group">
-      <label for="serverUrl">Server URL</label>
-      <input 
-        type="text" 
-        id="serverUrl" 
-        placeholder="e.g., localhost:8080 or ws://localhost:8080"
-        title="Enter the WebSocket server URL (ws:// will be added automatically if omitted)"
+    <div class="input-wrapper" id="serverUrlWrapper">
+      <input
+        type="text"
+        id="serverUrl"
+        name="serverUrl"
+        placeholder=" "
+        autocomplete="off"
+        spellcheck="false"
+        aria-describedby="serverUrl-helper"
+        data-testid="input-server-url"
       />
-      <div class="error-message" id="urlError">Please enter a valid server URL</div>
+      <label for="serverUrl">Server URL</label>
+      <div class="error" id="serverUrl-error" data-testid="error-server-url">Please enter a valid server URL</div>
+      <div class="helper-text" id="serverUrl-helper">e.g. localhost:8080 or ws://localhost:8080 (ws:// is added when omitted). Empty value removes the URL.</div>
     </div>
 
-    <div class="toggle-group">
-      <span class="toggle-label">Connection Mode</span>
-      <label class="toggle-switch">
-        <input type="checkbox" id="connectionToggle">
-        <span class="slider"></span>
-      </label>
+    <div class="checkbox-wrapper">
+      <input type="checkbox" id="connectionToggle" name="connectionToggle" data-testid="checkbox-connection">
+      <label for="connectionToggle">Connect to the server</label>
+      <div class="helper-text">Saved immediately when changed.</div>
     </div>
 
-    <div class="button-group">
-      <button class="btn-save" id="saveButton">Save Settings</button>
-    </div>
+    <button type="submit" id="saveButton" data-testid="btn-save">Save Settings</button>
 
-    <div class="status-text" id="statusText">
+    <div class="status-text" id="statusText" role="status" data-testid="status-text">
       Initializing...
     </div>
-  </div>
 
-  <footer style="text-align: center; margin-top: 20px;">
-    <p><a href="https://github.com/stopsopa/os-browser-bridge" target="_blank" style="color: white;">Project Homepage</a></p>
-  </footer>
+    <p class="footer">
+      <a href="https://github.com/stopsopa/os-browser-bridge" target="_blank" data-testid="link-homepage">Project Homepage</a>
+    </p>
+  </form>
 
   <script src="popup.js"></script>
 </body>

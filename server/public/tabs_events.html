@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Regular Page - OS Browser Bridge Event Listener</title>
+    <title>Tabs events - OS Browser Bridge</title>
     <link rel="stylesheet" href="styles.css" />
     <style>
       .main-container {
@@ -118,9 +118,9 @@
   <body>
     <div class="main-container">
       <div class="header">
-        <a href="./">UP</a> &nbsp;
+        <a href="./" data-testid="link-up">UP</a> &nbsp;
         <span class="status"></span>
-        <button id="clear">Clear</button>
+        <button id="clear" type="button" data-testid="btn-clear">Clear</button>
       </div>
       
       <div class="logs-container">
@@ -170,6 +170,8 @@
         const div = document.createElement('div');
         div.className = 'event-item';
         div.dataset.eventId = eventId;
+        // clickable row - for end to end tests
+        div.dataset.testid = `event-item-${eventId}`;
         
         // Create header with time and event name
         const eventHeader = document.createElement('div');

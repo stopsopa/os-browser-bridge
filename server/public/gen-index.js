@@ -61,7 +61,7 @@ function getTitle(file) {
 
 // Add list items for each HTML file: link with page title and filename in brackets behind it
 htmlFiles.forEach(file => {
-    htmlContent += `        <li><a href="${file}">${getTitle(file)}</a> <span>[${file}]</span></li>\n`;
+    htmlContent += `        <li><a href="${file}" data-testid="link-${file}">${getTitle(file)}</a> <span>[${file}]</span></li>\n`;
 });
 
 htmlContent += `    </ul>\n</body>\n</html>`;

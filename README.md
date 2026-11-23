@@ -151,6 +151,31 @@ chrome.storage.local.clear(() => console.log("Storage cleared!"));
 > This also removes `browserId` of this browser (it is random value generated once and kept in that storage).
 > New one will be generated on the next start of the extension, so all tab ids (`browserId_<id>_tabId_<n>`) of this browser will change.
 
+## debug logs of the extension
+
+`background.js` (service worker of the extension) prints nothing but errors by default.
+To see what it is doing turn on debug logs. Go to chrome://extensions/ , find the extension, click 'Inspect views
+service worker' and then in console run:
+
+```js
+chrome.storage.local.set({ debug: true }); // on
+chrome.storage.local.set({ debug: false }); // off
+```
+
+It works immediately, no need to reload the extension, and it is remembered until you change it
+(`chrome.storage.local.clear()` turns it off too).
+
+With debug on, the console of the service worker shows:
+
+- loaded settings and every event received from the server which is handled in background.js (`allTabs`, `close_tab`, `eval`)
+- every message sent to the server (`sendToNode ->`) - events from tabs, tab lifecycle events, replies
+- code executed by `eval`
+- tabs which were skipped because content script is not active there (like chrome://extensions/)
+
+Useful when an event doesn't arrive where you expect it: you can see if it reached the extension, to which tabs
+it was forwarded and what was sent to the server. Keep it off for everyday use - payloads of all events
+(selected text, evaluated code, urls of tabs) would be sitting in the console.
+
 ## event names
 
 Event name (in any direction) has to be non empty string, up to 200 characters, without whitespaces and without `::`.

@@ -176,3 +176,49 @@ Backward compatibility: existing `on(name, (data) => ...)` handlers, `off()`, th
 
 SC-16 added to [SUGGESTED_CHANGES_not_addressed.md](SUGGESTED_CHANGES_not_addressed.md).
 Still open and not in that file: SC-10, SC-11, SC-13, and the UI part of SC-21 (popup and test pages not restyled, no `data-testid`).
+
+## 2026-11-23 — SC-11, SC-13, SC-21, YouTube userscript
+
+Checked with `node --check` on every changed script, `node --test extension/tools.test.js` (10 pass) and a smoke test of `allTabs()` with fake sockets (no connections, two parallel calls, a reply without `reqId`, one browser not answering). The popup, the test pages and the userscript were **not** opened in a browser.
+
+### SC-11 small defects — `extension/background.js`, `extension/tools.js`, `extension/popup.js`
+
+1. `broadcastConnectionStatus`: the `catch (error)` variable shadowed the `error()` logger and crashed; renamed.
+2. A frame from the server that is not in `event::tabFilter::json` format is logged and dropped (was an unhandled rejection).
+3. **The server URL can be cleared.** `update_settings` accepts an empty string; with no URL the connection is turned off. In the popup: empty the field and press Save.
+4. The popup is told about every state change, including `connecting` and a manual disconnect, through one helper `notifyPopup()` (was: only `connected` / `disconnected`).
+5. **Events are sent to tabs in parallel** (`sendToTabs()` with `Promise.allSettled`). Before, tabs were served one after another, so a slow or frozen tab delayed all tabs after it, and delivery time varied from event to event.
+6. **Debug logs are off by default.** `debug` is read from `chrome.storage.local` (key `debug`) and can be switched live from the service worker console; documented in `README.md`. The `[OS-Bridge]` `console.log` lines and the "Content script not active in tab" lines go through `log()` now. Errors are always printed.
+7. `enrichTab()` returns a copy instead of modifying the tab object it was given.
+8. When a control event fails, the reply uses the matching result event (`close_tab_result`, `allTabs`), not always `eval_result`.
+
+### SC-13 `allTabs()` — `server/WebSocketConnectionRegistry.js`, `extension/background.js`
+
+- **Partial results**: when some browsers do not answer within 1500 ms, the call resolves with the tabs of those that did, and logs which browsers were missing. Before, the whole call failed and `/allTabs` returned 500.
+- With no browser connected it resolves `{}` immediately (was: 1500 ms wait, then 500).
+- The request carries a `reqId`, the extension sends it back, and only a reply with the same `reqId` is accepted, so parallel calls do not take each other's replies. A reply without `reqId` (extension not yet reloaded) is still accepted.
+- Temporary listeners are removed from every socket they were added to, also from sockets that disconnected during the call.
+
+Difference to be aware of: `/allTabs` no longer signals "a browser did not answer" with an error; look at the server log for that. The response shape is unchanged.
+
+### SC-21 UI — `extension/popup.html`, `extension/popup.js`, `server/public/*.html`, `.github/workflows/deploy.yml`
+
+- **Popup** rebuilt on `gcp-css.css`: floating-label URL field with helper text and error state (`data-error` + `aria-invalid`), a checkbox "Connect to the server" in place of the hand-made toggle switch, primary Save button, plain white background. The 240 lines of inline CSS are reduced to the status dot and status line. The pulse of the status dot has the colour of the dot (was always green). Enter and Save both go through the form's `submit`.
+- **`data-testid`** on every interactive element of the popup (`input-server-url`, `checkbox-connection`, `btn-save`, `status-text`, `status-indicator`, `link-homepage`, `form-settings`, `error-server-url`) and of every test page: buttons, inputs, links, tab buttons, plus the elements created by JavaScript (`btn-unsubscribe-<event>`, `btn-test-<event>`, `event-item-<id>`). The generated index page has `link-<file>`.
+- **Test pages** link `gcp-css.css` and use it for buttons (`class="gcp-css"`, `secondary` for Clear), for the four curl fields (now labelled: all tabs / delay / include / exclude) and for the "Add Event" form in `particular_event_tester.html`.
+- Page titles fixed (three pages were "Document", two pairs shared a title).
+- `deploy.yml`: copies `extension/gcp-css.css` next to the test pages for GitHub Pages. Locally the server already serves it from `extension/` as a static fallback, so there is one copy in the repository.
+- Left as they were: `copy.html` (own dark theme; only a missing `data-testid` added) and the Clear button of `tabs_events.html` (own style; `data-testid` added). The `font-size` rule in `styles.css` is unchanged: gcp-css rules are more specific, so it does not override them.
+
+### `tampermonkey/youtube_media_buttons_increase_speed_and_rewind.js` (version p4)
+
+Double Shift did not always bring the speed back to 1x. Two causes found by reading the code (not reproduced):
+
+- **Timing measured at arrival.** The 500 ms between two presses was measured with `Date.now()` when each event reached the tab. Delivery time differed per event (see SC-11 item 5), so two fast presses could arrive more than 500 ms apart. The script now uses the timestamp the server puts into each event (`event.detail.timestamp`).
+- **Wrong video element.** `video` is switched to any video that starts playing (for example a preview on hover). The reset then checked and changed that other element. The script now remembers the element it speeded up (`boostedVideo`) and resets that one; the extra condition `video.playbackRate !== initialSpeed` is removed.
+
+Also: the speed overlay no longer disappears early when shown twice in a row (the old hide timer is cancelled); a third fast press is not paired with the second; leftover `console.log` calls go through the script's `log()`.
+
+### Not changed
+
+SC-10: `injectContentScriptIntoAllTabs()` is used by the extension itself (on worker start and in `onInstalled`), so it stays as it is.

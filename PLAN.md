@@ -144,6 +144,8 @@ State: `ws`, `connected`, `connectionEnabled`, `WS_SERVER_URL`, `reconnectTimer`
 
 **Listener registration.** All `chrome.runtime.onMessage`, `chrome.tabs.*`, `chrome.alarms.onAlarm` and `chrome.runtime.onInstalled` listeners are registered **once, synchronously, at the top level** of the module. Handlers read the current `ws` at call time. Never register listeners inside `connectWebSocket()` `[SC-3]`.
 
+**Debug logs.** Off by default; `chrome.storage.local` key `debug` (boolean), applied live through `chrome.storage.onChanged`. Errors are always printed.
+
 **Startup.** Compute `browserId`, `browserName`, `browserInfo`; load `{serverUrl, connectionEnabled}` from `chrome.storage.local`; there is no default URL, and the connection is on only when a URL exists and `connectionEnabled === true`; set the icon; connect if enabled; inject content scripts into already open tabs (static `content_scripts` are not re-injected after install/reload).
 
 **Connection.**
@@ -165,7 +167,7 @@ State: `ws`, `connected`, `connectionEnabled`, `WS_SERVER_URL`, `reconnectTimer`
 
 **Control events.**
 
-- `allTabs` -> reply `{ event: "allTabs", payload: { browserInfo, tabs: chrome.tabs.query({}) } }`.
+- `allTabs` (`detail: { reqId }`) -> reply `{ event: "allTabs", payload: { browserInfo, tabs: chrome.tabs.query({}), reqId } }`.
 - `close_tab` (`detail: { reqId, tabId }`) -> `chrome.tabs.remove`, reply `{ event: "close_tab_result", payload: { reqId, tabId, success, error? } }`.
 - `eval` (`detail: { reqId, code, tabId }`) -> attach `chrome.debugger` (protocol 1.3), `Runtime.evaluate` with `awaitPromise` and `returnByValue`, expression wrapped as `(async () => JSON.stringify(await (async () => { return (<code>); })()))()`, detach, parse the JSON string, reply `{ event: "eval_result", payload: { reqId, tabId, success, result | error } }`.
 - A control event addressed with a long tab id whose `browserId` is not this browser's must be ignored silently, with no reply `[SC-1]`.
@@ -239,7 +241,7 @@ wss.on("connection", async (ws, req) => {
 - `on(eventName, callback)` -> returns an unsubscribe function. `off(callback)` removes the callback from every event. Callback receives `(data, source)`: the parsed message `{ event, payload, tab, ... }` and `{ browserInfo, ws }` of the sending browser. `on("*", cb)` receives every event. One callback may be registered for several events (storage: `Map<eventName, Set<callback>>`). A throwing callback is caught and logged. `[SC-19]`
 - `remove(ws)` detaches only the listeners the registry itself attached.
 - `broadcast({ event, payload, include, exclude, delay })`: to every connection.
-- `allTabs()`: broadcast `allTabs`, wait for one `allTabs` reply per connection (timeout 1500 ms), return `processTabs(replies)`: an object keyed by long tab id, each value the chrome tab object plus `name`, `browserId`, `tab`.
+- `allTabs()`: broadcast `allTabs` with a `reqId`, wait for one `allTabs` reply per connection carrying that `reqId` (timeout 1500 ms), return `processTabs(replies)`: an object keyed by long tab id, each value the chrome tab object plus `name`, `browserId`, `tab`. With no connections resolve `{}` at once; on timeout resolve with the replies that arrived and log the browsers that did not answer `[SC-13]`.
 - Incoming message handling: ignore binary and non-JSON; ignore the heartbeat; drop invalid event names; when `event` starts with `other_tabs:` re-broadcast `{ event, payload, exclude: tab, delay }` to every connection; then, in every case, call the callbacks registered for that event and for `*`.
 - `enableTabsLifecycleEvents` (default true): the registry itself re-broadcasts the six tab lifecycle events to all tabs. The application must not do it a second time `[SC-6]`.
 

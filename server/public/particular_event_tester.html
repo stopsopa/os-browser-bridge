@@ -3,39 +3,64 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Regular Page - OS Browser Bridge Event Listener</title>
+    <title>Particular event tester - OS Browser Bridge</title>
     <link rel="stylesheet" href="styles.css" />
+    <!-- gcp-css.css lives in extension/ directory, server serves it from there (see express.static in server/index.js) -->
+    <link rel="stylesheet" href="gcp-css.css" />
     <style>
       .status {
         width: 20px;
       }
-      #separator {
-        border-right: 2px solid #ccc;
-        display: inline-block;
-        height: 20px;
-        vertical-align: middle;
+      #eventForm {
+        max-width: 420px;
+        margin-top: 16px;
+      }
+      /* buttons of subscribed events (added by js): [event name - click to unsubscribe][✔ - click to test] */
+      #events {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px;
+        margin-top: 16px;
+        min-height: 20px;
+
+        button:nth-of-type(even) {
+          margin-right: 12px;
+        }
       }
     </style>
   </head>
   <body>
     <div class="container">
-      <a href="./">UP</a> &nbsp; &nbsp;
-      <a id="clone" target="_blank">Open cloned tabs for testing</a>
+      <a href="./" data-testid="link-up">UP</a> &nbsp; &nbsp;
+      <a id="clone" target="_blank" data-testid="link-clone">Open cloned tabs for testing</a>
       <hr />
-      <div id="events">
-        <form id="eventForm" style="display: inline">
-          <input type="text" id="eventName" required />
-          <button type="submit">Add Event</button>
-        </form>
-        <span id="separator"></span>
-      </div>
+      <form id="eventForm" class="gcp-css" data-testid="form-add-event">
+        <div class="input-wrapper">
+          <input
+            type="text"
+            id="eventName"
+            name="eventName"
+            placeholder=" "
+            required
+            autocomplete="off"
+            aria-describedby="eventName-helper"
+            data-testid="input-event-name"
+          />
+          <label for="eventName">Event name *</label>
+          <div class="error" id="eventName-error">Event name is required</div>
+          <div class="helper-text" id="eventName-helper">name of the event to subscribe to in this tab</div>
+        </div>
+        <button type="submit" data-testid="btn-add-event">Add Event</button>
+      </form>
+      <div id="events" data-testid="events-list"></div>
       <hr />
       <p class="tip">
         <span class="status"></span>
         Provide the name of the event to test
       </p>
 
-      <button id="clear">Clear</button>
+      <button id="clear" type="button" class="gcp-css secondary" data-testid="btn-clear">Clear</button>
       <pre id="logs"></pre>
     </div>
 
@@ -84,11 +109,17 @@
         const button = document.createElement("button");
         button.innerText = `${eventName}`;
         button.setAttribute("title", `unsubscribe from event ${eventName}`);
+        button.setAttribute("type", "button");
+        button.className = "gcp-css secondary";
+        button.dataset.testid = `btn-unsubscribe-${eventName}`;
         eventsParentElement.appendChild(button);
 
         const buttonTest = document.createElement("button");
         buttonTest.innerText = `✔`;
         buttonTest.setAttribute("title", `test event ${eventName}`);
+        buttonTest.setAttribute("type", "button");
+        buttonTest.className = "gcp-css";
+        buttonTest.dataset.testid = `btn-test-${eventName}`;
         eventsParentElement.appendChild(buttonTest);
         const testEvent = async () => {
           const uniq = unique();

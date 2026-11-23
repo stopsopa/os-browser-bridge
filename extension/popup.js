@@ -6,7 +6,26 @@ const connectionToggle = document.getElementById('connectionToggle');
 const saveButton = document.getElementById('saveButton');
 const statusIndicator = document.getElementById('statusIndicator');
 const statusText = document.getElementById('statusText');
-const urlError = document.getElementById('urlError');
+const urlError = document.getElementById('serverUrl-error');
+const serverUrlWrapper = document.getElementById('serverUrlWrapper');
+const settingsForm = document.getElementById('settingsForm');
+
+/**
+ * Error state of the URL field in the way gcp-css expects it:
+ * data-error attribute on the wrapper (shows .error element), aria attributes on the input.
+ */
+function showUrlError(message) {
+  urlError.textContent = message;
+  serverUrlWrapper.toggleAttribute('data-error', true);
+  serverUrlInput.setAttribute('aria-invalid', 'true');
+  serverUrlInput.setAttribute('aria-describedby', 'serverUrl-helper serverUrl-error');
+}
+
+function hideUrlError() {
+  serverUrlWrapper.toggleAttribute('data-error', false);
+  serverUrlInput.removeAttribute('aria-invalid');
+  serverUrlInput.setAttribute('aria-describedby', 'serverUrl-helper');
+}
 
 // Flag to prevent recursive updates
 let isUpdating = false;
@@ -44,14 +63,38 @@ async function loadSettings() {
 // Save settings
 async function saveSettings() {
   try {
+    // Empty field: remove the URL (that also turns the connection off)
+    if (!serverUrlInput.value.trim()) {
+      hideUrlError();
+
+      isUpdating = true;
+      connectionToggle.checked = false;
+      connectionToggle.disabled = true;
+      isUpdating = false;
+
+      await chrome.storage.local.set({
+        serverUrl: '',
+        connectionEnabled: false
+      });
+
+      const response = await chrome.runtime.sendMessage({
+        type: 'update_settings',
+        serverUrl: '',
+        connectionEnabled: false
+      });
+
+      updateStatusDisplay(response);
+
+      return;
+    }
+
     // Normalize and validate URL
     const normalizedUrl = normalizeWebSocketUrl(serverUrlInput.value);
     if (!normalizedUrl) {
-      urlError.textContent = 'Please enter a valid WebSocket URL (e.g., localhost:8080 or ws://localhost:8080)';
-      urlError.classList.add('show');
+      showUrlError('Please enter a valid WebSocket URL (e.g., localhost:8080 or ws://localhost:8080)');
       return;
     }
-    urlError.classList.remove('show');
+    hideUrlError();
     
     // Update input with normalized URL
     serverUrlInput.value = normalizedUrl;
@@ -189,8 +232,7 @@ connectionToggle.addEventListener('change', async () => {
         isUpdating = true;
         connectionToggle.checked = false;
         isUpdating = false;
-        urlError.textContent = 'Please enter a server URL before enabling connection';
-        urlError.classList.add('show');
+        showUrlError('Please enter a server URL before enabling connection');
         return;
       }
       
@@ -201,8 +243,7 @@ connectionToggle.addEventListener('change', async () => {
         isUpdating = true;
         connectionToggle.checked = false;
         isUpdating = false;
-        urlError.textContent = 'Please enter a valid WebSocket URL (e.g., localhost:8080)';
-        urlError.classList.add('show');
+        showUrlError('Please enter a valid WebSocket URL (e.g., localhost:8080)');
         return;
       }
       
@@ -245,7 +286,7 @@ connectionToggle.addEventListener('change', async () => {
 // Handle URL input change
 serverUrlInput.addEventListener('input', () => {
   // Hide error message when user types
-  urlError.classList.remove('show');
+  hideUrlError();
   // Enable save button when settings change
   saveButton.disabled = false;
   
@@ -267,14 +308,10 @@ serverUrlInput.addEventListener('input', () => {
   }
 });
 
-// Handle save button click
-saveButton.addEventListener('click', saveSettings);
-
-// Handle Enter key in URL input
-serverUrlInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    saveSettings();
-  }
+// Handle save button click and Enter key in URL input (both submit the form)
+settingsForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  saveSettings();
 });
 
 // Initialize popup

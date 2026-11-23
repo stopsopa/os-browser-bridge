@@ -8,7 +8,27 @@ import {
 
 let connected = false;
 
-let debug = true;
+/**
+ * Debug logs (everything printed through log()) are off by default.
+ * The switch is kept in chrome.storage.local under key "debug".
+ *
+ * To turn it on / off run in the console of the service worker
+ * (chrome://extensions/ -> this extension -> "Inspect views: service worker"):
+ *
+ *   chrome.storage.local.set({ debug: true });
+ *   chrome.storage.local.set({ debug: false });
+ *
+ * No reload needed (see chrome.storage.onChanged listener below). More in README.md
+ * Errors (error()) are printed always.
+ */
+let debug = false;
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes.debug) {
+    debug = changes.debug.newValue === true;
+    console.log("background.js", "debug logs:", debug ? "on" : "off");
+  }
+});
 function error() {
   console.error("background.js", ...arguments);
 }
@@ -81,7 +101,9 @@ async function loadSettings() {
     const settings = await chrome.storage.local.get([
       "serverUrl",
       "connectionEnabled",
+      "debug",
     ]);
+    debug = settings.debug === true;
     WS_SERVER_URL = settings.serverUrl || "";
     // Only enable connection if we have a URL and it's explicitly enabled
     connectionEnabled =
@@ -155,6 +177,13 @@ function getPopupStatus() {
   };
 }
 
+// Pushes current status to the popup (if it is open) - popup.js listens for "status_update"
+function notifyPopup() {
+  chrome.runtime
+    .sendMessage({ type: "status_update", ...getPopupStatus() })
+    .catch(() => {}); // Ignore errors if popup is not open
+}
+
 /**
  * Forwards event emitted in the browser tab to node.js server,
  * enriched with information about the tab it is coming from.
@@ -202,8 +231,14 @@ const messageHandlers = {
       const oldUrl = WS_SERVER_URL;
 
       // Update settings
-      WS_SERVER_URL = message.serverUrl || WS_SERVER_URL;
-      connectionEnabled = message.connectionEnabled;
+      // empty string is valid value here - that is how the URL is cleared (not a string means "keep current one")
+      WS_SERVER_URL =
+        typeof message.serverUrl === "string"
+          ? message.serverUrl.trim()
+          : WS_SERVER_URL;
+      // no URL - nothing to connect to
+      connectionEnabled =
+        Boolean(WS_SERVER_URL) && message.connectionEnabled === true;
 
       // Save settings to storage
       await chrome.storage.local.set({
@@ -445,8 +480,46 @@ function disconnectWebSocket() {
   broadcastConnectionStatus(false, { state: "disconnected" });
   // Update icon based on whether connection is enabled or not
   updateIcon(connectionEnabled ? "disconnected" : "disabled");
+  notifyPopup();
 }
 
+/**
+ * Sends message to all given tabs in parallel, so one slow or frozen tab doesn't delay the others.
+ *
+ * buildMessage(tab) returns the message for given tab
+ * label is used only in logs
+ */
+async function sendToTabs(tabs, buildMessage, label) {
+  await Promise.allSettled(
+    tabs.map(async (tab) => {
+      try {
+        await emitForContentJs(tab.id, buildMessage(tab));
+      } catch (e) {
+        if (
+          e?.message?.includes(
+            "Could not establish connection. Receiving end does not exist.",
+          )
+        ) {
+          // this will trigger for example for page chrome://extensions/ where content.js is not active
+          log(
+            `Content script not active in tab ${tab.id} (${tab.url || "unknown url"}). Skipping ${label}.`,
+          );
+        } else {
+          error(`Error sending ${label} to tab ${tab.id}:`, e);
+        }
+      }
+    }),
+  );
+}
+
+/**
+ * Forwards event to the tabs of this browser.
+ *
+ * includeTabs - when not empty: only to these tabs
+ * excludeTabs - when not empty: to all tabs except these
+ * both empty  - to all tabs
+ * Tab on the list can be given as long id "browserId_c08c4190_tabId_1817282704" or short one "1817282704"
+ */
 async function broadcastToTabs(payload, includeTabs, excludeTabs) {
   // https://developer.chrome.com/docs/extensions/reference/api/tabs
   try {
@@ -460,100 +533,62 @@ async function broadcastToTabs(payload, includeTabs, excludeTabs) {
 
     const list = await chrome.tabs.query({});
 
-    for (const tab of list) {
-      try {
-        const tabId = `browserId_${browserId}_tabId_${tab.id}`;
+    const longId = (tab) => `browserId_${browserId}_tabId_${tab.id}`;
 
-        const tabIdShort = String(tab.id);
+    const isOnList = (tabs, tab) =>
+      tabs.includes(longId(tab)) || tabs.includes(String(tab.id));
 
-        const message = {
-          type: "os_browser_bridge_event_background_script_to_content_script",
-          payload, // .detail xx002
-          tabId,
-        };
-
-        switch (true) {
-          case includeTabs.length > 0: {
-            if (
-              includeTabs.includes(tabId) ||
-              includeTabs.includes(tabIdShort)
-            ) {
-              await emitForContentJs(tab.id, message);
-            }
-            break;
-          }
-          case excludeTabs.length > 0: {
-            if (
-              !excludeTabs.includes(tabId) &&
-              !excludeTabs.includes(tabIdShort)
-            ) {
-              await emitForContentJs(tab.id, message);
-            }
-            break;
-          }
-          default: {
-            await emitForContentJs(tab.id, message);
-            break;
-          }
-        }
-      } catch (e) {
-        if (
-          e.message.includes(
-            "Could not establish connection. Receiving end does not exist.",
-          )
-        ) {
-          // this will trigger for example for page chrome://extensions/ where content.js is not active
-          console.warn(
-            `Content script not active in tab ${tab.id} (${tab.url || "unknown url"}). Skipping message.`,
-          );
-        } else {
-          error(`Error sending message to tab ${tab.id}:`, e);
-        }
+    const targets = list.filter((tab) => {
+      switch (true) {
+        case includeTabs.length > 0:
+          return isOnList(includeTabs, tab);
+        case excludeTabs.length > 0:
+          return !isOnList(excludeTabs, tab);
+        default:
+          return true;
       }
-    }
+    });
+
+    await sendToTabs(
+      targets,
+      (tab) => ({
+        type: "os_browser_bridge_event_background_script_to_content_script",
+        payload, // .detail xx002
+        tabId: longId(tab),
+      }),
+      "message",
+    );
   } catch (e) {
     error("Error querying tabs:", e);
   }
 }
 
+// Informs all tabs of this browser about the state of connection with the server
 async function broadcastConnectionStatus(isConnected, details = {}) {
   connected = isConnected;
   try {
     const tabs = await chrome.tabs.query({});
-    for (const tab of tabs) {
-      try {
-        await emitForContentJs(tab.id, {
-          type: "os_browser_bridge_connection_status",
-          isConnected,
-          details,
-          timestamp: Date.now(),
-          tabId: `browserId_${browserId}_tabId_${tab.id}`,
-        });
-      } catch (e) {
-        if (
-          e.message.includes(
-            "Could not establish connection. Receiving end does not exist.",
-          )
-        ) {
-          console.warn(
-            `Content script not active in tab ${tab.id} (${
-              tab.url || "unknown url"
-            }). Skipping connection status message.`,
-          );
-        } else {
-          error(`Error sending connection status to tab ${tab.id}:`, e);
-        }
-      }
-    }
-  } catch (error) {
-    error("Error querying tabs for connection status broadcast:", error);
+
+    await sendToTabs(
+      tabs,
+      (tab) => ({
+        type: "os_browser_bridge_connection_status",
+        isConnected,
+        details,
+        timestamp: Date.now(),
+        tabId: `browserId_${browserId}_tabId_${tab.id}`,
+      }),
+      "connection status message",
+    );
+  } catch (e) {
+    error("Error querying tabs for connection status broadcast:", e);
   }
 }
 
 // Sends data to node.js server through current socket (if it is open)
 function sendToNode(data) {
   if (isSocketOpen()) {
-    console.log("[OS-Bridge] sendToNode ->", data);
+    log("[OS-Bridge] sendToNode ->", data);
     ws.send(JSON.stringify(data));
   } else {
     console.warn("[OS-Bridge] sendToNode failed: ws not open, readyState:", ws?.readyState);
@@ -693,12 +728,13 @@ const events = {
       };
     }
   },
-  allTabs: async () => {
+  allTabs: async (detail) => {
     const tabs = await chrome.tabs.query({});
 
     return {
       event: "allTabs",
-      payload: { browserInfo, tabs },
+      // reqId is sent back so the server can match this reply with its request
+      payload: { browserInfo, tabs, reqId: detail?.reqId },
     };
   },
   eval: async (detail, { tab, include }) => {
@@ -745,7 +781,7 @@ const events = {
     }
 
     try {
-      console.log(
+      log(
         `[OS-Bridge] Executing eval via debugger in tab ${numericTabId}:`,
         code,
       );
@@ -807,6 +843,9 @@ async function connectWebSocket() {
 
     ws = socket;
 
+    // popup (if open) shows "Connecting to ..."
+    notifyPopup();
+
     socket.addEventListener("open", () => {
       if (socket !== ws) return;
 
@@ -818,15 +857,7 @@ async function connectWebSocket() {
       });
       updateIcon("connected");
       // Notify popup if it's open
-      chrome.runtime
-        .sendMessage({
-          type: "status_update",
-          connectionEnabled,
-          isConnected: true,
-          connectionState: "connected",
-          serverUrl: WS_SERVER_URL,
-        })
-        .catch(() => {}); // Ignore errors if popup is not open
+      notifyPopup();
     });
 
     /**
@@ -835,7 +866,14 @@ async function connectWebSocket() {
     socket.addEventListener("message", async (e) => {
       if (socket !== ws) return;
 
-      const { event, tab, rawJson } = splitOnce(e.data);
+      let event, tab, rawJson;
+      try {
+        ({ event, tab, rawJson } = splitOnce(e.data));
+      } catch (err) {
+        // not in "event::tabFilter::json" format - nothing we can do with it
+        error("Malformed message from the server, dropped:", err);
+        return;
+      }
 
       let decodedFromJson = null;
       try {
@@ -849,7 +887,7 @@ async function connectWebSocket() {
       // If the server requests the list of all tab IDs, respond with them instead of / in addition to broadcasting.
       if (events[event]) {
         try {
-          console.log("[OS-Bridge] Handling event:", event, decodedFromJson?.detail);
+          log("[OS-Bridge] Handling event:", event, decodedFromJson?.detail);
           const data = await events[event](decodedFromJson?.detail, {
             tab,
             include,
@@ -861,13 +899,21 @@ async function connectWebSocket() {
           }
         } catch (e) {
           console.error("[OS-Bridge] Error executing event", event, e);
+          // reply with the result event matching the event which failed
+          const resultEvents = {
+            eval: "eval_result",
+            close_tab: "close_tab_result",
+            allTabs: "allTabs",
+          };
           sendToNode({
-            event: "eval_result",
+            event: resultEvents[event] || `${event}_result`,
             payload: {
               reqId: decodedFromJson?.detail?.reqId,
               tabId: tab,
               success: false,
               error: e?.message || String(e),
+              // server expects these two in every allTabs reply
+              ...(event === "allTabs" ? { browserInfo, tabs: [] } : {}),
             },
           });
         }
@@ -891,15 +937,7 @@ async function connectWebSocket() {
       });
       updateIcon(connectionEnabled ? "disconnected" : "disabled");
       // Notify popup if it's open
-      chrome.runtime
-        .sendMessage({
-          type: "status_update",
-          connectionEnabled,
-          isConnected: false,
-          connectionState: "disconnected",
-          serverUrl: WS_SERVER_URL,
-        })
-        .catch(() => {}); // Ignore errors if popup is not open
+      notifyPopup();
       scheduleReconnect();
     });
 
