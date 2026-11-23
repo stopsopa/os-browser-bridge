@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         youtube media buttons - increase speed & rewind
 // @namespace    https://stopsopa.github.io
-// @version      p3
+// @version      p4
 // @description  try to take over the world!
 // @author       You
 // @match        *://*/*
@@ -347,13 +347,33 @@ if (window.top === window.self) {
 
       let holdTimeout = null;
       let isHolding = false;
+
+      /**
+       * The video element which we speeded up (set when hold of "Next" kicks in).
+       * Variable 'video' can be switched to another element in the meantime (see workingOnVideoPlay -
+       * any video which starts playing, like preview on hover, takes over), so when it is time
+       * to bring the speed back we have to do that on the element we actually changed.
+       */
+      let boostedVideo = null;
+
+      // brings back normal speed on the video we speeded up
+      function restoreInitialSpeed() {
+        const target = boostedVideo || video;
+        currentSpeed = initialSpeed;
+        target.playbackRate = initialSpeed;
+        if (video !== target) {
+          video.playbackRate = initialSpeed;
+        }
+        boostedVideo = null;
+        showSpeedDisplay();
+      }
       let volumeListenersActive = false;
 
       function changeIsHolding(bool) {
         if (typeof bool !== "boolean") {
           throw new Error(`changeIsHolding arg is not bool >${bool}<`);
         }
-        console.log(`isHolding = ${bool}`);
+        log(`isHolding = ${bool}`);
         isHolding = bool;
       }
 
@@ -405,13 +425,16 @@ if (window.top === window.self) {
         };
       })();
 
+      let speedDisplayTimeout = null;
       function showSpeedDisplay(duration = 2000) {
         const displayDiv = createSpeedDisplayDiv();
         displayDiv.textContent = `${currentSpeed.toFixed(1)}×`;
         displayDiv.style.display = "block";
 
         // Hide after specified duration
-        setTimeout(() => {
+        // (cancel previous timer, otherwise it would hide the display we just showed too early)
+        clearTimeout(speedDisplayTimeout);
+        speedDisplayTimeout = setTimeout(() => {
           displayDiv.style.display = "none";
         }, duration);
       }
@@ -439,7 +462,7 @@ if (window.top === window.self) {
         log("handeSpeedUp:", event.detail.action === "pressed");
         if (event.detail.action === "pressed") {
           updateStoredSpeed(currentSpeed + 0.1);
-          console.log("+0.1");
+          log("+0.1");
         }
       }
 
@@ -451,28 +474,45 @@ if (window.top === window.self) {
             updateStoredSpeed(2);
           } else {
             updateStoredSpeed(currentSpeed - 0.1);
-            console.log("-0.1");
+            log("-0.1");
           }
         }
       }
       let shiftPressed = false;
       let lastShiftPressTime = 0;
       const DOUBLE_PRESS_THRESHOLD = 500;
+      /**
+       * Time of the key event.
+       * We use the timestamp set by the server at the moment the key was detected (event.detail.timestamp),
+       * NOT the time when the event arrived in this tab.
+       * Delivery from the server to the tab takes different amount of time for each event
+       * (it depends how busy the browser is and how many tabs are open), so two fast presses
+       * could arrive here more than DOUBLE_PRESS_THRESHOLD apart and double press was not detected.
+       */
+      function eventTime(event) {
+        const t = Date.parse(event?.detail?.timestamp);
+
+        if (Number.isNaN(t)) {
+          return Date.now();
+        }
+
+        return t;
+      }
       function handleShift(event) {
         const isPressed = event.detail.action === "pressed";
         shiftPressed = isPressed;
 
         if (isPressed) {
-          const now = Date.now();
-          const isDoublePress = now - lastShiftPressTime < DOUBLE_PRESS_THRESHOLD;
+          const now = eventTime(event);
+          const isDoublePress = Math.abs(now - lastShiftPressTime) < DOUBLE_PRESS_THRESHOLD;
           lastShiftPressTime = now;
 
-          if (lockedSpeed && isDoublePress && video.playbackRate !== initialSpeed) {
-            console.log("Double Shift detected - resetting speed");
+          if (lockedSpeed && isDoublePress) {
+            log("Double Shift detected - resetting speed");
             lockedSpeed = false;
-            currentSpeed = initialSpeed;
-            video.playbackRate = initialSpeed;
-            showSpeedDisplay();
+            // third fast press should not be paired with the second one
+            lastShiftPressTime = 0;
+            restoreInitialSpeed();
           }
         }
       }
@@ -519,6 +559,7 @@ if (window.top === window.self) {
             const speedToApply = getValidStoredSpeed();
 
             currentSpeed = speedToApply; // Don't use updateSpeed here to avoid localStorage changes
+            boostedVideo = video;
             video.playbackRate = currentSpeed;
             showSpeedDisplay();
 
@@ -534,9 +575,7 @@ if (window.top === window.self) {
             if (shiftPressed) {
               lockedSpeed = true;
             } else {
-              currentSpeed = initialSpeed;
-              video.playbackRate = initialSpeed;
-              showSpeedDisplay();
+              restoreInitialSpeed();
             }
             log("→ Back to 1× speed");
           } else {
