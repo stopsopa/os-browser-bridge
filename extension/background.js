@@ -609,6 +609,26 @@ function evaluateViaDebugger(tabId, code) {
 }
 
 /**
+ * Server sends control events (eval, close_tab) to ALL connected browsers.
+ * This one tells if given tab id is explicitly addressed to some other browser.
+ * In that case this browser should do nothing and send no reply to the server.
+ *
+ * isTabOfOtherBrowser("browserId_aaaa_tabId_123")  -> true when our browserId is not "aaaa"
+ * isTabOfOtherBrowser("browserId_aaaa_tabId_123")  -> false when our browserId is "aaaa"
+ * isTabOfOtherBrowser("123")                       -> false (short id carries no browser, handled as before)
+ * isTabOfOtherBrowser(123)                         -> false
+ */
+function isTabOfOtherBrowser(targetTab) {
+  const match = String(targetTab).match(/^browserId_(.+)_tabId_\d+$/);
+
+  if (match) {
+    return match[1] !== browserId;
+  }
+
+  return false;
+}
+
+/**
  * Special (control) events incomming from node.js server which are handled here in background.js
  * and are NOT forwarded to the tabs. Value returned from the handler is sent back to node.js
  */
@@ -618,6 +638,12 @@ function evaluateViaDebugger(tabId, code) {
 const events = {
   close_tab: async (detail, { tab, include }) => {
     const targetTab = detail?.tabId || tab || include?.[0];
+
+    // not our tab - stay silent, the browser which owns that tab will reply
+    if (isTabOfOtherBrowser(targetTab)) {
+      return;
+    }
+
     let numericTabId = Number(targetTab);
     if (isNaN(numericTabId) && typeof targetTab === "string") {
       const match = targetTab.match(/tabId_(\d+)/);
@@ -671,6 +697,12 @@ const events = {
   eval: async (detail, { tab, include }) => {
     const { reqId, code, tabId: rawTabId } = detail || {};
     const targetTab = rawTabId || tab || include?.[0];
+
+    // not our tab - stay silent, the browser which owns that tab will reply
+    if (isTabOfOtherBrowser(targetTab)) {
+      return;
+    }
+
     let numericTabId = Number(targetTab);
     if (isNaN(numericTabId) && typeof targetTab === "string") {
       const match = targetTab.match(/tabId_(\d+)/);

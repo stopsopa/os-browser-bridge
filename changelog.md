@@ -41,3 +41,41 @@ Control-event logic (SC-1), include/exclude parsing (SC-2), keep-alive (SC-9), c
 2. Restart the server 5 times. In the service worker console each tab event must produce one `sendToNode ->` line and no `sendToNode failed` warnings.
 3. `other_tabs:broadcast` with the server running, then with the server stopped.
 4. Identify tab, `close_me.html`, popup toggle off / on quickly, change URL while the server is down: the server log must show one connect per action, no connect/disconnect loop.
+
+## 2026-11-23 — SC-1, SC-2, SC-6
+
+Checked with `node --check` on the changed files and `node --test extension/tools.test.js` (8 tests pass). Not tested in a browser yet.
+
+### SC-1 `eval` and `close_tab` no longer run in every browser — `extension/background.js`
+
+The server sends these control events to all connected browsers. Each browser used only the numeric part of the tab id, so a browser that did not own the tab replied "Tab not found" with the same `reqId`, and the server took whichever reply came first.
+
+- New helper `isTabOfOtherBrowser(targetTab)`.
+- In the `eval` and `close_tab` handlers: when the id is a long id (`browserId_xxx_tabId_123`) and `xxx` is not this browser, the handler does nothing and sends no reply.
+- Short numeric ids (`123`) behave as before: every browser tries.
+
+Difference to be aware of: a long id whose browser is not connected (or whose `browserId` is mistyped) is now answered by nobody, so `/eval` returns 504 after its timeout (default 10 s) and `/close_tab` returns 500 after 5 s, instead of an immediate "Tab not found".
+
+### SC-2 `include` / `exclude` with several tab ids — `extension/tools.js`, `extension/tools.test.js`
+
+`include=a,b` reached nobody and `exclude=a,b` reached everybody, because the comma-separated list was never split on the extension side.
+
+- `normalizeListToArray()` now splits comma-separated lists, also when they are elements of an array, and trims whitespace around each id.
+- `stringToIncludeExclude()` returns split arrays (`"!a,b"` -> `exclude: ["a", "b"]`).
+- 4 new unit tests.
+
+Backward compatibility: nothing changes for callers. Single ids, short numeric ids, arrays of ids, the `!` prefix, the wire format and the `/just_broadcast` parameters all work as before. Only inputs that silently did not work before (several ids) now work.
+
+### SC-6 tab lifecycle events delivered once — `server/index.js`
+
+`WebSocketConnectionRegistry` already re-broadcasts `onCreated`, `onRemoved`, `onUpdated`, `onActivated`, `onReplaced`, `onAttached` to all tabs (option `enableTabsLifecycleEvents`, default true). `index.js` did the same a second time, so every page got each event twice. The block in `index.js` is removed and replaced by a comment.
+
+### How to test
+
+1. `tabs_events.html`: open, close and switch tabs; each event appears once.
+2. Two tabs A and B plus a third C: `/just_broadcast?event=myevent&include=A,B` reaches A and B only; `exclude=A,B` reaches C only.
+3. Two browsers connected: `/eval` with a long tab id of browser 1 returns the result every time; the same for `/close_tab`.
+
+### Not addressed
+
+SC-5, SC-7 and SC-8: see [SUGGESTED_CHANGES_not_addressed.md](SUGGESTED_CHANGES_not_addressed.md).

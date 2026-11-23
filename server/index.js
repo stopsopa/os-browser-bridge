@@ -235,19 +235,12 @@ if (socket) {
     // but actually no: sending event back and just forwarding browserId:tabId will do
   });
 
-  [
-    "onCreated", // New tab was created
-    "onRemoved", // Tab was closed
-    "onUpdated", // Tab was updated (e.g., navigated to different page, title changed, loading state changed)
-    "onActivated", // Tab became active (user switched to it)
-    "onReplaced", // Tab was replaced with another tab (rare, e.g., tab prerendering)
-    "onAttached", // Tab was attached to a window (e.g., dragged between windows)
-  ].forEach((ev) => {
-    connectionRegistry.on(ev, (data) => {
-      const { event, payload } = data;
-      connectionRegistry.broadcast({ event, payload });
-    });
-  });
+  /**
+   * Tab lifecycle events (onCreated, onRemoved, onUpdated, onActivated, onReplaced, onAttached)
+   * are re-broadcasted to all tabs by WebSocketConnectionRegistry itself
+   * (option enableTabsLifecycleEvents, true by default).
+   * Don't re-broadcast them here again - each tab would receive every event twice.
+   */
 
   wakeup({
     connectionRegistry,

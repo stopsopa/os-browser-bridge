@@ -133,6 +133,17 @@ export function enrichTab(tab, browserInfo) {
 }
 
 /**
+ * Normalizes list of tab ids to flat array of strings.
+ * Comma separated lists are split - also when they are elements of an array.
+ * Leading "!" (exclude marker) and surrounding whitespaces are removed from each id.
+ *
+ * normalizeListToArray("a")            -> ["a"]
+ * normalizeListToArray("a,b")          -> ["a", "b"]
+ * normalizeListToArray("!a, b")        -> ["a", "b"]
+ * normalizeListToArray(["a,b", "c"])   -> ["a", "b", "c"]
+ * normalizeListToArray(123)            -> ["123"]
+ * normalizeListToArray(undefined)      -> []
+ *
  * @param {string | string[]} tabs
  * @returns {string[]}
  */
@@ -149,7 +160,12 @@ export function normalizeListToArray(tabs) {
     tabs = [];
   }
 
-  return tabs.filter(Boolean).map(String).map(stripBangPrefix).filter(Boolean).map(String);
+  return tabs
+    .filter(Boolean)
+    .map(String)
+    .flatMap((item) => item.split(","))
+    .map((item) => stripBangPrefix(item.trim()).trim())
+    .filter(Boolean);
 }
 
 export function normalizeListToCommaSeparatedString(tabs) {
@@ -176,6 +192,14 @@ export function stripBangPrefix(str) {
 }
 
 /**
+ * Decodes tab filter (middle segment of the message from the server "event::tabFilter::json")
+ *
+ * stringToIncludeExclude("")       -> { include: [], exclude: [] }           all tabs
+ * stringToIncludeExclude("a")      -> { include: ["a"], exclude: [] }
+ * stringToIncludeExclude("a,b")    -> { include: ["a", "b"], exclude: [] }
+ * stringToIncludeExclude("!a")     -> { include: [], exclude: ["a"] }
+ * stringToIncludeExclude("!a,b")   -> { include: [], exclude: ["a", "b"] }   one leading ! marks entire list
+ *
  * @type {import("./tools.types").StringToIncludeExcludeFn}
  */
 export function stringToIncludeExclude(str) {
@@ -184,9 +208,9 @@ export function stringToIncludeExclude(str) {
   /** @type {string[]} */
   let include = [];
   if (str.startsWith("!")) {
-    exclude = [stripBangPrefix(str)];
+    exclude = normalizeListToArray(str);
   } else {
-    include = [str];
+    include = normalizeListToArray(str);
   }
   return { include, exclude };
 }
