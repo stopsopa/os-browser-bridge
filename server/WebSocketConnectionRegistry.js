@@ -73,15 +73,19 @@ export class WebSocketConnectionRegistry {
       ...opt,
     });
     /**
-     * [function]: eventName
+     * this.events:   eventName: Set of callbacks
      *
-     * key is function event
-     * value is the name of the event
+     * key is the name of the event
+     * value is the Set of functions registered for that event
      *
-     * So in order to unregister event you have to hold the reference to the function
+     * So in order to unregister event you have to hold the reference to the function (see .off())
      *
      * .on() function will also return function which once triggered will unregister the event
+     *
+     * this.bindings: ws: { message, error } - listeners which this registry attached to given socket,
+     * kept to remove exactly these (and nothing else) in .remove()
      */
+    this.bindings = new Map();
 
     if (enableTabsLifecycleEvents) {
       [
@@ -132,17 +136,83 @@ export class WebSocketConnectionRegistry {
     return browserInfo;
   }
 
+  /**
+   * Subscribes to the event emitted in the browser (in any tab of any connected browser).
+   *
+   * const unsubscribe = connectionRegistry.on("fornodejs", (data, source) => {
+   *   const { event, payload, tab } = data;  // tab: "browserId_dd596c87_tabId_1628889999"
+   *   const { browserInfo, ws } = source;    // browser the event came from, and its socket
+   * });
+   *
+   * unsubscribe(); // removes this callback from this event
+   *
+   * // the same callback can be registered for many events
+   * connectionRegistry.on("event_a", fn);
+   * connectionRegistry.on("event_b", fn);
+   *
+   * // "*" - all events (also other_tabs:* events, also tab lifecycle events)
+   * connectionRegistry.on("*", (data, source) => console.log(data.event, source.browserInfo?.name));
+   *
+   * // other_tabs:* events are re-broadcasted to other tabs and are also visible here
+   * connectionRegistry.on("other_tabs:copy", (data) => {});
+   */
   on(eventName, callback) {
-    this.events.set(callback, eventName);
+    if (!this.events.has(eventName)) {
+      this.events.set(eventName, new Set());
+    }
+
+    this.events.get(eventName).add(callback);
+
     return () => {
-      this.events.delete(callback);
+      this.#off(eventName, callback);
     };
   }
+  /**
+   * Unregisters the callback from all events it was registered for
+   */
   off(callback) {
-    this.events.delete(callback);
+    [...this.events.keys()].forEach((eventName) => {
+      this.#off(eventName, callback);
+    });
+  }
+  #off(eventName, callback) {
+    const set = this.events.get(eventName);
+
+    if (set) {
+      set.delete(callback);
+
+      if (set.size === 0) {
+        this.events.delete(eventName);
+      }
+    }
+  }
+  /**
+   * Calls all callbacks registered for given event and those registered for "*"
+   */
+  #callHandlers(parsed, ws) {
+    const source = { browserInfo: ws.browserInfo, ws };
+
+    [parsed.event, "*"].forEach((eventName) => {
+      const set = this.events.get(eventName);
+
+      if (set) {
+        // copy, because callback might unsubscribe itself while we iterate
+        [...set].forEach((callback) => {
+          try {
+            callback(parsed, source);
+          } catch (e) {
+            error("Failed to call callback for event:", parsed.event, e, "data:", parsed);
+          }
+        });
+      }
+    });
   }
   #addBinding(ws) {
-    ws.on("message", (data, isBinary) => {
+    const onError = (e) => {
+      error("socket error:", ws.browserInfo?.name, ws.browserInfo?.browserId, e);
+    };
+
+    const onMessage = (data, isBinary) => {
       if (isBinary) return;
 
       let parsed = null;
@@ -176,23 +246,31 @@ export class WebSocketConnectionRegistry {
         //   tab: "browserId_c08c4190_tabId_1817282917",
         // }
         this.broadcast({ event, payload, exclude: tab, delay });
-        return;
+        // no return here - server side handlers (.on()) can listen to other_tabs:* events too
       }
 
-      this.events.forEach((eventName, callback) => {
-        if (parsed.event === eventName) {
-          try {
-            callback(parsed);
-          } catch (e) {
-            error("Failed to call callback for event:", parsed.event, e, "data:", parsed);
-          }
-        }
-      });
-    });
+      this.#callHandlers(parsed, ws);
+    };
+
+    ws.on("message", onMessage);
+    ws.on("error", onError);
+
+    this.bindings.set(ws, { message: onMessage, error: onError });
   }
 
+  /**
+   * Unregisters the socket.
+   * Removes only listeners attached by this registry - listeners attached to the socket by your own code stay.
+   */
   remove(ws) {
-    ws.removeAllListeners();
+    const binding = this.bindings.get(ws);
+
+    if (binding) {
+      ws.off("message", binding.message);
+      ws.off("error", binding.error);
+      this.bindings.delete(ws);
+    }
+
     this.connections.delete(ws);
   }
 
@@ -204,8 +282,9 @@ export class WebSocketConnectionRegistry {
     return this.connections.size;
   }
 
+  // Unregisters all sockets (doesn't close them)
   clear() {
-    this.connections.clear();
+    [...this.connections].forEach((ws) => this.remove(ws));
   }
 
   forEach(callback) {

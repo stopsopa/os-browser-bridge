@@ -77,6 +77,7 @@ For example:
 - Listens for server messages
 - Broadcasts messages to all browser tabs via `chrome.tabs.sendMessage()`
 - Auto-reconnects if connection drops
+- Sends small heartbeat message to the server every 20 sec to keep the service worker and the connection alive
 
 ### Extension Content Script (`extension/content.js`)
 
@@ -145,6 +146,16 @@ service worker' and then in console run:
 ```js
 chrome.storage.local.clear(() => console.log("Storage cleared!"));
 ```
+
+> [!NOTE]
+> This also removes `browserId` of this browser (it is random value generated once and kept in that storage).
+> New one will be generated on the next start of the extension, so all tab ids (`browserId_<id>_tabId_<n>`) of this browser will change.
+
+## event names
+
+Event name (in any direction) has to be non empty string, up to 200 characters, without whitespaces and without `::`.
+Single colon is fine but not at the beginning and not at the end: `myevent`, `other_tabs:broadcast`, `a:b:c` are ok. `a::b`, `a:`, `my event` are not.
+Events with invalid name are dropped (`/just_broadcast` responds with 400, `connectionRegistry.broadcast()` throws).
 
 ## events to subscribe to
 
@@ -223,14 +234,24 @@ document.documentElement.dispatchEvent(
 server handler:
 
 ```js
-connectionRegistry.on("fornodejs", (data) => {
+const unsubscribe = connectionRegistry.on("fornodejs", (data, source) => {
   const {
     event, // 'fornodejs'
     payload, // { message: "Hello from browser" }
     tab, // "browserId_dd596c87_tabId_1628889999"
     delay,
   } = data;
+
+  const {
+    browserInfo, // { name: "Brave", browserId: "dd596c87", ... } - browser the event came from
+    ws, // socket of that browser
+  } = source;
 });
+
+// all events from all browsers (also other_tabs:* and tab events)
+connectionRegistry.on("*", (data, source) => {});
+
+unsubscribe(); // or connectionRegistry.off(callback)
 ```
 
 ## browser tab -> background.js
@@ -315,6 +336,8 @@ document.addEventListener("myevent", (event) => {
 
 prefix `other_tabs:` before event emited in browser will propagate the event to all tabs in this browser (except this tab).
 and also to all tabs in all other opened browsers
+
+Server can listen to these events too: `connectionRegistry.on("other_tabs:broadcast", (data, source) => {})`
 
 ```js
 // emit event (in browser tab context)

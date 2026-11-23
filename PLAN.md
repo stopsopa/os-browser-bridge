@@ -1,7 +1,7 @@
 # PLAN.md — build spec for OS Browser Bridge
 
 This document is a build brief. An agent that has never seen this repository should be able to rebuild the whole system from it.
-It describes the system **as it is meant to work**. Places where the current code deviates (bugs, security holes) are marked `[SC-n]` and explained in [SUGGESTED_CHANGES.md](SUGGESTED_CHANGES.md). Build the corrected behaviour, not the bug.
+It describes the system **as it is meant to work**. Places where the current code deviates (bugs, security holes) are marked `[SC-n]` and explained in [SUGGESTED_CHANGES.md](SUGGESTED_CHANGES.md). Build the corrected behaviour, not the bug. Which items are already fixed in the code: [changelog.md](changelog.md).
 
 ---
 
@@ -71,7 +71,7 @@ Design rules, in priority order:
 
 ## 3. Identities
 
-- **browserId**: 8 hex chars, one per browser installation. Currently the first 8 chars of SHA-256 over `browserName || userAgent || os || arch || nacl_arch` `[SC-17]`.
+- **browserId**: 8 hex chars, one per browser profile. Random, generated once (`crypto.randomUUID()`), stored in `chrome.storage.local` under `browserId` `[SC-17]`.
 - **tab id (long form)**: `browserId_<browserId>_tabId_<chrome numeric tab id>`, for example `browserId_c08c4190_tabId_1817282704`. This is the only globally unique tab address.
 - **tab id (short form)**: the bare numeric chrome tab id. Accepted in `include` / `exclude` for convenience; unique only inside one browser.
 - **browserInfo**: `{ name, browserId, version (extension version), userAgent, language, languages, platform:{os,arch,nacl_arch}, cookieEnabled, onLine }`. Sent once per connection, base64(UTF-8 JSON) in the WebSocket URL: `ws://HOST:PORT?browser=<base64>`.
@@ -88,7 +88,7 @@ Design rules, in priority order:
 ```
 
 - Split on the first two `::` only (`splitOnce` in `tools.js`); the JSON part may contain `::`.
-- `event` must be non-empty and must not contain `::` `[SC-12]`.
+- `event` must pass `isValidEventName()` from `tools.js`: 1 to 200 characters, no whitespace, single colons only between other characters (so no `::`) `[SC-12]`. Checked on every entry point: `/just_broadcast` (400), `registry.broadcast()` (throws), messages from browsers (dropped), events from pages in `background.js` (dropped).
 - `tabFilter`:
   - empty: all tabs,
   - `id1,id2`: only these tabs (include),
@@ -119,6 +119,7 @@ Plain JSON: `{ "event": string, "payload": any, "tab"?: longTabId, "type"?: stri
 | `other_tabs:*` | page -> every other tab | prefix is kept in the delivered event name |
 | `allTabs`, `close_tab`, `eval` | server -> background only | control events, never dispatched into pages |
 | `close_tab_result`, `eval_result` | background -> server | replies, matched by `payload.reqId` |
+| `os_browser_bridge_ping` | background -> server | heartbeat every 20 s, ignored by the registry |
 | `onCreated`, `onRemoved`, `onUpdated`, `onActivated`, `onReplaced`, `onAttached` | background -> server -> all tabs | tab lifecycle |
 
 Internal `chrome.runtime` message types: `ping`, `get_popup_status`, `update_settings`, `status_update`, `get_connection_status`, `transport_from_content_js_to_background_js`, `os_browser_bridge_event_background_script_to_content_script`, `os_browser_bridge_connection_status`.
@@ -155,7 +156,7 @@ State: `ws`, `connected`, `connectionEnabled`, `WS_SERVER_URL`, `reconnectTimer`
 - `disconnectWebSocket()`: clear timer, close socket, reset attempts, status `disconnected`, icon `disconnected` or `disabled`.
 - Icon states: `disabled` (gray), `connecting`, `connected`, `disconnected`.
 
-**Keep-alive.** Chrome suspends an idle MV3 service worker after about 30 s, which drops the WebSocket. Two mechanisms: (1) each `content.js` sends `{type:"ping"}` every 25 s, answered with `{type:"pong"}`; (2) an alarm. The alarm needs an `onAlarm` listener and a period of at least 30 s, and the socket itself should exchange a heartbeat message every 20 s `[SC-9]`.
+**Keep-alive.** Chrome suspends an idle MV3 service worker after about 30 s, which drops the WebSocket. Three mechanisms `[SC-9]`: (1) while connected, `background.js` sends `{"event":"os_browser_bridge_ping"}` over the socket every 20 s; WebSocket traffic resets the worker's idle timer (Chrome 116+); (2) each `content.js` sends `{type:"ping"}` every 25 s, answered with `{type:"pong"}`; (3) alarm `keepAlive`, period 0.5 min, with a top-level `onAlarm` listener that connects when enabled, no socket is open or connecting and no reconnect is scheduled.
 
 **Server -> tabs.** On a socket message: `splitOnce`, parse JSON (bad input is logged and dropped, never thrown), build `{include, exclude}` from the tab filter.
 
@@ -235,10 +236,11 @@ wss.on("connection", async (ws, req) => {
 - `broadcast({ ws, event, payload, include, exclude, delay = 0 })`: formats and sends one frame (section 4.1) when the socket is open. Returns boolean.
 - `add(ws, req)`: decode `?browser=`, store as `ws.browserInfo`, bind the message handler, add to the set, return `browserInfo`.
 - `remove(ws)`, `has(ws)`, `size()`, `clear()`, `forEach(cb)`.
-- `on(eventName, callback)` -> returns an unsubscribe function. `off(callback)`. Callback receives the parsed message `{ event, payload, tab, ... }`. A throwing callback is caught and logged.
+- `on(eventName, callback)` -> returns an unsubscribe function. `off(callback)` removes the callback from every event. Callback receives `(data, source)`: the parsed message `{ event, payload, tab, ... }` and `{ browserInfo, ws }` of the sending browser. `on("*", cb)` receives every event. One callback may be registered for several events (storage: `Map<eventName, Set<callback>>`). A throwing callback is caught and logged. `[SC-19]`
+- `remove(ws)` detaches only the listeners the registry itself attached.
 - `broadcast({ event, payload, include, exclude, delay })`: to every connection.
 - `allTabs()`: broadcast `allTabs`, wait for one `allTabs` reply per connection (timeout 1500 ms), return `processTabs(replies)`: an object keyed by long tab id, each value the chrome tab object plus `name`, `browserId`, `tab`.
-- Incoming message handling: ignore binary and non-JSON; when `event` starts with `other_tabs:` re-broadcast `{ event, payload, exclude: tab, delay }` to every connection and stop; otherwise call every callback registered for that event.
+- Incoming message handling: ignore binary and non-JSON; ignore the heartbeat; drop invalid event names; when `event` starts with `other_tabs:` re-broadcast `{ event, payload, exclude: tab, delay }` to every connection; then, in every case, call the callbacks registered for that event and for `*`.
 - `enableTabsLifecycleEvents` (default true): the registry itself re-broadcasts the six tab lifecycle events to all tabs. The application must not do it a second time `[SC-6]`.
 
 ### 6.2 index.js

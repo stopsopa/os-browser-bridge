@@ -143,3 +143,36 @@ It is **not linked anywhere yet**: popup and test pages are not restyled, `data-
 
 SC-14, SC-15, SC-20, SC-22 added to [SUGGESTED_CHANGES_not_addressed.md](SUGGESTED_CHANGES_not_addressed.md).
 SC-10, SC-11, SC-13, SC-16, SC-19: discussed only, no change yet.
+
+## 2026-11-23 — SC-19 registry API, docs review
+
+Checked with `node --check` and a smoke test of the registry with fake sockets (callbacks, wildcard, unsubscribe, heartbeat, invalid name, `other_tabs:`, `remove()`). Unit tests still pass (10). Not tested with real browsers yet.
+
+### SC-19 `server/WebSocketConnectionRegistry.js`
+
+- **Same callback for several events.** Callbacks are stored as `Map<eventName, Set<callback>>` (was `Map<callback, eventName>`, where registering one function for a second event silently dropped the first).
+- **`on()` callbacks get a second argument** `source = { browserInfo, ws }`: the browser the event came from and its socket.
+- **Wildcard**: `on("*", callback)` receives every event.
+- **`other_tabs:*` events reach server handlers.** They are still re-broadcast to the other tabs exactly as before, and now `on("other_tabs:name")` and `on("*")` handlers are called too.
+- **`remove(ws)` removes only the registry's own listeners** (was `ws.removeAllListeners()`, which also deleted listeners attached by application code).
+- The registry attaches an `error` listener to each socket and logs socket errors.
+- `clear()` unregisters every socket through `remove()` (still does not close them).
+- `off(callback)` removes the callback from every event it was registered for. The function returned by `on()` removes it from that one event only.
+
+Backward compatibility: existing `on(name, (data) => ...)` handlers, `off()`, the returned unsubscribe function, `broadcast()`, `allTabs()` work unchanged. Differences to be aware of:
+
+- a handler already registered for an `other_tabs:*` name was never called before and is called now;
+- listeners your code attaches to a socket are no longer removed by `remove(ws)`.
+
+### Docs reviewed and adjusted
+
+- `README.md`: `browserId` is reset by clearing extension storage; new section "event names"; server handler example shows the `source` argument, `"*"` and unsubscribe; server can listen to `other_tabs:*`; heartbeat mentioned.
+- `PROJECT.md`: wire protocol section corrected to the real format (`event::tabFilter::json`, `!` prefix for exclude); `browserId` origin; `eval` / `close_tab` targeting; heartbeat; `other_tabs:*` server handlers.
+- `PLAN.md`: `browserId`, event name rule, heartbeat and keep-alive, registry API, pointer to this changelog.
+- `extension/TESTING_GUIDE.md`: no default server URL, real start command, idle-drop limitation replaced by the heartbeat note.
+- Reviewed, no change needed: `SPECIAL.md`, `com.os-browser-bridge.node.md`, `documents/*.md`.
+
+### Not addressed
+
+SC-16 added to [SUGGESTED_CHANGES_not_addressed.md](SUGGESTED_CHANGES_not_addressed.md).
+Still open and not in that file: SC-10, SC-11, SC-13, and the UI part of SC-21 (popup and test pages not restyled, no `data-testid`).

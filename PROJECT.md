@@ -49,6 +49,7 @@ The bridge enables arbitrary custom events to flow in both directions: from the 
 - Receives messages from content scripts (via `chrome.runtime.onMessage`) and **forwards them to the server** over WebSocket.
 - Handles special built-in server events: `allTabs`, `close_tab`, `eval` (CDP-based JS eval in a tab).
 - Broadcasts connection status changes to all tabs.
+- Sends heartbeat (`os_browser_bridge_ping`) to the server every 20 sec to keep the service worker and the connection alive. Server ignores it.
 
 ### `extension/content.js` — Content Script (Isolated World)
 
@@ -113,6 +114,7 @@ page JS:
             if event.startsWith("other_tabs:") AND connected:
               → ws.send(...) to server
                 → server re-broadcasts to all other tabs
+                → server handlers registered with connectionRegistry.on("other_tabs:...") are called too
             if event.startsWith("other_tabs:") AND NOT connected:
               → broadcastToTabs directly to all other tabs in the same browser (skipping sender tab)
 ```
@@ -163,6 +165,10 @@ Example: `browserId_c08c4190_tabId_1817282704`
 
 This ID is used for targeting specific tabs in `include`/`exclude` parameters of `/just_broadcast` and similar endpoints.
 
+`browserId` is random value generated once per browser profile and stored in `chrome.storage.local` (key `browserId`), so it survives browser restarts and updates. Clearing extension storage generates new one.
+
+`eval` and `close_tab` addressed with such full ID are executed only by the browser with matching `browserId`.
+
 ---
 
 ## Connection Status Events
@@ -184,13 +190,17 @@ document.addEventListener("os_browser_bridge_connection_status", (event) => {
 Messages sent over WebSocket from the server to `background.js` are plain text in the format:
 
 ```
-<event> <tab-filter> <json-payload>
+<event>::<tab-filter>::<json>
 ```
 
 Where `<tab-filter>` can be:
 - empty (broadcast to all)
-- `include=tabId1,tabId2`
-- `exclude=tabId1,tabId2`
+- `tabId1,tabId2` (include: only these tabs)
+- `!tabId1,tabId2` (exclude: all tabs except these)
+
+and `<json>` is `{ "event": "...", "delay": 0, "detail": { ... } }`
+
+`<event>` has to be non empty string without whitespaces and without `::` (see `isValidEventName()` in `extension/tools.js`).
 
 Messages from `background.js` to the server are JSON-stringified objects:
 

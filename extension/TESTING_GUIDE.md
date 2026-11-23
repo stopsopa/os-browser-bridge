@@ -12,7 +12,7 @@
 
 1. Click on the extension icon in the browser toolbar
 2. The popup should display with:
-   - Server URL input field (default: `ws://localhost:8080`)
+   - Server URL input field (empty by default, enter the address the server prints on start, e.g. `ws://localhost:8080`)
    - Connection Mode toggle switch
    - Current connection status
 
@@ -35,8 +35,8 @@
 ### Test 3: Connect to Running Server
 1. Start the Node.js server:
    ```bash
-   cd server
-   npm start
+   # from the root of the repository
+   SOCKET=1 node --watch --env-file=.env server/index.js --flag=osbridgeserver
    ```
 2. Open the extension popup
 3. Ensure Connection Mode is ON
@@ -91,4 +91,4 @@ The extension icon changes based on connection state:
 ❌ **Known limitations:**
 - Cannot connect to secure WebSocket (wss://) without valid SSL certificate
 - Extension needs to be reloaded if it crashes
-- Connection may drop after extended idle periods (browser limitation)
+- Connection should stay up during idle periods (extension sends heartbeat to the server every 20 sec, requires Chrome 116+). If it drops anyway the extension reconnects on its own
