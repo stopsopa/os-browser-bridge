@@ -93,8 +93,14 @@ async function loadSettings() {
   }
 }
 
-// Detect browser name once, then initiate the first connection
-(async () => {
+/**
+ * Detect browser identity and load settings, then initiate the first connection.
+ * Runs once per service worker start.
+ *
+ * Every handler which depends on browserId, browserInfo or settings waits for this promise first
+ * (see chrome.runtime.onMessage and chrome.tabs listeners below).
+ */
+const initDone = (async () => {
   try {
     browserId = await generateUniqueId();
   } catch (_) {
@@ -116,224 +122,254 @@ async function loadSettings() {
   // Load settings before connecting
   await loadSettings();
 
-  // Set initial icon state based on connection enabled setting
-  updateIcon(connectionEnabled ? "disconnected" : "disabled");
-
-  const events2 = {
-    ping: (message, sender, sendResponse) => {
-      sendResponse({ type: "pong" });
-    },
-    // Handle popup status request
-    get_popup_status: (message, sender, sendResponse) => {
-      sendResponse({
-        connectionEnabled,
-        isConnected: connected,
-        connectionState: ws
-          ? ws.readyState === WebSocket.CONNECTING
-            ? "connecting"
-            : ws.readyState === WebSocket.OPEN
-              ? "connected"
-              : "disconnected"
-          : "disconnected",
-        serverUrl: WS_SERVER_URL,
-        reconnectAttempts,
-      });
-      return false; // Synchronous response, no need to return true
-    },
-    // Handle settings update from popup
-    update_settings: (message, sender, sendResponse) => {
-      // Handle async operation
-      (async () => {
-        try {
-          const oldEnabled = connectionEnabled;
-          const oldUrl = WS_SERVER_URL;
-
-          // Update settings
-          WS_SERVER_URL = message.serverUrl || WS_SERVER_URL;
-          connectionEnabled = message.connectionEnabled;
-
-          // Save settings to storage
-          await chrome.storage.local.set({
-            serverUrl: WS_SERVER_URL,
-            connectionEnabled: connectionEnabled,
-          });
-
-          // If connection settings changed
-          if (oldEnabled !== connectionEnabled || oldUrl !== WS_SERVER_URL) {
-            if (!connectionEnabled) {
-              // Disconnect if disabled
-              disconnectWebSocket();
-              updateIcon("disabled");
-            } else {
-              // Reconnect with new settings
-              disconnectWebSocket();
-              connectWebSocket();
-            }
-          }
-
-          // Send current status back
-          sendResponse({
-            connectionEnabled,
-            isConnected: connected,
-            connectionState: ws
-              ? ws.readyState === WebSocket.CONNECTING
-                ? "connecting"
-                : ws.readyState === WebSocket.OPEN
-                  ? "connected"
-                  : "disconnected"
-              : "disconnected",
-            serverUrl: WS_SERVER_URL,
-            reconnectAttempts,
-          });
-        } catch (err) {
-          error("Error updating settings:", err);
-          sendResponse({ error: err.message });
-        }
-      })();
-      return true; // Return true to indicate async sendResponse
-    },
-    // Provide current connection status immediately upon request from content script
-    get_connection_status: (message, sender, sendResponse) => {
-      try {
-        const tab = sender?.tab || {};
-        const tabId = `browserId_${browserId}_tabId_${tab?.id}`;
-
-        sendResponse({
-          type: "os_browser_bridge_connection_status",
-          isConnected: connected,
-          details: { state: connected ? "connected" : "disconnected" },
-          timestamp: Date.now(),
-          tabId,
-        });
-      } catch (e) {
-        error("Failed to provide connection status:", e);
-      }
-    },
-    transport_from_content_js_to_background_js: (
-      message,
-      sender,
-      sendResponse,
-    ) => {
-      try {
-        const tab = sender?.tab || "";
-
-        const tabId = `browserId_${browserId}_tabId_${tab?.id}`;
-
-        // log("incomming from content.js", message);
-
-        switch (true) {
-          case message?.event === "close_this_tab": {
-            chrome.tabs.remove(tab.id);
-            return;
-          }
-          case message?.event === "create_new_private_tab": {
-            (async () => {
-              try {
-                const url = message?.payload?.url;
-                const createData = { incognito: true };
-                if (url) {
-                  createData.url = url;
-                }
-                const newWin = await chrome.windows.create(createData);
-                const newTab = newWin?.tabs?.[0] || (await chrome.tabs.query({ windowId: newWin.id }))[0];
-                const newTabId = `browserId_${browserId}_tabId_${newTab.id}`;
-                newTab.tab = newTabId;
-                sendResponse({
-                  event: "os_browser_bridge_create_new_private_tab",
-                  detail: {
-                    tabId: newTabId,
-                    numericTabId: newTab.id,
-                    tab: newTab,
-                    windowId: newWin.id,
-                    ...message?.payload,
-                  },
-                });
-              } catch (e) {
-                error("Failed to create new private tab:", e);
-                sendResponse({
-                  event: "os_browser_bridge_create_new_private_tab",
-                  detail: {
-                    error: e?.message || String(e),
-                    ...message?.payload,
-                  },
-                });
-              }
-            })();
-            return true;
-          }
-          case message?.event === "identify_tab": {
-            const reply = {
-              event: "os_browser_bridge_identify_tab",
-              detail: { tabId, ...message?.payload, connected },
-            };
-            // log("reply", reply);
-            /**
-             * I can send string or object at any shape.
-             * It will be transported to content.js as such.
-             * But I want to stick to the convention of passing object with event and detail properties.
-             */
-            sendResponse(reply);
-
-            return;
-          }
-          case message?.event?.startsWith("other_tabs:"): {
-            if (connected) {
-              const _debugger = "true";
-            } else {
-              const reply = {
-                event: message?.event,
-                detail: { tabId, ...message?.payload /* xx001 */, connected }, // xx002
-              };
-              // log("reply", reply);
-              /**
-               * I can send string or object at any shape.
-               * It will be transported to content.js as such.
-               * But I want to stick to the convention of passing object with event and detail properties.
-               */
-              // sendResponse(reply);
-
-              broadcastToTabs(reply, [], [tab?.id]);
-            }
-
-            return;
-          }
-          default: {
-            // skip this one for independent handler
-
-            // message.tab = tabId;
-            // // message:
-            // //   event: "identify_tab"
-            // //   tab: "browserId_c08c4190_tabId_1817282704"
-            // //   type:"transport_from_content_js_to_background_js"
-
-            // sendToNode(message);
-
-            return;
-          }
-        }
-      } catch (e) {
-        error("Failed to forward event to node server:", e);
-      }
-    },
-  };
-
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    const event = events2[message.type];
-
-    if (event) {
-      return event(message, sender, sendResponse);
-    }
-
-    log("event not handled independent", message.type);
-  });
-
   // Only connect if enabled
   if (connectionEnabled) {
+    // Set initial icon state based on connection enabled setting
+    updateIcon("disconnected");
     connectWebSocket();
   } else {
     updateIcon("disabled");
   }
 })();
+
+// true only when current socket can be used for sending
+function isSocketOpen() {
+  return Boolean(ws) && ws.readyState === WebSocket.OPEN;
+}
+
+// Status object consumed by popup.js (reply for get_popup_status and update_settings)
+function getPopupStatus() {
+  return {
+    connectionEnabled,
+    isConnected: connected,
+    connectionState: ws
+      ? ws.readyState === WebSocket.CONNECTING
+        ? "connecting"
+        : ws.readyState === WebSocket.OPEN
+          ? "connected"
+          : "disconnected"
+      : "disconnected",
+    serverUrl: WS_SERVER_URL,
+    reconnectAttempts,
+  };
+}
+
+/**
+ * Forwards event emitted in the browser tab to node.js server,
+ * enriched with information about the tab it is coming from.
+ */
+function forwardToNode(message, tabId) {
+  message.tab = tabId;
+  if (typeof message?.payload === "undefined") {
+    message.payload = {};
+  }
+  message.payload.tabId = tabId;
+  message.payload.connected = connected;
+  // message:
+  //   event: "identify_tab"
+  //   tab: "browserId_c08c4190_tabId_1817282704"
+  //   type:"transport_from_content_js_to_background_js"
+
+  sendToNode(message);
+}
+
+/**
+ * Handlers of messages incomming from content.js and popup.js (chrome.runtime.sendMessage).
+ * key is message.type
+ *
+ * Each handler gets (message, sender) and returns the reply (or promise of the reply).
+ * Returned value is passed to sendResponse() by the single listener registered below,
+ * so handlers should NOT call sendResponse themselves.
+ * Returning undefined is fine - means "nothing to reply".
+ *
+ * WARNING: this table is used by ONE listener registered ONCE at the top level of this script.
+ * Don't register chrome.* listeners inside connectWebSocket() - it is called on every reconnect
+ * and that would add another copy of each listener every time.
+ */
+const messageHandlers = {
+  ping: () => {
+    return { type: "pong" };
+  },
+  // Handle popup status request
+  get_popup_status: () => {
+    return getPopupStatus();
+  },
+  // Handle settings update from popup
+  update_settings: async (message) => {
+    try {
+      const oldEnabled = connectionEnabled;
+      const oldUrl = WS_SERVER_URL;
+
+      // Update settings
+      WS_SERVER_URL = message.serverUrl || WS_SERVER_URL;
+      connectionEnabled = message.connectionEnabled;
+
+      // Save settings to storage
+      await chrome.storage.local.set({
+        serverUrl: WS_SERVER_URL,
+        connectionEnabled: connectionEnabled,
+      });
+
+      // If connection settings changed
+      if (oldEnabled !== connectionEnabled || oldUrl !== WS_SERVER_URL) {
+        if (connectionEnabled) {
+          // Reconnect with new settings
+          disconnectWebSocket();
+          connectWebSocket();
+        } else {
+          // Disconnect if disabled
+          disconnectWebSocket();
+          updateIcon("disabled");
+        }
+      }
+
+      // Send current status back
+      return getPopupStatus();
+    } catch (err) {
+      error("Error updating settings:", err);
+      return { error: err.message };
+    }
+  },
+  // Provide current connection status immediately upon request from content script
+  get_connection_status: (message, sender) => {
+    const tab = sender?.tab || {};
+    const tabId = `browserId_${browserId}_tabId_${tab?.id}`;
+
+    return {
+      type: "os_browser_bridge_connection_status",
+      isConnected: connected,
+      details: { state: connected ? "connected" : "disconnected" },
+      timestamp: Date.now(),
+      tabId,
+    };
+  },
+  /**
+   * Events emitted by the page (CustomEvent "os_browser_bridge") and forwarded here by content.js
+   *
+   * close_this_tab, identify_tab, create_new_private_tab - handled here, work also when not connected to the server
+   * other_tabs:*  - connected: goes to the server which broadcasts it to all other tabs in all browsers
+   *               - not connected: goes directly to other tabs of this browser only
+   * anything else - goes to the server (dropped with warning when not connected)
+   */
+  transport_from_content_js_to_background_js: async (message, sender) => {
+    try {
+      const tab = sender?.tab || "";
+
+      const tabId = `browserId_${browserId}_tabId_${tab?.id}`;
+
+      // log("incomming from content.js", message);
+
+      switch (true) {
+        case message?.event === "close_this_tab": {
+          await chrome.tabs.remove(tab.id);
+          return;
+        }
+        case message?.event === "create_new_private_tab": {
+          let reply;
+          try {
+            const url = message?.payload?.url;
+            const createData = { incognito: true };
+            if (url) {
+              createData.url = url;
+            }
+            const newWin = await chrome.windows.create(createData);
+            const newTab = newWin?.tabs?.[0] || (await chrome.tabs.query({ windowId: newWin.id }))[0];
+            const newTabId = `browserId_${browserId}_tabId_${newTab.id}`;
+            newTab.tab = newTabId;
+            reply = {
+              event: "os_browser_bridge_create_new_private_tab",
+              detail: {
+                tabId: newTabId,
+                numericTabId: newTab.id,
+                tab: newTab,
+                windowId: newWin.id,
+                ...message?.payload,
+              },
+            };
+          } catch (e) {
+            error("Failed to create new private tab:", e);
+            reply = {
+              event: "os_browser_bridge_create_new_private_tab",
+              detail: {
+                error: e?.message || String(e),
+                ...message?.payload,
+              },
+            };
+          }
+
+          // server is also informed about this event (the same as before, when it was falling to default: case)
+          if (isSocketOpen()) {
+            forwardToNode(message, tabId);
+          }
+
+          return reply;
+        }
+        case message?.event === "identify_tab": {
+          // log("reply", reply);
+          /**
+           * I can send string or object at any shape.
+           * It will be transported to content.js as such.
+           * But I want to stick to the convention of passing object with event and detail properties.
+           */
+          return {
+            event: "os_browser_bridge_identify_tab",
+            detail: { tabId, ...message?.payload, connected },
+          };
+        }
+        case message?.event?.startsWith("other_tabs:"): {
+          if (isSocketOpen()) {
+            forwardToNode(message, tabId);
+          } else {
+            const reply = {
+              event: message?.event,
+              detail: { tabId, ...message?.payload /* xx001 */, connected }, // xx002
+            };
+
+            broadcastToTabs(reply, [], [tab?.id]);
+          }
+
+          return;
+        }
+        default: {
+          if (isSocketOpen()) {
+            forwardToNode(message, tabId);
+          } else {
+            console.warn("WebSocket not connected, cannot forward event to server");
+          }
+
+          return;
+        }
+      }
+    } catch (e) {
+      error("Failed to forward event to node server:", e);
+    }
+  },
+};
+
+/**
+ * The ONLY chrome.runtime.onMessage listener in this script.
+ * Registered synchronously at the top level - Chrome requires that for service workers,
+ * otherwise message which woke up the worker might arrive before listener exists and get lost.
+ *
+ * Returns true to keep the channel open, because reply is always sent asynchronously (after initDone).
+ */
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  const handler = messageHandlers[message?.type];
+
+  if (handler) {
+    initDone
+      .then(() => handler(message, sender))
+      .then(sendResponse)
+      .catch((e) => {
+        error("message handler failed:", message?.type, e);
+        sendResponse();
+      });
+
+    return true;
+  }
+
+  log("event not handled", message?.type);
+});
 
 function scheduleReconnect() {
   if (!connectionEnabled) {
@@ -362,27 +398,32 @@ function scheduleReconnect() {
   }, delay);
 }
 
+/**
+ * Detaches current socket and closes it.
+ *
+ * All handlers of the socket (open, message, close) start with check "if (socket !== ws) return;"
+ * so once we set ws = null here they turn into no-ops.
+ * That is important because 'close' event of the socket we close here is delivered LATER (asynchronously)
+ * and without that check it would report "disconnected" and schedule reconnect
+ * which would then kill the new healthy socket - and so on in the loop.
+ */
 function cleanupWebSocket() {
   if (!ws) return;
 
-  // Remove listeners to avoid memory leaks
-  ws.onopen = null;
-  ws.onmessage = null;
-  ws.onclose = null;
-  ws.onerror = null;
+  const socket = ws;
+
+  ws = null;
 
   if (
-    ws.readyState === WebSocket.OPEN ||
-    ws.readyState === WebSocket.CONNECTING
+    socket.readyState === WebSocket.OPEN ||
+    socket.readyState === WebSocket.CONNECTING
   ) {
     try {
-      ws.close();
+      socket.close();
     } catch (_) {
       // ignore errors while closing
     }
   }
-
-  ws = null;
 }
 
 // Function to disconnect WebSocket and clear reconnect timers
@@ -502,17 +543,205 @@ async function broadcastConnectionStatus(isConnected, details = {}) {
   }
 }
 
-function sendToNodeFactory(ws) {
-  return function sendToNode(data) {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      console.log("[OS-Bridge] sendToNode ->", data);
-      ws.send(JSON.stringify(data));
-    } else {
-      console.warn("[OS-Bridge] sendToNode failed: ws not open, readyState:", ws?.readyState);
-    }
-  };
+// Sends data to node.js server through current socket (if it is open)
+function sendToNode(data) {
+  if (isSocketOpen()) {
+    console.log("[OS-Bridge] sendToNode ->", data);
+    ws.send(JSON.stringify(data));
+  } else {
+    console.warn("[OS-Bridge] sendToNode failed: ws not open, readyState:", ws?.readyState);
+  }
 }
 
+function evaluateViaDebugger(tabId, code) {
+  // Wrap expression so the result is always JSON-serialized as a string.
+  // This guarantees complex objects (including those returned from async
+  // functions) survive the CDP returnByValue boundary intact.
+  const wrapped = `(async () => JSON.stringify(await (async () => { return (${code}); })()))()`;
+
+  return new Promise((resolve, reject) => {
+    const target = { tabId };
+    chrome.debugger.attach(target, "1.3", () => {
+      const attachErr = chrome.runtime.lastError;
+      if (attachErr) {
+        return reject(new Error(attachErr.message));
+      }
+
+      chrome.debugger.sendCommand(
+        target,
+        "Runtime.evaluate",
+        {
+          expression: wrapped,
+          returnByValue: true,
+          awaitPromise: true,
+        },
+        (evalResponse) => {
+          const sendErr = chrome.runtime.lastError;
+          chrome.debugger.detach(target, () => {});
+
+          if (sendErr) {
+            return reject(new Error(sendErr.message));
+          }
+
+          if (evalResponse?.exceptionDetails) {
+            const ex = evalResponse.exceptionDetails;
+            const desc =
+              ex.exception?.description ||
+              ex.text ||
+              "Unknown evaluation error";
+            const lineInfo = ex.lineNumber !== undefined ? ` at line ${ex.lineNumber}:${ex.columnNumber}` : "";
+            const fullMsg = `CDP evaluation failed: ${desc}${lineInfo}`;
+            error("[OS-Bridge] evaluateViaDebugger exceptionDetails:", ex);
+            return reject(new Error(fullMsg));
+          }
+
+          // result.value is a JSON string — parse it back to the real value
+          const raw = evalResponse?.result?.value;
+          try {
+            resolve(raw !== undefined ? JSON.parse(raw) : undefined);
+          } catch (_) {
+            resolve(raw); // fallback: return as-is if not valid JSON
+          }
+        },
+      );
+    });
+  });
+}
+
+/**
+ * Special (control) events incomming from node.js server which are handled here in background.js
+ * and are NOT forwarded to the tabs. Value returned from the handler is sent back to node.js
+ */
+// after some thoughts it seems that this method is only useful for allTabs special event
+// because there is no other scenario where after event from node
+// it makes sens to respond immediately back to node.js
+const events = {
+  close_tab: async (detail, { tab, include }) => {
+    const targetTab = detail?.tabId || tab || include?.[0];
+    let numericTabId = Number(targetTab);
+    if (isNaN(numericTabId) && typeof targetTab === "string") {
+      const match = targetTab.match(/tabId_(\d+)/);
+      if (match) {
+        numericTabId = Number(match[1]);
+      }
+    }
+
+    if (!numericTabId || isNaN(numericTabId)) {
+      return {
+        event: "close_tab_result",
+        payload: {
+          reqId: detail?.reqId,
+          tabId: targetTab,
+          success: false,
+          error: `Invalid tab ID: ${targetTab}`,
+        },
+      };
+    }
+
+    try {
+      await chrome.tabs.remove(numericTabId);
+      return {
+        event: "close_tab_result",
+        payload: {
+          reqId: detail?.reqId,
+          tabId: targetTab,
+          success: true,
+        },
+      };
+    } catch (err) {
+      return {
+        event: "close_tab_result",
+        payload: {
+          reqId: detail?.reqId,
+          tabId: targetTab,
+          success: false,
+          error: err?.message || String(err),
+        },
+      };
+    }
+  },
+  allTabs: async () => {
+    const tabs = await chrome.tabs.query({});
+
+    return {
+      event: "allTabs",
+      payload: { browserInfo, tabs },
+    };
+  },
+  eval: async (detail, { tab, include }) => {
+    const { reqId, code, tabId: rawTabId } = detail || {};
+    const targetTab = rawTabId || tab || include?.[0];
+    let numericTabId = Number(targetTab);
+    if (isNaN(numericTabId) && typeof targetTab === "string") {
+      const match = targetTab.match(/tabId_(\d+)/);
+      if (match) {
+        numericTabId = Number(match[1]);
+      }
+    }
+
+    if (!numericTabId || isNaN(numericTabId)) {
+      return {
+        event: "eval_result",
+        payload: {
+          reqId,
+          tabId: targetTab,
+          success: false,
+          error: `Invalid tab ID: ${targetTab}`,
+        },
+      };
+    }
+
+    try {
+      await chrome.tabs.get(numericTabId);
+    } catch (err) {
+      return {
+        event: "eval_result",
+        payload: {
+          reqId,
+          tabId: targetTab,
+          success: false,
+          error: `Tab ${numericTabId} not found: ${err?.message || String(err)}`,
+        },
+      };
+    }
+
+    try {
+      console.log(
+        `[OS-Bridge] Executing eval via debugger in tab ${numericTabId}:`,
+        code,
+      );
+      const result = await evaluateViaDebugger(numericTabId, code);
+      return {
+        event: "eval_result",
+        payload: {
+          reqId,
+          tabId: targetTab,
+          success: true,
+          result,
+        },
+      };
+    } catch (err) {
+      return {
+        event: "eval_result",
+        payload: {
+          reqId,
+          tabId: targetTab,
+          success: false,
+          error: err?.message || String(err),
+        },
+      };
+    }
+  },
+};
+
+/**
+ * Creates new socket and binds its handlers. Called on start, on every reconnect and on settings change.
+ *
+ * WARNING: only handlers of the socket itself can be bound in here.
+ * chrome.* listeners have to be registered once at the top level of this script.
+ *
+ * Each socket handler starts with "if (socket !== ws) return;" - see comment above cleanupWebSocket()
+ */
 async function connectWebSocket() {
   // Don't connect if disabled or no URL configured
   if (!connectionEnabled || !WS_SERVER_URL) {
@@ -522,14 +751,6 @@ async function connectWebSocket() {
 
   // Always clean up any previous socket before starting a new one
   cleanupWebSocket();
-
-  // If a connection is already open or in progress, don't create another
-  if (
-    ws &&
-    (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)
-  ) {
-    return;
-  }
 
   try {
     // Emit connecting status and update icon
@@ -542,11 +763,14 @@ async function connectWebSocket() {
     const encodedBrowserInfo = base64EncodeUtf8(
       JSON.stringify(browserInfo || null),
     );
-    ws = new WebSocket(`${WS_SERVER_URL}?browser=${encodedBrowserInfo}`);
 
-    const sendToNode = sendToNodeFactory(ws);
+    const socket = new WebSocket(`${WS_SERVER_URL}?browser=${encodedBrowserInfo}`);
 
-    ws.addEventListener("open", () => {
+    ws = socket;
+
+    socket.addEventListener("open", () => {
+      if (socket !== ws) return;
+
       reconnectAttempts = 0; // Reset reconnect attempts on successful connection
       // Emit connected status and update icon
       broadcastConnectionStatus(true, {
@@ -566,187 +790,12 @@ async function connectWebSocket() {
         .catch(() => {}); // Ignore errors if popup is not open
     });
 
-    function evaluateViaDebugger(tabId, code) {
-      // Wrap expression so the result is always JSON-serialized as a string.
-      // This guarantees complex objects (including those returned from async
-      // functions) survive the CDP returnByValue boundary intact.
-      const wrapped = `(async () => JSON.stringify(await (async () => { return (${code}); })()))()`;
-
-      return new Promise((resolve, reject) => {
-        const target = { tabId };
-        chrome.debugger.attach(target, "1.3", () => {
-          const attachErr = chrome.runtime.lastError;
-          if (attachErr) {
-            return reject(new Error(attachErr.message));
-          }
-
-          chrome.debugger.sendCommand(
-            target,
-            "Runtime.evaluate",
-            {
-              expression: wrapped,
-              returnByValue: true,
-              awaitPromise: true,
-            },
-            (evalResponse) => {
-              const sendErr = chrome.runtime.lastError;
-              chrome.debugger.detach(target, () => {});
-
-              if (sendErr) {
-                return reject(new Error(sendErr.message));
-              }
-
-              if (evalResponse?.exceptionDetails) {
-                const ex = evalResponse.exceptionDetails;
-                const desc =
-                  ex.exception?.description ||
-                  ex.text ||
-                  "Unknown evaluation error";
-                const lineInfo = ex.lineNumber !== undefined ? ` at line ${ex.lineNumber}:${ex.columnNumber}` : "";
-                const fullMsg = `CDP evaluation failed: ${desc}${lineInfo}`;
-                error("[OS-Bridge] evaluateViaDebugger exceptionDetails:", ex);
-                return reject(new Error(fullMsg));
-              }
-
-              // result.value is a JSON string — parse it back to the real value
-              const raw = evalResponse?.result?.value;
-              try {
-                resolve(raw !== undefined ? JSON.parse(raw) : undefined);
-              } catch (_) {
-                resolve(raw); // fallback: return as-is if not valid JSON
-              }
-            },
-          );
-        });
-      });
-    }
-
-    // after some thoughts it seems that this method is only useful for allTabs special event
-    // because there is no other scenario where after event from node
-    // it makes sens to respond immediately back to node.js
-    const events = {
-      close_tab: async (detail, { tab, include }) => {
-        const targetTab = detail?.tabId || tab || include?.[0];
-        let numericTabId = Number(targetTab);
-        if (isNaN(numericTabId) && typeof targetTab === "string") {
-          const match = targetTab.match(/tabId_(\d+)/);
-          if (match) {
-            numericTabId = Number(match[1]);
-          }
-        }
-
-        if (!numericTabId || isNaN(numericTabId)) {
-          return {
-            event: "close_tab_result",
-            payload: {
-              reqId: detail?.reqId,
-              tabId: targetTab,
-              success: false,
-              error: `Invalid tab ID: ${targetTab}`,
-            },
-          };
-        }
-
-        try {
-          await chrome.tabs.remove(numericTabId);
-          return {
-            event: "close_tab_result",
-            payload: {
-              reqId: detail?.reqId,
-              tabId: targetTab,
-              success: true,
-            },
-          };
-        } catch (err) {
-          return {
-            event: "close_tab_result",
-            payload: {
-              reqId: detail?.reqId,
-              tabId: targetTab,
-              success: false,
-              error: err?.message || String(err),
-            },
-          };
-        }
-      },
-      allTabs: async () => {
-        const tabs = await chrome.tabs.query({});
-
-        return {
-          event: "allTabs",
-          payload: { browserInfo, tabs },
-        };
-      },
-      eval: async (detail, { tab, include }) => {
-        const { reqId, code, tabId: rawTabId } = detail || {};
-        const targetTab = rawTabId || tab || include?.[0];
-        let numericTabId = Number(targetTab);
-        if (isNaN(numericTabId) && typeof targetTab === "string") {
-          const match = targetTab.match(/tabId_(\d+)/);
-          if (match) {
-            numericTabId = Number(match[1]);
-          }
-        }
-
-        if (!numericTabId || isNaN(numericTabId)) {
-          return {
-            event: "eval_result",
-            payload: {
-              reqId,
-              tabId: targetTab,
-              success: false,
-              error: `Invalid tab ID: ${targetTab}`,
-            },
-          };
-        }
-
-        try {
-          await chrome.tabs.get(numericTabId);
-        } catch (err) {
-          return {
-            event: "eval_result",
-            payload: {
-              reqId,
-              tabId: targetTab,
-              success: false,
-              error: `Tab ${numericTabId} not found: ${err?.message || String(err)}`,
-            },
-          };
-        }
-
-        try {
-          console.log(
-            `[OS-Bridge] Executing eval via debugger in tab ${numericTabId}:`,
-            code,
-          );
-          const result = await evaluateViaDebugger(numericTabId, code);
-          return {
-            event: "eval_result",
-            payload: {
-              reqId,
-              tabId: targetTab,
-              success: true,
-              result,
-            },
-          };
-        } catch (err) {
-          return {
-            event: "eval_result",
-            payload: {
-              reqId,
-              tabId: targetTab,
-              success: false,
-              error: err?.message || String(err),
-            },
-          };
-        }
-      },
-    };
-
     /**
      * Messages incomming from node.js server
      */
-    ws.addEventListener("message", async (e) => {
+    socket.addEventListener("message", async (e) => {
+      if (socket !== ws) return;
+
       const { event, tab, rawJson } = splitOnce(e.data);
 
       let decodedFromJson = null;
@@ -791,90 +840,9 @@ async function connectWebSocket() {
       broadcastToTabs(decodedFromJson, include, exclude);
     });
 
-    // bind here
-    ///////////////////////////////
-    //  Bind tab change events  //
-    ///////////////////////////////
+    socket.addEventListener("close", (event) => {
+      if (socket !== ws) return;
 
-    const sendSingleTabUpdate = (tabEvent) => {
-      return async (...args) => {
-        try {
-          // Send only if socket is open
-          if (ws && ws.readyState === WebSocket.OPEN) {
-            let tab; // The single tab that triggered the event
-
-            switch (tabEvent) {
-              case "onCreated":
-                // New tab was created - tab object is provided directly
-                [tab] = args;
-                break;
-
-              case "onUpdated":
-                // Tab was updated (e.g., navigated to different page)
-                // Args: (tabId, changeInfo, tab)
-                [, , tab] = args; // 3rd argument is the full tab object
-                break;
-
-              case "onActivated":
-                // Tab became active (user switched to it)
-                // Args: (activeInfo) where activeInfo = { tabId, windowId }
-                const [{ tabId }] = args;
-                tab = await chrome.tabs.get(tabId);
-                break;
-
-              case "onRemoved":
-                // Tab was closed - no tab object exists anymore
-                // Args: (tabId, removeInfo)
-                const [removedTabId] = args;
-                tab = { id: removedTabId, removed: true };
-                break;
-
-              case "onAttached":
-                // Tab was attached to a window (e.g., dragged between windows)
-                // Args: (tabId, attachInfo)
-                const [attachedTabId] = args;
-                tab = await chrome.tabs.get(attachedTabId);
-                break;
-
-              case "onReplaced":
-                // Tab was replaced with another tab (rare, e.g., tab prerendering)
-                // Args: (addedTabId, removedTabId)
-                const [replacedTabId] = args;
-                tab = await chrome.tabs.get(replacedTabId);
-                break;
-            }
-
-            sendToNode({
-              event: tabEvent,
-              payload: { browserInfo, tab: enrichTab(tab, browserInfo) },
-            });
-          }
-        } catch (e) {
-          error("Failed to send tab update to server", e);
-        }
-      };
-    };
-
-    // List of tab-related Chrome events we want to monitor
-    // const tabEvents = ["onCreated", "onRemoved", "onUpdated", "onActivated", "onReplaced", "onAttached"];
-    const tabEvents = [
-      "onCreated",
-      "onRemoved",
-      "onUpdated",
-      "onActivated",
-      "onReplaced",
-      "onAttached",
-    ];
-
-    tabEvents.forEach((tabEvent) =>
-      chrome.tabs[tabEvent].addListener(sendSingleTabUpdate(tabEvent)),
-    );
-
-    ///////////////////////////////
-    //  End tab change bindings  //
-    ///////////////////////////////
-
-    ws.addEventListener("close", (event) => {
       // Emit disconnected status and update icon
       broadcastConnectionStatus(false, {
         state: "disconnected",
@@ -896,82 +864,7 @@ async function connectWebSocket() {
       scheduleReconnect();
     });
 
-    const events2 = {
-      // ping: (message, sender, sendResponse) => {
-      //   sendResponse({ type: "pong" });
-      // },
-      transport_from_content_js_to_background_js: (
-        message,
-        sender,
-        sendResponse,
-      ) => {
-        try {
-          if (ws && ws.readyState === WebSocket.OPEN) {
-            const tab = sender?.tab || "";
-
-            const tabId = `browserId_${browserId}_tabId_${tab?.id}`;
-
-            // log("incomming from content.js", message);
-
-            switch (true) {
-              case message?.event === "close_this_tab": {
-                chrome.tabs.remove(tab.id);
-                return;
-              }
-              case message?.event === "identify_tab": {
-                // handle that not in the scope of the ws socket, this one can be handled independently
-
-                // const reply = { event: "os_browser_bridge_identify_tab", detail: { tabId, ...message?.payload } };
-                // // log("reply", reply);
-                // /**
-                //  * I can send string or object at any shape.
-                //  * It will be transported to content.js as such.
-                //  * But I want to stick to the convention of passing object with event and detail properties.
-                //  */
-                // sendResponse(reply);
-
-                return;
-              }
-              case message?.event?.startsWith("other_tabs:"):
-              default: {
-                message.tab = tabId;
-                if (typeof message?.payload === "undefined") {
-                  message.payload = {};
-                }
-                message.payload.tabId = tabId;
-                message.payload.connected = connected;
-                // message:
-                //   event: "identify_tab"
-                //   tab: "browserId_c08c4190_tabId_1817282704"
-                //   type:"transport_from_content_js_to_background_js"
-
-                sendToNode(message);
-
-                return;
-              }
-            }
-          } else {
-            console.warn(
-              "WebSocket not connected, cannot forward event to server",
-            );
-          }
-        } catch (e) {
-          error("Failed to forward event to node server:", e);
-        }
-      },
-    };
-
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      const event = events2[message.type];
-
-      if (event) {
-        return event(message, sender, sendResponse);
-      }
-
-      log("event not handled", message.type);
-    });
-
-    // ws.addEventListener("error", (error) => {
+    // socket.addEventListener("error", (error) => {
     //   log("WebSocket error occurred. Scheduling reconnect...");
     //   // Don't emit error status here as 'close' event will also fire and emit disconnected status
     //   // Don't call scheduleReconnect here as 'close' event will also fire
@@ -987,6 +880,95 @@ async function connectWebSocket() {
     scheduleReconnect();
   }
 }
+
+///////////////////////////////
+//  Bind tab change events  //
+///////////////////////////////
+
+/**
+ * Creates listener for given chrome.tabs event which sends information about the tab to node.js server.
+ * Registered once at the top level (not per connection) - it always uses current socket.
+ */
+const sendSingleTabUpdate = (tabEvent) => {
+  return async (...args) => {
+    try {
+      // browserInfo has to be ready
+      await initDone;
+
+      // Send only if socket is open
+      if (isSocketOpen()) {
+        let tab; // The single tab that triggered the event
+
+        switch (tabEvent) {
+          case "onCreated":
+            // New tab was created - tab object is provided directly
+            [tab] = args;
+            break;
+
+          case "onUpdated":
+            // Tab was updated (e.g., navigated to different page)
+            // Args: (tabId, changeInfo, tab)
+            [, , tab] = args; // 3rd argument is the full tab object
+            break;
+
+          case "onActivated":
+            // Tab became active (user switched to it)
+            // Args: (activeInfo) where activeInfo = { tabId, windowId }
+            const [{ tabId }] = args;
+            tab = await chrome.tabs.get(tabId);
+            break;
+
+          case "onRemoved":
+            // Tab was closed - no tab object exists anymore
+            // Args: (tabId, removeInfo)
+            const [removedTabId] = args;
+            tab = { id: removedTabId, removed: true };
+            break;
+
+          case "onAttached":
+            // Tab was attached to a window (e.g., dragged between windows)
+            // Args: (tabId, attachInfo)
+            const [attachedTabId] = args;
+            tab = await chrome.tabs.get(attachedTabId);
+            break;
+
+          case "onReplaced":
+            // Tab was replaced with another tab (rare, e.g., tab prerendering)
+            // Args: (addedTabId, removedTabId)
+            const [replacedTabId] = args;
+            tab = await chrome.tabs.get(replacedTabId);
+            break;
+        }
+
+        sendToNode({
+          event: tabEvent,
+          payload: { browserInfo, tab: enrichTab(tab, browserInfo) },
+        });
+      }
+    } catch (e) {
+      error("Failed to send tab update to server", e);
+    }
+  };
+};
+
+// List of tab-related Chrome events we want to monitor
+// const tabEvents = ["onCreated", "onRemoved", "onUpdated", "onActivated", "onReplaced", "onAttached"];
+const tabEvents = [
+  "onCreated",
+  "onRemoved",
+  "onUpdated",
+  "onActivated",
+  "onReplaced",
+  "onAttached",
+];
+
+tabEvents.forEach((tabEvent) =>
+  chrome.tabs[tabEvent].addListener(sendSingleTabUpdate(tabEvent)),
+);
+
+///////////////////////////////
+//  End tab change bindings  //
+///////////////////////////////
 
 // Initial connection
 // connectWebSocket(); // This line is now handled by the async IIFE above

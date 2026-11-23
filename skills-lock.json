@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "skills": {
+    "gcp-css": {
+      "source": "stopsopa/gcp-css",
+      "sourceType": "github",
+      "skillPath": "gcp-css/SKILL.md",
+      "computedHash": "c638ad207e924e6aecbc33416d94f99b5b14306551fbb5e3efec506468f49575",
+      "commit": "73e3727b2a63d5666b50b4b6e1f8cf839fcd28ba"
+    }
+  }
+}

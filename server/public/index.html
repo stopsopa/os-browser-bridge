@@ -4,25 +4,45 @@
     <meta charset="UTF-8">
     <title>Index of HTML Files</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        ul { list-style-type: none; padding: 0; }
-        li { margin: 5px 0; }
+        body { font-family: Arial, sans-serif; margin: 40px; color: #222; }
+        h1 { font-size: 20px; margin-bottom: 24px; }
+        /* two even columns (title | filename) without table borders, li is "dissolved" so its children become grid cells */
+        ul {
+            list-style-type: none;
+            padding: 0;
+            display: grid;
+            grid-template-columns: max-content max-content;
+            column-gap: 40px;
+            row-gap: 10px;
+            align-items: baseline;
+
+            li { display: contents; }
+            span { font-family: monaco, Consolas, monospace; font-size: 12px; color: #777; }
+        }
         a { text-decoration: none; color: #0645AD; }
         a:hover { text-decoration: underline; }
+        @media (max-width: 700px) {
+            ul { grid-template-columns: 1fr; row-gap: 2px; }
+            span { margin-bottom: 12px; }
+        }
     </style>
 </head>
 <body>
     <h1>Index of HTML Files</h1>
     <ul>
-        <li><a href="ajax_to_server.html">ajax_to_server.html</a></li>
-        <li><a href="broadcast_from_server_and_with_browser_event.html">broadcast_from_server_and_with_browser_event.html</a></li>
-        <li><a href="connection_status_demo.html">connection_status_demo.html</a></li>
-        <li><a href="connection_status_demo_improved.html">connection_status_demo_improved.html</a></li>
-        <li><a href="direct_to_socket.html">direct_to_socket.html</a></li>
-        <li><a href="particular_event_tester.html">particular_event_tester.html</a></li>
-        <li><a href="regular_page.html">regular_page.html</a></li>
-        <li><a href="styles.html">styles.html</a></li>
-        <li><a href="tabs_events.html">tabs_events.html</a></li>
+        <li><a href="ajax_to_server.html">Document</a> <span>[ajax_to_server.html]</span></li>
+        <li><a href="broadcast_from_server_and_with_browser_event.html">Event Listener Example (Direct WebSocket)</a> <span>[broadcast_from_server_and_with_browser_event.html]</span></li>
+        <li><a href="close_me.html">Document</a> <span>[close_me.html]</span></li>
+        <li><a href="connection_status_demo.html">Connection Status Demo - OS Browser Bridge</a> <span>[connection_status_demo.html]</span></li>
+        <li><a href="connection_status_demo_improved.html">Connection Status Demo - OS Browser Bridge</a> <span>[connection_status_demo_improved.html]</span></li>
+        <li><a href="copy.html">copy</a> <span>[copy.html]</span></li>
+        <li><a href="direct_to_socket.html">Event Listener Example (Direct WebSocket)</a> <span>[direct_to_socket.html]</span></li>
+        <li><a href="media_keys_tester.html">Media Keys Tester - OS Browser Bridge</a> <span>[media_keys_tester.html]</span></li>
+        <li><a href="particular_event_tester.html">Regular Page - OS Browser Bridge Event Listener</a> <span>[particular_event_tester.html]</span></li>
+        <li><a href="regular_page.html">Regular Page - OS Browser Bridge Event Listener</a> <span>[regular_page.html]</span></li>
+        <li><a href="styles.html">Document</a> <span>[styles.html]</span></li>
+        <li><a href="tabs_events.html">Regular Page - OS Browser Bridge Event Listener</a> <span>[tabs_events.html]</span></li>
+        <li><a href="tampermonkey.page.html">Tampermonkey selection test page</a> <span>[tampermonkey.page.html]</span></li>
     </ul>
 </body>
 </html>
